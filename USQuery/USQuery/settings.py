@@ -15,12 +15,14 @@ import posixpath
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONGRESS_DIR = 'https://api.propublica.org/congress/v1/'
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '24c68b95-887a-46a9-a4a5-606dbb94b170'
+CONGRESS_KEY = '5P9BN3AHsJIh1L7oeGhAaHJowHdEpQRbhkJYJw6r'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -31,6 +33,7 @@ ALLOWED_HOSTS = []
 # https://docs.djangoproject.com/en/2.1/ref/settings/#std:setting-INSTALLED_APPS
 INSTALLED_APPS = [
     'app',
+    'SenateQuery',
     # Add your apps here to enable them
     'django.contrib.admin',
     'django.contrib.auth',
@@ -38,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.admindocs',
 ]
 
 # Middleware framework
