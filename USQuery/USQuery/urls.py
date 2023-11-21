@@ -7,9 +7,9 @@ from django.urls import path, include
 from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from app import forms, views
+from USQuery import settings
+from SenateQuery import views as SQviews
 admin.autodiscover()
-
-import SenateQuery.views
 
 
 urlpatterns = [
@@ -31,6 +31,10 @@ urlpatterns = [
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
     path('admin/', admin.site.urls),
     path('admin/doc/', include('django.contrib.admindocs.urls')),
-    path('senateQuery/', SenateQuery.views.home, name='senateQueryHome'),
-    path('senateQuery/about', SenateQuery.views.about, name='senateQueryAbout'),
+    path('senate-query/', SQviews.home, name='senateQueryHome'),
+    path('senate-query/about', SQviews.about, name='senateQueryAbout'),
+    path('senate-query/search/', SQviews.search, name='senateQuerySearch'),
+    path('senate-query/populate-senators', SQviews.populate, name='senateQueryPopulate'),
+    
+    # path(settings.ABSOLUTE_URL_OVERRIDES['senatequery.models.senator'](), SQviews.senator, name='senateQuerySearchResult'),
 ]

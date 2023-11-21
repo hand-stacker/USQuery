@@ -1,8 +1,10 @@
 import http
+from urllib import request
 from django.shortcuts import render
 from django.http import HttpRequest
 from datetime import datetime
-from SenateQuery import congconnect as conn
+from SenateQuery import addsenators
+from SenateQuery.models import Senator
 
 # Create your views here.
 def home(request):
@@ -28,16 +30,26 @@ def about(request):
             'year':datetime.now().year,
         }
     )
-def query(request):
+def search(request):
     assert isinstance(request, HttpRequest)
-    req = requst[0]
-    s_pack = conn.connect(req)
+    congress_num = "117"
+    member_id = "S000033"
+    senator = Senator.objects.get(id=member_id)
     return render(
         request,
         'SenateQuery/senator.html',
-        {'title':"About Senate Query",
-            'content':"About Senate Query",
+        {
+            'title': senator.full_name,
             'year':datetime.now().year,
-            'senator-name' : 'a',
+            'senator_name' : senator.full_name,
+            'senator_party' : senator.party,
+            'senator_state' : senator.state,
+            'senator_terms' : '1000 BC - 2023',
+            'blob' : senator.birth_date,
+            
         }
     )
+def populate(request):
+    assert isinstance(request, HttpRequest)
+    addsenators
+    return home(request)

@@ -1,10 +1,19 @@
-import http.request
-import settings
-def connect(s_link):
-    resp, content = self.http.request(url, headers=settings.CONGRESS_KEY)
-    content = u(content)
-    content = json.loads(content)
+import requests, json
+from USQuery import settings
+from requests.exceptions import HTTPError
+def connect(path):
+    url = settings.CONGRESS_DIR + path
     
-    return content
+    try:
+        response = requests.get(url, headers={'X-API-Key': settings.CONGRESS_KEY}, timeout=10)
+        response.raise_for_status()
+    except HTTPError as http_err:
+        print(f'HTTP ERROR : {http_err}')
+    except Exception as err:
+        print(f'MISC ERROR : {err}')
+    except TimeoutError:
+        print("TIMEOUT ERROR")
+    else:
+        return response.json()['results'][0]
 
 

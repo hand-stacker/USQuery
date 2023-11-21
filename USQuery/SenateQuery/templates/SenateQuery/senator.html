@@ -1,10 +1,14 @@
 {% extends "SenateQuery/layout.html" %}
 
 {% block content %}
-<div class="senator-container">
-    <img class="portrait" />
-    <p class="senator-name">{{}}</p>
-    <p class="senator-party"></p>
-    <p class="senator-state"></p>
+{% load static %}
+<link rel="stylesheet" type="text/css" href="{% static 'SenateQuery/content/senate.css' %}" />
+<title>{{title}}</title>
+<div>
+    <p class="senator-name">{{senator_name}}</p>
+    <p class="senator-party">{{senator_party}}</p>
+    <p class="senator-state">{{senator_state}}</p>
+    <p class="senator-terms">{{senator_terms}}</p>
+    <p>{{blob}}</p>
 </div>
 {% endblock %}

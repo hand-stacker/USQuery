@@ -86,6 +86,11 @@ DATABASES = {
     }
 }
 
+
+# Urls for models
+ABSOLUTE_URL_OVERRIDES = {
+    'senatequery.models.senator': lambda o: "senate-query/search/%s/" % o.id,
+}
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
 AUTH_PASSWORD_VALIDATORS = [
@@ -115,3 +120,4 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
 STATIC_URL = '/static/'
 STATIC_ROOT = posixpath.join(*(BASE_DIR.split(os.path.sep) + ['static']))
+
