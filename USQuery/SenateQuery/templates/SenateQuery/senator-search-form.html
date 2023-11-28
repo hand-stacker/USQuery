@@ -1,6 +1,16 @@
 
 <form name="SenatorForm" id="id_SenatorForm" action="query/" method="get">
     {% csrf_token %}
-    {{ form }}
+    {{ form.non_field_errors }}
+    <div class="fieldWrapper">
+        {{ form.congress.errors }}
+        <label for="{{ form.congress.id_for_label }}"> Select Congress:</label>
+        <div>{{form.congress}}</div>
+    </div>
+    <div class="fieldWrapper">
+        {{ form.senator.errors }}
+        <label for="{{ form.senator.id_for_label }}"> Select Senator:</label>
+        <div>{{form.senator}}</div>
+    </div>
     <input type="submit" value="Search" />
 </form>
