@@ -2,4 +2,14 @@
 
 {% block content %}
 
+
+<div class="jumbotron">
+    <h1 class="display-4">Senator Search</h1>
+    <p class="lead">Get comprehensive data on your favorite senator, including general information, vote history, committee history, and more.</p>
+    <hr class="my-4">
+    <p>Search for any senator from the 80th to current congress.</p>
+    <p class="lead">
+        <a class="btn btn-primary btn-lg" href="{% url 'senateQueryHome' %}" role="button">Lets Search!</a>
+    </p>
+</div>
 {% endblock %}

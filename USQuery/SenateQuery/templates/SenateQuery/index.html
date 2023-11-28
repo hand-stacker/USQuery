@@ -3,7 +3,7 @@
 {% block content %}
 <h2>{{content}}</h2>
 <div class="query-container">
-    
+    {% include "SenateQuery/senator-search-form.html" with congresses=congresses %}
 </div>
 {% endblock %}
 

@@ -34,7 +34,8 @@ urlpatterns = [
     path('senate-query/', SQviews.home, name='senateQueryHome'),
     path('senate-query/about', SQviews.about, name='senateQueryAbout'),
     path('senate-query/search/', SQviews.search, name='senateQuerySearch'),
+    path('senate-query/query/', SQviews.query, name='senateQuery'),
     path('senate-query/populate-senators', SQviews.populate, name='senateQueryPopulate'),
-    
-    # path(settings.ABSOLUTE_URL_OVERRIDES['senatequery.models.senator'](), SQviews.senator, name='senateQuerySearchResult'),
+    path("select2/", include("django_select2.urls")),
+    #path(settings.ABSOLUTE_URL_OVERRIDES['senatequery.models.senator'](), SQviews.senator, name='senateQuerySearchResult'),
 ]
