@@ -1,14 +1,15 @@
 from asyncio.windows_events import NULL
 import http
 from pydoc import resolve
+from unittest import result
 from urllib import request
 from django.http.response import HttpResponseBase
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
 from datetime import datetime
 from app import utils, forms
-from SenateQuery import addsenators, congconnect
 from SenateQuery.models import Senator, Congress
+from USQuery import settings
 
 # Create your views here.
 def home(request):
@@ -38,14 +39,13 @@ def about(request):
     )
 def search(request, congress_num, member_id):
     assert isinstance(request, HttpRequest)
-    congress_chamber = "Senate"
-    index = -1
-    response = congconnect.connect("members/" + member_id + ".json")
-    response = response[0]
-    for i in range(len(response['roles'])):
-        if (response['roles'][i]['congress'] == congress_num) & (response['roles'][i]['chamber'] == congress_chamber): 
-            index = i
-            break
+    response = utils.connect(settings.PROPUBLICA_DIR + "members/" + member_id + ".json", "ProPublica")[0]
+    votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json", "ProPublica")
+    votes_response = votes_response[0]["votes"]
+    votes = []
+    for vote in votes_response:
+        votes.append(("("+vote["bill"]["bill_id"]+") "+str(vote["bill"]["title"]), vote["description"], vote["position"]))
+    index = utils.findIndexOfRoleByChamberAndCongress(response['roles'], congress_num, 'Senate')
     if index == -1:
         print("FATAL DATABASE ERROR")
     senator_name = utils.makeFullName(
@@ -53,24 +53,37 @@ def search(request, congress_num, member_id):
                                       response['last_name'],
                                       response['middle_name'],
                                       response['suffix'],
-                                      response['roles'][index]['short_title'])
+                                      )
     return render(
         request,
         'SenateQuery/senator.html',
         {
             'title': senator_name,
             'year':datetime.now().year,
-            'senator_name' : senator_name,
+            'senator_name'  : senator_name,
             'senator_party' : response['roles'][index]['party'],
             'senator_state' : response['roles'][index]['state'],
-            'senator_terms' : '1000 BC - 2023',
+            'senator_short' : response['roles'][index]['short_title'],
+            'senator_title' : response['roles'][index]['title'],
+            'senator_start' : response['roles'][index]['start_date'],
+            'senator_end'   : response['roles'][index]['end_date'],
+            'senator_url'   : response['url'],
+            'senator_twt'   : response['twitter_account'],
+            'senator_fac'   : response['facebook_account'],
+            'senator_ytb'   : response['youtube_account'],
+            'senator_votes' : votes,
+            'senator_phone' : response['roles'][0]['phone'],
+            'senator_office': response['roles'][0]['office'],
+            'senator_totalvotes': response['roles'][index]['total_votes'],
+            'senator_partyvotes': response['roles'][index]['votes_with_party_pct'],
+            'senator_nonpartyvotes'   : response['roles'][index]['votes_against_party_pct'],
             'blob' : response,
             
         }
     )
 def populate(request):
     assert isinstance(request, HttpRequest)
-    addsenators.add(117)
+    utils.addSenatorsByCongress(117)
     return HttpResponseRedirect("/")
 
 def query(request):

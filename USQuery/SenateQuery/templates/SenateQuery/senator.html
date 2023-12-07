@@ -2,13 +2,25 @@
 
 {% block content %}
 {% load static %}
-<link rel="stylesheet" type="text/css" href="{% static 'SenateQuery/content/senate.css' %}" />
-<title>{{title}}</title>
-<div>
-    <p class="senator-name">{{senator_name}}</p>
-    <p class="senator-party">{{senator_party}}</p>
-    <p class="senator-state">{{senator_state}}</p>
-    <p class="senator-terms">{{senator_terms}}</p>
-    <p>{{blob}}</p>
+<div class="row align-items-md-stretch">
+    <div class="col-md-6">
+        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
+            <h2>{{senator_short}} {{senator_name}}</h2>
+            <p> ({{senator_start}} to {{senator_end}})</p>
+            <p></p>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
+            <h2>Votes in this office</h2>
+            <p>{{senator_votes}}</p>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
+            <h2>Recent Votes</h2>
+            <p>{{senator_votes}}</p>
+        </div>
+    </div>
 </div>
 {% endblock %}

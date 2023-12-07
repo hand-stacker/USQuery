@@ -42,14 +42,8 @@
     <Compile Include="app\__init__.py" />
     <Compile Include="app\migrations\__init__.py" />
     <Compile Include="manage.py" />
-    <Compile Include="SenateQuery\addsenators.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="SenateQuery\admin.py" />
     <Compile Include="SenateQuery\apps.py" />
-    <Compile Include="SenateQuery\congconnect.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="SenateQuery\migrations\__init__.py" />
     <Compile Include="SenateQuery\models.py" />
     <Compile Include="SenateQuery\tests.py" />
@@ -108,7 +102,6 @@
     <Content Include="app\templates\app\layout.html" />
     <Content Include="app\templates\app\login.html" />
     <Content Include="app\templates\app\loginpartial.html" />
-    <Content Include="SenateQuery\static\content\senate.css" />
     <Content Include="SenateQuery\templates\SenateQuery\about.html" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\layout.html" />

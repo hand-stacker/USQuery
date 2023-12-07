@@ -1,15 +1,25 @@
 {% extends "app/layout.html" %}
 
 {% block content %}
+<div class="container my-5">
+    <div class="position-relative p-5 text-center text-muted bg-body border border-dashed rounded-5">
+        <h1 class="text-body-emphasis">Senator Search</h1>
+        <p class="col-lg-6 mx-auto mb-4">
+            Get comprehensive data on your favorite senator, including general information, vote history, committee history, and more.
+        </p>
+        <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Let's Search!</a>
+    </div>
+</div>
 
+<div class="b-example-divider"></div>
 
-<div class="jumbotron">
-    <h1 class="display-4">Senator Search</h1>
-    <p class="lead">Get comprehensive data on your favorite senator, including general information, vote history, committee history, and more.</p>
-    <hr class="my-4">
-    <p>Search for any senator from the 80th to current congress.</p>
-    <p class="lead">
-        <a class="btn btn-primary btn-lg" href="{% url 'senateQueryHome' %}" role="button">Lets Search!</a>
-    </p>
+<div class="container my-5">
+    <div class="position-relative p-5 text-center text-muted bg-body border border-dashed rounded-5">
+        <h1 class="text-body-emphasis">Bill Search</h1>
+        <p class="col-lg-6 mx-auto mb-4">
+            This is a placeholder for further functionality of search for bills.
+        </p>
+        <a href="{% url 'home' %}" class="btn btn-primary px-5 mb-5">Let's Search!</a>
+    </div>
 </div>
 {% endblock %}
