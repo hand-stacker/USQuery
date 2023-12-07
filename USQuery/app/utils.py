@@ -6,7 +6,7 @@ from SenateQuery.models import Senator, Senatorship, Congress
 def connect(fullpath, host):
     try:
         if (host == 'ProPublica'):
-            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=20)
+            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=200)
         else:
             response = requests.get(fullpath + '?api_key=' + settings.CONGRESS_KEY, timeout=20)
         response.raise_for_status()
@@ -41,12 +41,14 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
     return -1   
 
 def addSenatorsByCongress(congress_num=80):
-    API_response = connect(settings.PROPUBLICA_DIR + str(congress_num) + "/senate/members.json", "ProPublica")[0]
+    API_response = connect(settings.PROPUBLICA_DIR + str(congress_num) + "/senate/members.json", "ProPublica")
+    API_response = API_response[0]
     if API_response != None:
         congress = Congress.objects.get_or_create(congress_num = congress_num)[0]
         for member in API_response['members']:
             _id=member['id']
-            senator_response = connect(member['api_uri'], "ProPublica")[0]
+            senator_response = connect(member['api_uri'], "ProPublica")
+            senator_response = senator_response[0]
             US_response = connect(settings.CONGRESS_DIR + "member/" + _id, "Congress")
             index = findIndexOfRoleByChamberAndCongress(senator_response['roles'], congress_num, 'Senate')
             if index == -1:

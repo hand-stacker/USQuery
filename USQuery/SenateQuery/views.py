@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
 from datetime import datetime
 from app import utils, forms
-from SenateQuery.models import Senator, Congress
+from SenateQuery.models import Senator, Congress, Senatorship
 from USQuery import settings
 
 # Create your views here.
@@ -39,45 +39,39 @@ def about(request):
     )
 def search(request, congress_num, member_id):
     assert isinstance(request, HttpRequest)
-    response = utils.connect(settings.PROPUBLICA_DIR + "members/" + member_id + ".json", "ProPublica")[0]
     votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json", "ProPublica")
-    votes_response = votes_response[0]["votes"]
     votes = []
-    for vote in votes_response:
+    for vote in votes_response[0]["votes"]:
         votes.append(("("+vote["bill"]["bill_id"]+") "+str(vote["bill"]["title"]), vote["description"], vote["position"]))
-    index = utils.findIndexOfRoleByChamberAndCongress(response['roles'], congress_num, 'Senate')
-    if index == -1:
-        print("FATAL DATABASE ERROR")
-    senator_name = utils.makeFullName(
-                                      response['first_name'],
-                                      response['last_name'],
-                                      response['middle_name'],
-                                      response['suffix'],
-                                      )
+    # find senator given member id and congress num
+    congress = Congress.objects.get(congress_num = congress_num)
+    senator = congress.senators.get(id = member_id)
+    senatorship = Senatorship.objects.get(congress = congress, senator = senator)
     return render(
         request,
         'SenateQuery/senator.html',
         {
-            'title': senator_name,
+            'title': senator.name,
             'year':datetime.now().year,
-            'senator_name'  : senator_name,
-            'senator_party' : response['roles'][index]['party'],
-            'senator_state' : response['roles'][index]['state'],
-            'senator_short' : response['roles'][index]['short_title'],
-            'senator_title' : response['roles'][index]['title'],
-            'senator_start' : response['roles'][index]['start_date'],
-            'senator_end'   : response['roles'][index]['end_date'],
-            'senator_url'   : response['url'],
-            'senator_twt'   : response['twitter_account'],
-            'senator_fac'   : response['facebook_account'],
-            'senator_ytb'   : response['youtube_account'],
+            'senator_name'  : senator.name,
+            'senator_party' : senatorship.party,
+            'senator_state' : senatorship.state,
+            'senator_short' : senatorship.short_title,
+            'senator_title' : senatorship.long_title,
+            'senator_start' : senatorship.start_date,
+            'senator_end'   : senatorship.end_date,
+            'senator_url'   : senator.url,
+            'senator_img'   : senator.image_link,
+            'senator_twt'   : senator.twitter,
+            'senator_fac'   : senator.facebook,
+            'senator_ytb'   : senator.youtube,
             'senator_votes' : votes,
-            'senator_phone' : response['roles'][0]['phone'],
-            'senator_office': response['roles'][0]['office'],
-            'senator_totalvotes': response['roles'][index]['total_votes'],
-            'senator_partyvotes': response['roles'][index]['votes_with_party_pct'],
-            'senator_nonpartyvotes'   : response['roles'][index]['votes_against_party_pct'],
-            'blob' : response,
+            'senator_phone' : senator.phone,
+            'senator_office': senator.office,
+            'senator_totalvotes': senatorship.total_votes,
+            'senator_partyvotes': senatorship.total_votes * senatorship.party_votes_pct,
+            'senator_nonpartyvotes'   : senatorship.total_votes * senatorship.nonparty_votes_pct,
+            'blob' : votes_response,
             
         }
     )
