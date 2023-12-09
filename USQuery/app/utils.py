@@ -1,12 +1,12 @@
-import requests, json
+import requests, json, time
 from USQuery import settings
 from requests.exceptions import HTTPError
-from SenateQuery.models import Senator, Senatorship, Congress
+from SenateQuery.models import Member, Congress, Senatorship, Representativeship
 
 def connect(fullpath, host):
     try:
         if (host == 'ProPublica'):
-            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=200)
+            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=20)
         else:
             response = requests.get(fullpath + '?api_key=' + settings.CONGRESS_KEY, timeout=20)
         response.raise_for_status()
@@ -40,14 +40,17 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
             return i
     return -1   
 
-def addSenatorsByCongress(congress_num=80):
+def addSenatorsByCongressLazy(congress_num=80):
     API_response = connect(settings.PROPUBLICA_DIR + str(congress_num) + "/senate/members.json", "ProPublica")
     API_response = API_response[0]
     if API_response != None:
         congress = Congress.objects.get_or_create(congress_num = congress_num)[0]
         for member in API_response['members']:
             _id=member['id']
-            senator_response = connect(member['api_uri'], "ProPublica")
+            _set = congress.senators.filter(id = _id)
+            if _set.exists() and Senatorship.objects.filter(congress = congress, senator = _set[0]).exists():
+                continue    
+            senator_response = connect(settings.PROPUBLICA_DIR + "members/" + _id + ".json", "ProPublica")
             senator_response = senator_response[0]
             US_response = connect(settings.CONGRESS_DIR + "member/" + _id, "Congress")
             index = findIndexOfRoleByChamberAndCongress(senator_response['roles'], congress_num, 'Senate')
@@ -59,7 +62,7 @@ def addSenatorsByCongress(congress_num=80):
                     member['middle_name'],
                     member['suffix']
                     )
-            senator = Senator.objects.get_or_create(id = _id, 
+            senator = Member.objects.get_or_create(id = _id, 
                 full_name = full_name,
                 image_link = US_response['member']['depiction']['imageUrl'],
                 url = member['url'],
@@ -86,3 +89,4 @@ def addSenatorsByCongress(congress_num=80):
                                              missed_votes_pct = senator_response['roles'][index]['missed_votes_pct'],
                                              cook_pvi = senator_response['roles'][index]['cook_pvi'],
                                              )
+            time.sleep(2)

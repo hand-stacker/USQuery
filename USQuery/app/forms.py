@@ -30,8 +30,27 @@ class SenatorForm(forms.Form):
                            #        )
     )
     senator = forms.ModelChoiceField(
-        queryset=SQmodels.Senator.objects.all(),
+        queryset=SQmodels.Member.objects.all(),
         label="Senator:",
+        #widget=s2forms.ModelSelect2Widget(
+          #  model=SQmodels.Senator,
+           # search_fields = ['full_name_icontains'],
+           # dependent_fields={'congress': 'congress'},
+           # max_results=200, 
+           # )
+        )
+    
+class RepresentativeForm(forms.Form):
+    congress = forms.ModelChoiceField(
+        queryset=SQmodels.Congress.objects.all(),
+        label="Congress:",
+        #widget= s2forms.ModelSelect2Widget(model=SQmodels.Congress,
+                           #        search_fields=['congress_num__icontains'],
+                           #        )
+    )
+    represetative = forms.ModelChoiceField(
+        queryset=SQmodels.Member.objects.all(),
+        label="Representative:",
         #widget=s2forms.ModelSelect2Widget(
           #  model=SQmodels.Senator,
            # search_fields = ['full_name_icontains'],

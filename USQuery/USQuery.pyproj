@@ -41,6 +41,13 @@
     <Compile Include="app\views.py" />
     <Compile Include="app\__init__.py" />
     <Compile Include="app\migrations\__init__.py" />
+    <Compile Include="BillQuery\admin.py" />
+    <Compile Include="BillQuery\apps.py" />
+    <Compile Include="BillQuery\migrations\__init__.py" />
+    <Compile Include="BillQuery\models.py" />
+    <Compile Include="BillQuery\tests.py" />
+    <Compile Include="BillQuery\views.py" />
+    <Compile Include="BillQuery\__init__.py" />
     <Compile Include="manage.py" />
     <Compile Include="SenateQuery\admin.py" />
     <Compile Include="SenateQuery\apps.py" />
@@ -64,6 +71,10 @@
     <Folder Include="app\static\app\scripts\" />
     <Folder Include="app\templates\" />
     <Folder Include="app\templates\app\" />
+    <Folder Include="BillQuery\" />
+    <Folder Include="BillQuery\migrations\" />
+    <Folder Include="BillQuery\templates\" />
+    <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="SenateQuery\" />
     <Folder Include="SenateQuery\migrations\" />
     <Folder Include="SenateQuery\static\" />
@@ -73,6 +84,7 @@
     <Folder Include="USQuery\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BillQuery\templates\BillQuery\index.html" />
     <Content Include="requirements.txt" />
     <Content Include="app\static\app\content\bootstrap.css" />
     <Content Include="app\static\app\content\bootstrap.min.css" />
@@ -105,6 +117,7 @@
     <Content Include="SenateQuery\templates\SenateQuery\about.html" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\layout.html" />
+    <Content Include="SenateQuery\templates\SenateQuery\representative-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator.html" />
   </ItemGroup>

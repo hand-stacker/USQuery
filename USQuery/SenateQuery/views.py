@@ -8,7 +8,7 @@ from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
 from datetime import datetime
 from app import utils, forms
-from SenateQuery.models import Senator, Congress, Senatorship
+from SenateQuery.models import Member, Congress, Senatorship, Representativeship
 from USQuery import settings
 
 # Create your views here.
@@ -37,50 +37,62 @@ def about(request):
             'year':datetime.now().year,
         }
     )
-def search(request, congress_num, member_id):
+def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
     votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json", "ProPublica")
     votes = []
     for vote in votes_response[0]["votes"]:
-        votes.append(("("+vote["bill"]["bill_id"]+") "+str(vote["bill"]["title"]), vote["description"], vote["position"]))
+        bill = vote["bill"]
+        if bill:
+            votes.append(("("+bill["bill_id"]+") "+str(bill["title"]), vote["description"], vote["position"]))
     # find senator given member id and congress num
     congress = Congress.objects.get(congress_num = congress_num)
-    senator = congress.senators.get(id = member_id)
-    senatorship = Senatorship.objects.get(congress = congress, senator = senator)
+    if isSenateSearch:
+        member = congress.senators.get(id = member_id)
+        membership = Senatorship.objects.get(congress = congress, senator = member)
+    else:
+        member = congress.representatives.get(id = member_id)
+        membership = Representativeship.objects.get(congress = congress, representative = member)
     return render(
         request,
         'SenateQuery/senator.html',
         {
-            'title': senator.name,
+            'title': member.full_name,
             'year':datetime.now().year,
-            'senator_name'  : senator.name,
-            'senator_party' : senatorship.party,
-            'senator_state' : senatorship.state,
-            'senator_short' : senatorship.short_title,
-            'senator_title' : senatorship.long_title,
-            'senator_start' : senatorship.start_date,
-            'senator_end'   : senatorship.end_date,
-            'senator_url'   : senator.url,
-            'senator_img'   : senator.image_link,
-            'senator_twt'   : senator.twitter,
-            'senator_fac'   : senator.facebook,
-            'senator_ytb'   : senator.youtube,
+            'senator_name'  : member.full_name,
+            'senator_party' : membership.party,
+            'senator_state' : membership.state,
+            'senator_short' : membership.short_title,
+            'senator_title' : membership.long_title,
+            'senator_start' : membership.start_date,
+            'senator_end'   : membership.end_date,
+            'senator_url'   : member.url,
+            'senator_img'   : member.image_link,
+            'senator_twt'   : member.twitter,
+            'senator_fac'   : member.facebook,
+            'senator_ytb'   : member.youtube,
             'senator_votes' : votes,
-            'senator_phone' : senator.phone,
-            'senator_office': senator.office,
-            'senator_totalvotes': senatorship.total_votes,
-            'senator_partyvotes': senatorship.total_votes * senatorship.party_votes_pct,
-            'senator_nonpartyvotes'   : senatorship.total_votes * senatorship.nonparty_votes_pct,
+            'senator_phone' : member.phone,
+            'senator_office': member.office,
+            'senator_totalvotes': membership.total_votes,
+            'senator_partyvotes': membership.total_votes * membership.party_votes_pct,
+            'senator_nonpartyvotes'   : membership.total_votes * membership.nonparty_votes_pct,
+            'congress_num'  : congress_num,
             'blob' : votes_response,
             
         }
     )
-def populate(request):
+def populate_senators(request):
     assert isinstance(request, HttpRequest)
-    utils.addSenatorsByCongress(117)
+    utils.addSenatorsByCongressLazy(117)
     return HttpResponseRedirect("/")
 
 def query(request):
     form = forms.SenatorForm(request.GET)
     if form.is_valid():
-        return search(request, form.cleaned_data["congress"].congress_num, form.cleaned_data["senator"].id)
+        return search(request, form.cleaned_data["congress"].congress_num, form.cleaned_data["senator"].id, True)
+    
+def rep_query(request):
+    form = forms.RepresentativeForm(request.GET)
+    if form.is_valid():
+        return search(request, form.cleaned_data["congress"].congress_num, form.cleaned_data["representative"].id, False)

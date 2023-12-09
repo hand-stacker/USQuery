@@ -1,5 +1,5 @@
 
-<form name="SenatorForm" id="id_SenatorForm" action="sen-results/" method="get">
+<form name="RepresentativeForm" id="id_RepresentativeForm" action="rep-results/" method="get">
     {% csrf_token %}
     {{ form.non_field_errors }}
     <div class="row align-items-md-stretch">
@@ -9,9 +9,9 @@
             <div>{{form.congress}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
-            {{ form.senator.errors }}
-            <label for="{{ form.senator.id_for_label }}"> Select Senator:</label>
-            <div>{{form.senator}}</div>
+            {{ form.representative.errors }}
+            <label for="{{ form.representative.id_for_label }}"> Select Representative:</label>
+            <div>{{form.representative}}</div>
         </div>
     </div>
     <input type="submit" value="Search" />
