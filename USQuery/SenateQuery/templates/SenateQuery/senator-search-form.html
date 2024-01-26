@@ -1,17 +1,17 @@
 
 <form name="SenatorForm" id="id_SenatorForm" action="sen-results/" method="get">
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    {{ sen_form.non_field_errors }}
     <div class="row align-items-md-stretch">
         <div class="fieldWrapper col-md-3">
-            {{ form.congress.errors }}
-            <label for="{{ form.congress.id_for_label }}"> Select Congress:</label>
-            <div>{{form.congress}}</div>
+            {{ sen_form.congress.errors }}
+            <label for="{{ sen_form.congress.id_for_label }}"> Select Congress:</label>
+            <div>{{sen_form.congress}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
-            {{ form.senator.errors }}
-            <label for="{{ form.senator.id_for_label }}"> Select Senator:</label>
-            <div>{{form.senator}}</div>
+            {{ sen_form.senator.errors }}
+            <label for="{{ sen_form.senator.id_for_label }}"> Select Senator:</label>
+            <div>{{sen_form.senator}}</div>
         </div>
     </div>
     <input type="submit" value="Search" />

@@ -22,7 +22,8 @@ def home(request):
             'title':"Senate Query", 
             'content':"Make a senate Query",
             'year':datetime.now().year,
-            "form": forms.SenatorForm(request.GET)
+            "sen_form": forms.SenatorForm(request.GET),
+            "rep_form" : forms.RepresentativeForm(request.GET),
         }
     )
 
@@ -39,6 +40,11 @@ def about(request):
     )
 def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
+    if isSenateSearch:
+        role = "senate"
+    else:
+        role = "house"
+    utils.updateMembership(congress_num, role, member_id)
     votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json", "ProPublica")
     votes = []
     for vote in votes_response[0]["votes"]:
@@ -84,7 +90,12 @@ def search(request, congress_num, member_id, isSenateSearch):
     )
 def populate_senators(request):
     assert isinstance(request, HttpRequest)
-    utils.addSenatorsByCongressLazy(117)
+    utils.addMemberByCongressLazy(116, "senate")
+    return HttpResponseRedirect("/")
+
+def populate_representatives(request):
+    assert isinstance(request, HttpRequest)
+    utils.addMemberByCongressLazy(117, "house")
     return HttpResponseRedirect("/")
 
 def query(request):

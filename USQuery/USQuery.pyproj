@@ -120,6 +120,7 @@
     <Content Include="SenateQuery\templates\SenateQuery\representative-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator.html" />
+    <Content Include="SenateQuery\templates\SenateQuery\vote_info.html" />
   </ItemGroup>
   <ItemGroup>
     <None Include="readme.html">

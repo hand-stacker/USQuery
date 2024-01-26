@@ -1,17 +1,17 @@
 
 <form name="RepresentativeForm" id="id_RepresentativeForm" action="rep-results/" method="get">
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    {{ rep_form.non_field_errors }}
     <div class="row align-items-md-stretch">
         <div class="fieldWrapper col-md-3">
-            {{ form.congress.errors }}
-            <label for="{{ form.congress.id_for_label }}"> Select Congress:</label>
-            <div>{{form.congress}}</div>
+            {{ rep_form.congress.errors }}
+            <label for="{{ rep_form.congress.id_for_label }}"> Select Congress:</label>
+            <div>{{rep_form.congress}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
-            {{ form.representative.errors }}
-            <label for="{{ form.representative.id_for_label }}"> Select Representative:</label>
-            <div>{{form.representative}}</div>
+            {{ rep_form.representative.errors }}
+            <label for="{{ rep_form.representative.id_for_label }}"> Select Representative:</label>
+            <div>{{rep_form.representative}}</div>
         </div>
     </div>
     <input type="submit" value="Search" />

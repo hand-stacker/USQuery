@@ -26,18 +26,18 @@ class SenatorForm(forms.Form):
         queryset=SQmodels.Congress.objects.all(),
         label="Congress:",
         #widget= s2forms.ModelSelect2Widget(model=SQmodels.Congress,
-                           #        search_fields=['congress_num__icontains'],
-                           #        )
+                                   #search_fields=['congress_num__icontains'],
+                                   #)
     )
     senator = forms.ModelChoiceField(
-        queryset=SQmodels.Member.objects.all(),
+        queryset=SQmodels.Congress.objects.get(congress_num__exact=117).senators,
         label="Senator:",
         #widget=s2forms.ModelSelect2Widget(
-          #  model=SQmodels.Senator,
-           # search_fields = ['full_name_icontains'],
-           # dependent_fields={'congress': 'congress'},
-           # max_results=200, 
-           # )
+            #model=SQmodels.Member,
+            #search_fields = ['full_name_icontains'],
+            #dependent_fields={'congress': 'congress'},
+            #max_results=200, 
+            #)
         )
     
 class RepresentativeForm(forms.Form):
@@ -48,8 +48,8 @@ class RepresentativeForm(forms.Form):
                            #        search_fields=['congress_num__icontains'],
                            #        )
     )
-    represetative = forms.ModelChoiceField(
-        queryset=SQmodels.Member.objects.all(),
+    representative = forms.ModelChoiceField(
+        queryset=SQmodels.Congress.objects.get(congress_num__exact=117).representatives,
         label="Representative:",
         #widget=s2forms.ModelSelect2Widget(
           #  model=SQmodels.Senator,
