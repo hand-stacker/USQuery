@@ -40,15 +40,15 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
             return i
     return -1   
         
-# must give congress num and who you're adding or else adds senators from 80th congress
-def addMemberByCongressLazy(congress_num = 80, adding = "senate"):
-        API_response = connect(settings.PROPUBLICA_DIR + str(congress_num) + "/" + adding + "/members.json", "ProPublica")
+# must give congress num and who you're adding or else adds senators from 117th congress
+def addMemberByCongressLazy(congress_num = 117, role = "senate"):
+        API_response = connect(settings.PROPUBLICA_DIR + str(congress_num) + "/" + role + "/members.json?offset=0", "ProPublica")
         API_response = API_response[0]
         if API_response != None:
             congress = Congress.objects.get_or_create(congress_num = congress_num)[0]
             for member in API_response['members']:
                 _id=member['id']
-                if (adding == "senate"):
+                if (role == "senate"):
                     _set = congress.senators.filter(id = _id)
                     if _set.exists() and Senatorship.objects.filter(congress = congress, senator = _set[0]).exists():
                         continue 
@@ -77,7 +77,7 @@ def addMemberByCongressLazy(congress_num = 80, adding = "senate"):
                         phone = member['phone'],
                         votesmart_id = member['votesmart_id']
                                                             )[0]
-                if (adding == "senate"):
+                if (role == "senate"):
                     Senatorship.objects.get_or_create(senator = _member,
                                                  congress = congress,
                                                  state = member['state'],
@@ -113,7 +113,10 @@ def addMemberByCongressLazy(congress_num = 80, adding = "senate"):
                                                  )
                     
 def updateMembership(congress_num, role, member_id):
-    member_response = connect(settings.PROPUBLICA_DIR + "members/" + member_id + ".json", "ProPublica")
+    _member = Member.objects.get(id__exact = member_id)
+    if _member.image_link != "empty":
+        return
+    member_response = connect(settings.PROPUBLICA_DIR + "members/" + member_id + ".json?offset=0", "ProPublica")
     member_response = member_response[0]
     US_response = connect(settings.CONGRESS_DIR + "member/" + member_id, "Congress")
     if (role == "senate"):
@@ -122,7 +125,7 @@ def updateMembership(congress_num, role, member_id):
         index = findIndexOfRoleByChamberAndCongress(member_response['roles'], congress_num, 'House')
     if index == -1:
         print("FATAL DATABASE ERROR")
-    _member = Member.objects.get(id__exact = member_id)
+    
     if (role == "senate"):
         Senatorship.objects.filter(senator = _member, congress = congress_num).update(
             start_date = member_response['roles'][index]['start_date'],

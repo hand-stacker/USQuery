@@ -45,7 +45,7 @@ def search(request, congress_num, member_id, isSenateSearch):
     else:
         role = "house"
     utils.updateMembership(congress_num, role, member_id)
-    votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json", "ProPublica")
+    votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json?offset=0", "ProPublica")
     votes = []
     for vote in votes_response[0]["votes"]:
         bill = vote["bill"]
