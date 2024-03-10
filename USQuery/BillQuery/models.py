@@ -8,4 +8,5 @@ class Bill(models.Model):
     description = models.CharField(max_length=200)
     house = models.Choices("House", "Representative")
     votes_in_favor = models.ManyToManyField(SQmodels.Member)
+    votes_against = models.ManyToManyField(SQmodels.Member)
     
