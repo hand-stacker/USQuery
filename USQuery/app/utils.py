@@ -6,7 +6,7 @@ from SenateQuery.models import Member, Congress, Senatorship, Representativeship
 def connect(fullpath, host):
     try:
         if (host == 'ProPublica'):
-            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=20)
+            response = requests.get(fullpath, headers={'X-API-Key': settings.PROPUBLICA_KEY}, timeout=30)
         else:
             response = requests.get(fullpath + '?api_key=' + settings.CONGRESS_KEY, timeout=20)
         response.raise_for_status()
