@@ -22,31 +22,37 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                    'placeholder':'Password'}))
 
 class SenatorForm(forms.Form):
-    congress = forms.ModelChoiceField(queryset=SQmodels.Congress.objects.all(), empty_label="Select a Congress")
-    senator = forms.ModelChoiceField(queryset=SQmodels.Member.objects.none(), empty_label="Select a Senator")
+    congress = forms.ModelChoiceField(
+        queryset=SQmodels.Congress.objects.all(),
+        empty_label="Select a Congress"
+        )
+    senator = forms.ModelChoiceField(
+        queryset=SQmodels.Member.objects.none(),
+        empty_label="Select a Senator"
+        )
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['senator'].queryset = SQmodels.Member.objects.none()
 
         if 'congress' in self.data:
             congress_id = self.data.get('congress')
-            self.fields['senator'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).senators
+            self.fields['senator'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate')
     
 class RepresentativeForm(forms.Form):
     congress = forms.ModelChoiceField(
         queryset=SQmodels.Congress.objects.all(),
-        label="Congress:",
-        #widget= s2forms.ModelSelect2Widget(model=SQmodels.Congress,
-                           #        search_fields=['congress_num__icontains'],
-                           #        )
-    )
-    representative = forms.ModelChoiceField(
-        queryset=SQmodels.Congress.objects.get(congress_num__exact=117).representatives,
-        label="Representative:",
-        #widget=s2forms.ModelSelect2Widget(
-          #  model=SQmodels.Senator,
-           # search_fields = ['full_name_icontains'],
-           # dependent_fields={'congress': 'congress'},
-           # max_results=200, 
-           # )
+        empty_label="Select a Congress"
         )
+    representative = forms.ModelChoiceField(
+        queryset=SQmodels.Member.objects.none(),
+        empty_label="Select a Representative"
+        )
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['representative'].queryset = SQmodels.Member.objects.none()
+
+        if 'congress' in self.data:
+            congress_id = self.data.get('congress')
+            self.fields['representative'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives')

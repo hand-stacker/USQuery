@@ -1,4 +1,4 @@
-
+{% load static %}
 <form name="RepresentativeForm" id="id_RepresentativeForm" action="rep-results/" method="get">
     {% csrf_token %}
     {{ rep_form.non_field_errors }}
@@ -16,3 +16,4 @@
     </div>
     <input type="submit" value="Search" />
 </form>
+<script src="{% static 'scripts/updateRepForm.js' %}"></script>

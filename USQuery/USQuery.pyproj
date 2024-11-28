@@ -40,7 +40,9 @@
     </Compile>
     <Compile Include="app\views.py" />
     <Compile Include="app\__init__.py" />
-    <Compile Include="app\migrations\__init__.py" />
+    <Compile Include="app\migrations\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="BillQuery\admin.py" />
     <Compile Include="BillQuery\apps.py" />
     <Compile Include="BillQuery\migrations\__init__.py" />
@@ -51,7 +53,12 @@
     <Compile Include="manage.py" />
     <Compile Include="SenateQuery\admin.py" />
     <Compile Include="SenateQuery\apps.py" />
-    <Compile Include="SenateQuery\migrations\__init__.py" />
+    <Compile Include="SenateQuery\migrations\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="SenateQuery\migrations\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SenateQuery\models.py" />
     <Compile Include="SenateQuery\tests.py" />
     <Compile Include="SenateQuery\views.py" />
@@ -77,6 +84,7 @@
     <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="SenateQuery\" />
     <Folder Include="SenateQuery\migrations\" />
+    <Folder Include="SenateQuery\static\scripts\" />
     <Folder Include="SenateQuery\static\" />
     <Folder Include="SenateQuery\static\content\" />
     <Folder Include="SenateQuery\templates\" />
@@ -114,6 +122,8 @@
     <Content Include="app\templates\app\layout.html" />
     <Content Include="app\templates\app\login.html" />
     <Content Include="app\templates\app\loginpartial.html" />
+    <Content Include="SenateQuery\static\scripts\updateRepForm.js" />
+    <Content Include="SenateQuery\static\scripts\updateSenatorForm.js" />
     <Content Include="SenateQuery\templates\SenateQuery\about.html" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\layout.html" />
@@ -121,6 +131,7 @@
     <Content Include="SenateQuery\templates\SenateQuery\senator-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator.html" />
     <Content Include="SenateQuery\templates\SenateQuery\vote_info.html" />
+    <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
   </ItemGroup>
   <ItemGroup>
     <None Include="readme.html">

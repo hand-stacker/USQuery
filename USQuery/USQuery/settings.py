@@ -15,7 +15,7 @@ import posixpath
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROPUBLICA_DIR = 'https://api.propublica.org/congress/v1/'
+# PROPUBLICA_DIR = 'https://api.propublica.org/congress/v1/'
 CONGRESS_DIR = 'https://api.congress.gov/v3/'
 
 # Quick-start development settings - unsuitable for production
@@ -23,7 +23,7 @@ CONGRESS_DIR = 'https://api.congress.gov/v3/'
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '24c68b95-887a-46a9-a4a5-606dbb94b170'
-PROPUBLICA_KEY = '5P9BN3AHsJIh1L7oeGhAaHJowHdEpQRbhkJYJw6r'
+# PROPUBLICA_KEY = '5P9BN3AHsJIh1L7oeGhAaHJowHdEpQRbhkJYJw6r'
 CONGRESS_KEY = 'rhctKoXrgZikfU5VECGDl1wgponauSEQVLnD2wns'
 
 # SECURITY WARNING: don't run with debug turned on in production!
