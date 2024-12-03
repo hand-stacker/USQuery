@@ -22,7 +22,7 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                    'placeholder':'Password'}))
 
 class SenatorForm(forms.Form):
-    congress = forms.ModelChoiceField(
+    congress_sen = forms.ModelChoiceField(
         queryset=SQmodels.Congress.objects.all(),
         empty_label="Select a Congress"
         )
@@ -35,12 +35,12 @@ class SenatorForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['senator'].queryset = SQmodels.Member.objects.none()
 
-        if 'congress' in self.data:
-            congress_id = self.data.get('congress')
+        if 'congress_sen' in self.data:
+            congress_id = self.data.get('congress_sen')
             self.fields['senator'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate')
     
 class RepresentativeForm(forms.Form):
-    congress = forms.ModelChoiceField(
+    congress_rep = forms.ModelChoiceField(
         queryset=SQmodels.Congress.objects.all(),
         empty_label="Select a Congress"
         )
@@ -53,6 +53,6 @@ class RepresentativeForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields['representative'].queryset = SQmodels.Member.objects.none()
 
-        if 'congress' in self.data:
-            congress_id = self.data.get('congress')
+        if 'congress_rep' in self.data:
+            congress_id = self.data.get('congress_rep')
             self.fields['representative'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives')

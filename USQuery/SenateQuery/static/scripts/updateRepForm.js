@@ -1,9 +1,8 @@
-const congressField = document.getElementById('id_congress');
+const congressFieldRep = document.getElementById('id_congress_rep');
 const representativeField = document.getElementById('id_representative');
-
-congressField.addEventListener('change', updateRepChoices);
+congressFieldRep.addEventListener('change', updateRepChoices);
 function updateRepChoices() {
-    const congressId = congressField.value;
+    const congressId = congressFieldRep.value;
     const url = `update-reps/${congressId}/`;
 
     fetch(url)

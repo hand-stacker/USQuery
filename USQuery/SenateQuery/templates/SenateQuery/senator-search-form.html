@@ -1,12 +1,12 @@
 {% load static %}
-<form name="SenatorForm" id="id_SenatorForm" action="sen-results/" method="get">
+<form name="SenatorForm" id="id_SenatorForm" action="results-sen/" method="get">
     {% csrf_token %}
     {{ sen_form.non_field_errors }}
     <div class="row align-items-md-stretch">
         <div class="fieldWrapper col-md-3">
-            {{ sen_form.congress.errors }}
-            <label for="{{ sen_form.congress.id_for_label }}"> Select Congress:</label>
-            <div>{{sen_form.congress}}</div>
+            {{ sen_form.congress_sen.errors }}
+            <label for="{{ sen_form.congress_sen.id_for_label }}"> Select Congress:</label>
+            <div>{{sen_form.congress_sen}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
             {{ sen_form.senator.errors }}

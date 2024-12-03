@@ -1,6 +1,5 @@
-const congressField = document.getElementById('id_congress');
+const congressField = document.getElementById('id_congress_sen');
 const senatorField = document.getElementById('id_senator');
-
 congressField.addEventListener('change', updateSenatorChoices);
 function updateSenatorChoices() {
     const congressId = congressField.value;

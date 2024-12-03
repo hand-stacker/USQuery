@@ -129,7 +129,6 @@
     <Content Include="SenateQuery\templates\SenateQuery\layout.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\senator-search-form.html" />
-    <Content Include="SenateQuery\templates\SenateQuery\senator.html" />
     <Content Include="SenateQuery\templates\SenateQuery\vote_info.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
   </ItemGroup>

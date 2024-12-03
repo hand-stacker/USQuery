@@ -7,10 +7,19 @@
         <div class="h-400 p-5 bg-body-tertiary border rounded-3">
             <h2> {{rep_name}}, {{rep_party}}</h2>
             <h3>({{rep_title}}, {{congress_num}}th Congress)</h3>
-            <h6><b>{{rep_state}} District {{rep_district}}</b></h6>
-            <img src="{{rep_img}}" alt="Senator Image">
+            <h6><b>
+                {{rep_state}}
+                {% if rep_district %}
+                , District {{rep_district}}
+                {% endif %}
+            </b></h6>
+            <img src="{{rep_img}}" alt="Rep Image">
             <h6>({{rep_start}} - {{rep_end}})</h6>
-            <h6>Office : {{rep_office}} Phone : {{rep_phone}}</h6>
+            {% if rep_office == None %}
+            <h6><b>No Longer in Office</b></h6>
+            {% else %}
+            <h6>Office : {{rep_office}} <br />Phone : {{rep_phone}}</h6>
+            {% endif %}
         </div>
     </div>
     <div class="col-md-6">

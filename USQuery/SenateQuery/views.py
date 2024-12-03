@@ -43,7 +43,9 @@ def about(request):
     )
 def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
-    # utils.updateMembership(congress_num, role, member_id)
+    API_response = utils.updateMember(congress_num, member_id)
+
+    
     ## votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json?offset=0", "ProPublica")
     votes = []
     '''
@@ -57,17 +59,14 @@ def search(request, congress_num, member_id, isSenateSearch):
     congress = Congress.objects.get(congress_num = congress_num)
     member = congress.members.get(id = member_id)
     membership = Membership.objects.get(congress = congress, member = member)
-    if isSenateSearch:
-        addr = 'SenateQuery/senator.html',
-    else :
-        addr = 'SenateQuery/representative.html'
     return render(
         request,
-        addr,
+        'SenateQuery/representative.html',
         {
             'title': member.full_name,
             'year':datetime.now().year,
             'rep_name'  : member.full_name,
+            'rep_title' : 'Senator' if isSenateSearch else "Representative",
             'rep_party' : membership.party,
             'rep_district' : membership.district_num,
             'rep_state' : membership.state,
@@ -85,33 +84,28 @@ def search(request, congress_num, member_id, isSenateSearch):
     )
     
     
-def populate_congress(request, congress = 116):
+def populate_congress(request, congress_id = 116):
     assert isinstance(request, HttpRequest) 
-    utils.addMembersCongressAPILazy(congress)
+    utils.addMembersCongressAPILazy(congress_id)
     return HttpResponseRedirect("/")
 
 def query(request):
     senate_form = forms.SenatorForm(request.GET)
     if senate_form.is_valid():
-        return search(request, senate_form.cleaned_data["congress"].congress_num, senate_form.cleaned_data["senator"].id, True)
-    context = {
-        'senate_form': senate_form
-    }
-    return render(request, 'senator-search-form.html', context)
+        return search(request, senate_form.cleaned_data["congress_sen"].congress_num, senate_form.cleaned_data["senator"].id, True)
+    # have to not make response\
+    return HttpResponseRedirect('/member-query/')
 
 def rep_query(request):
     form = forms.RepresentativeForm(request.GET)
     if form.is_valid():
-        return search(request, form.cleaned_data["congress"].congress_num, form.cleaned_data["representative"].id, False)
-    context = {
-        'rep_form': form
-    }
-    return render(request, 'representative-search-form.html', context) 
+        return search(request, form.cleaned_data["congress_rep"].congress_num, form.cleaned_data["representative"].id, False)
+    return HttpResponseRedirect('/member-query/')
 
 def update_senators(request, congress_id):
     senators = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate').values('id', 'full_name')
     return JsonResponse({'senators': list(senators)})
 
 def update_reps(request, congress_id):
-    reps = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(chamber = 'House of Representatives').values('id', 'full_name')
+    reps = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives').values('id', 'full_name')
     return JsonResponse({'representatives': list(reps)})
