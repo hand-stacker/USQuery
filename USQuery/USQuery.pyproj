@@ -63,6 +63,9 @@
     <Compile Include="SenateQuery\tests.py" />
     <Compile Include="SenateQuery\views.py" />
     <Compile Include="SenateQuery\__init__.py" />
+    <Compile Include="USQuery\secrets.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="USQuery\__init__.py" />
     <Compile Include="USQuery\settings.py" />
     <Compile Include="USQuery\urls.py" />
