@@ -5,21 +5,40 @@
 <div class="row align-items-md-stretch">
     <div class="col-md-6">
         <div class="h-400 p-5 bg-body-tertiary border rounded-3">
-            <h2> {{rep_name}}, {{rep_party}}</h2>
-            <h3>({{rep_title}}, {{congress_num}}th Congress)</h3>
-            <h6><b>
-                {{rep_state}}
-                {% if rep_district %}
-                , District {{rep_district}}
-                {% endif %}
-            </b></h6>
-            <img src="{{rep_img}}" alt="Rep Image">
-            <h6>({{rep_start}} - {{rep_end}})</h6>
-            {% if rep_office == None %}
-            <h6><b>No Longer in Office</b></h6>
-            {% else %}
-            <h6>Office : {{rep_office}} <br />Phone : {{rep_phone}}</h6>
-            {% endif %}
+            <h2>{{rep_name}}</h2>
+            <table vertical-align="top" padding="15px" border-spacing="30px">
+                <tr>
+                    <td>
+                        <img src="{{rep_img}}" alt="Rep Image">
+                    </td>
+                    <td>
+                        <h4><b>{{rep_title}}</b></h4>
+                        <h5>
+                            <b>
+                                {{congress_num}}th Congress
+                                <br />
+                                {{rep_state}}
+                                {% if rep_district %}
+                                 District {{rep_district}}
+                                {% endif %}
+                                <br />
+                                {{rep_party}} Party
+                            </b>
+                        </h5>
+                        <h6>({{rep_start}} - {{rep_end}})</h6>
+                        <h6>
+                            {% if rep_office == None %}
+                            <b>No Longer in Office</b>
+                            {% else %}
+                            Office : {{rep_office}}
+                            <br />Phone : {{rep_phone}}
+                            <br /> <a href={{rep_url}}>Official Website</a>
+                            {% endif %}
+                        </h6>
+                    </td>
+                </tr>
+            </table>
+            
         </div>
     </div>
     <div class="col-md-6">

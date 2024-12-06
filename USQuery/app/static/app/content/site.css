@@ -17,6 +17,13 @@ textarea {
     max-width: 280px;
 }
 
+table.img_wrap {
+    text-align: left;
+    height: 10px;
+    vertical-align: bottom;
+    background-color: aqua;
+}
+
 /* styles for validation helpers */
 .field-validation-error {
     color: #b94a48;

@@ -1,5 +1,3 @@
-from sys import maxsize
-from turtle import mode
 from django.db import models
 
 # Create your models here.
@@ -8,6 +6,8 @@ from django.db import models
 class Member(models.Model):
     id = models.CharField(max_length=7, primary_key=True)
     full_name = models.CharField(max_length=40)
+    first_name = models.CharField(max_length=20)
+    last_name = models.CharField(max_length=20)
     image_link = models.CharField(max_length=150, null = True, blank = True)
     api_url = models.CharField(max_length=200, null = True, blank = True)
     official_link = models.CharField(max_length=200, null = True, blank = True)
@@ -28,6 +28,7 @@ class Congress(models.Model):
         return str(self.congress_num)
     
 class Membership(models.Model):
+    id = models.BigAutoField(primary_key=True)
     congress = models.ForeignKey(Congress, on_delete=models.CASCADE)
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     district_num = models.IntegerField(null = True, blank = True)
@@ -39,8 +40,8 @@ class Membership(models.Model):
     end_date = models.CharField(max_length=10, null = True)
     def __str__(self):
         if self.chamber == "Senate":
-            return "Congress :"  + self.congress + " State:" + self.state + " Senator:" + self.member
+            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator:" + self.member.__str__()
         else:
-            return "Congress :"  + self.congress + " State:" + self.state + " Representative:" + self.member
+            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative:" + self.member.__str__()
     
 

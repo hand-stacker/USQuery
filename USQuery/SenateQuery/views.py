@@ -80,6 +80,7 @@ def search(request, congress_num, member_id, isSenateSearch):
             'rep_phone' : member.phone,
             'rep_office': member.office,
             'congress_num'  : congress_num,
+            'rep_url' : member.official_link,
         }
     )
     

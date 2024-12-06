@@ -22,13 +22,14 @@ def connect(fullpath, host, newSearch = True):
         print("TIMEOUT ERROR")
     else:
         return response.json()
-
-def getDirectOrderName(reverseName):
+    
+def getFirstAndLastName(reverseName):
     try:
         commaIndx = reverseName.index(',')
     except ValueError:
             return ValueError
-    return reverseName[commaIndx + 1: ] + " " + reverseName[:commaIndx]
+    return [reverseName[commaIndx + 1: ], reverseName[:commaIndx]]
+
 
 def addMembersCongressAPILazy(congress_num):
     API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), 'Congress')
@@ -53,13 +54,16 @@ def addMembersCongressAPILazy(congress_num):
             if _set.exists() and Membership.objects.filter(congress = congress, member = _set[0]).exists():
                 continue    
             #membership does not exist in congress so we search for member, if doesn't exist make new member
-            full_name = getDirectOrderName(member['name'])
+            name = getFirstAndLastName(member['name'])
+            full_name = name[0] + " "  + name[1]
             _set_member = Member.objects.filter(id = _id)
             if (_set_member.exists()):
                 _member = _set_member[0]
             else :
                 _member = Member.objects.get_or_create(id = _id, 
                 full_name = full_name,
+                first_name = name[0],
+                last_name = name[1],
                 image_link = "empty",
                 api_url = member['url'])[0] 
                     
@@ -84,14 +88,10 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
             return i
     return -1   
         
-                    #defunct, fix later
+                    
 def updateMember(congress_num, member_id): 
     _congress = Congress.objects.get(congress_num__exact = congress_num)    
     _member = Member.objects.get(id__exact = member_id)
-    """
-    if _member.image_link != 'empty':
-        return
-        """
     Membership.objects.get(
                             congress = _congress,
                             member = _member
@@ -107,10 +107,13 @@ def updateMember(congress_num, member_id):
         
     if (API_response_member['member']['currentMember']) :
         site = API_response_member['member']['officialWebsiteUrl']
-        office_addr = API_response_member['member']['addressInformation']['officeAddress'] + ', ' + API_response_member['member']['addressInformation']['city'] + " " + API_response_member['member']['addressInformation']['district'] + ", " + str(API_response_member['member']['addressInformation']['zipCode'])
+        office_addr = API_response_member['member']['addressInformation']['officeAddress']
         phone_num = API_response_member['member']['addressInformation']['phoneNumber']
 
     Member.objects.filter(id = member_id).update(
+        full_name = API_response_member['member']['directOrderName'],
+        first_name = API_response_member['member']['firstName'],
+        last_name = API_response_member['member']['lastName'], 
         image_link = API_response_member['member']['depiction']['imageUrl'],
         office = office_addr,
         official_link = site,
