@@ -363,3 +363,4 @@ MigrationBackup/
 FodyWeavers.xsd
 /USQuery/env
 /USQuery/db.sqlite3
+/USQuery/USQuery/secrets.py
