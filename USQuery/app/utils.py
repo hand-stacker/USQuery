@@ -2,15 +2,7 @@ import requests, json, time
 from USQuery import settings
 from requests.exceptions import HTTPError
 from SenateQuery.models import Member, Congress, Membership
-
-def connect(fullpath, host, newSearch = True):
-    if (host == "Congress"):
-        headers = {'api_key' : settings.CONGRESS_KEY};
-        if (newSearch):
-            headers['format'] = 'json'
-            headers['curerentMember'] = 'false'
-            headers['offset'] = '0'
-            headers['limit'] = '250'
+def connect(fullpath, headers):
     try:
         response = requests.get(fullpath, headers, timeout=20)
         response.raise_for_status()
@@ -21,7 +13,7 @@ def connect(fullpath, host, newSearch = True):
     except TimeoutError:
         print("TIMEOUT ERROR")
     else:
-        return response.json()
+        return response
     
 def getFirstAndLastName(reverseName):
     try:
@@ -32,13 +24,20 @@ def getFirstAndLastName(reverseName):
 
 
 def addMembersCongressAPILazy(congress_num):
-    API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), 'Congress')
+    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
+    const_headers = headers
+    headers['curerentMember'] = 'false'
+    headers['offset'] = '0'
+    headers['limit'] = '250'
+    
+    API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), const_headers).json()
     
     start_rep = API_cong['congress']['sessions'][0]['startDate']
     end_rep = API_cong['congress']['sessions'][2]['endDate']
     start_sen = API_cong['congress']['sessions'][1]['startDate']
     end_sen = API_cong['congress']['sessions'][3]['endDate']
-    API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), "Congress")
+    
+    API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
     congress = Congress.objects.get_or_create(congress_num = congress_num)[0]
     
     while (API_response != None):
@@ -78,7 +77,7 @@ def addMembersCongressAPILazy(congress_num):
                         end_date = end_sen if (role == "Senate") else end_rep,
                         )
         if 'next' in API_response['pagination']:
-            API_response = connect(API_response['pagination']['next'], "Congress", False)
+            API_response = connect(API_response['pagination']['next'], const_headers).json()
         else : API_response = None
     return
 
@@ -96,7 +95,9 @@ def updateMember(congress_num, member_id):
                             congress = _congress,
                             member = _member
                             )
-    API_response_member = connect(_member.api_url, "Congress")
+    if _member.image_link != "empty": return
+    
+    API_response_member = connect(_member.api_url, {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
     office_addr = None
     phone_num = None
     death_year = None
@@ -124,3 +125,24 @@ def updateMember(congress_num, member_id):
         )
     # need to somehow store history of legislation and party history and leadership
     return API_response_member;
+
+def getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y):
+    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
+    headers['fromDateTime'] = s_y + "-" + s_m + "-" + s_d + "T00:00:00Z"
+    headers['toDateTime'] = e_y + "-" + e_m + "-" + e_d + "T00:00:00Z"
+    headers['limit'] = '25'
+    headers['sort'] = "updateDate"
+    API_response = connect(settings.CONGRESS_DIR + "bill?" , headers).json()
+    return API_response
+
+def convertBillData(data):
+    ret = {}
+    for i in range(len(data)):
+        ret[str(i)] = data[i];
+    return ret
+
+def getBill(API_url):
+    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
+    API_response = connect(settings.CONGRESS_DIR + "bill?" , headers).json()
+    return API_response
+    

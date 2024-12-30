@@ -1,3 +1,4 @@
+'''
 from abc import ABCMeta
 from asyncio.windows_events import NULL
 import http
@@ -6,6 +7,7 @@ from re import A
 from unittest import result
 from urllib import request
 from django.http.response import HttpResponseBase
+'''
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
 from datetime import datetime

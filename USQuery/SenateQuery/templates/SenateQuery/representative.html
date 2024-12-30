@@ -12,14 +12,15 @@
                         <img src="{{rep_img}}" alt="Rep Image">
                     </td>
                     <td>
-                        <h4><b>{{rep_title}}</b></h4>
                         <h5>
                             <b>
+                                {{rep_title}}
+                                <br/>
                                 {{congress_num}}th Congress
                                 <br />
                                 {{rep_state}}
                                 {% if rep_district %}
-                                 District {{rep_district}}
+                                District {{rep_district}}
                                 {% endif %}
                                 <br />
                                 {{rep_party}} Party

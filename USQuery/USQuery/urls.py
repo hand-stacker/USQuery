@@ -9,6 +9,7 @@ from django.contrib.auth.views import LoginView, LogoutView
 from app import forms, views
 from USQuery import settings
 from SenateQuery import views as SQviews
+from BillQuery import views as BQviews
 admin.autodiscover()
 
 
@@ -40,4 +41,9 @@ urlpatterns = [
     path('member-query/results-rep/', SQviews.rep_query, name='senateQueryReps'),
     path('member-query/populate-congress', SQviews.populate_congress, name = 'senateQueryPopulateCongress'),
     path('member-query/populate-congress/<int:congress_id>/', SQviews.populate_congress, name = 'senateQueryPopulateCongress'),
+    path('bill-query/', BQviews.home, name = "billQueryHome"),
+    path('bill-query/about', BQviews.about, name = "billQueryAbout"),
+    path('bill-query/search/', BQviews.search, name = "billQuerySearch"),
+    path('bill-query/search/bill/<int:congress_id>/<str:type>/<int:num>', BQviews.bill, name = 'billQueryBill'),
+    #path('bill-query/bills', BQviews.bills, name = "billQueryBills"),
 ]

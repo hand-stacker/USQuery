@@ -10,6 +10,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import gettext_lazy as _
 from SenateQuery import models as SQmodels
 
+
+YEAR_CHOICES = ["2019", "2020"]
+
 class BootstrapAuthenticationForm(AuthenticationForm):
     """Authentication form which uses boostrap CSS."""
     username = forms.CharField(max_length=254,
@@ -20,6 +23,12 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                widget=forms.PasswordInput({
                                    'class': 'form-control',
                                    'placeholder':'Password'}))
+    
+class CongressForm(forms.Form):
+    congress = forms.ModelChoiceField(
+        queryset=SQmodels.Congress.objects.all(),
+        empty_label="Select a Congress"        
+                                      )
 
 class SenatorForm(forms.Form):
     congress_sen = forms.ModelChoiceField(
@@ -56,3 +65,7 @@ class RepresentativeForm(forms.Form):
         if 'congress_rep' in self.data:
             congress_id = self.data.get('congress_rep')
             self.fields['representative'].queryset = SQmodels.Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives')
+            
+class DateForm(forms.Form):
+    start_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))
+    end_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))

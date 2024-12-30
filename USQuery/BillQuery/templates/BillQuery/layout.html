@@ -11,23 +11,23 @@
     <script src="{% static 'app/scripts/modernizr-2.6.2.js' %}"></script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark bg-dark" aria-label="SenateQuery nav bar">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark" aria-label="BillQuery nav bar">
         <div class="container-fluid">
             <a class="navbar-brand" href="/">USQuery</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSenateQuery" aria-controls="navbarSenateQuery" aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarBillQuery" aria-controls="navbarBillQuery" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse" id="navbarSenateQuery">
+            <div class="collapse navbar-collapse" id="navbarBillQuery">
                 <ul class="navbar-nav me-auto mb-2 mb-md-0">
                     <li class="nav-item">
                         <a class="nav-link active" aria-current="page" href="/">USQ Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'senateQueryHome' %}">Senate Query</a>
+                        <a class="nav-link" href="{% url 'billQueryHome' %}">Bill Query</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'senateQueryAbout' %}">About</a>
+                        <a class="nav-link" href="{% url 'billQueryAbout' %}">About</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'contact' %}">Contact</a>

@@ -83,6 +83,8 @@
     <Folder Include="app\templates\app\" />
     <Folder Include="BillQuery\" />
     <Folder Include="BillQuery\migrations\" />
+    <Folder Include="BillQuery\static\" />
+    <Folder Include="BillQuery\static\scripts\" />
     <Folder Include="BillQuery\templates\" />
     <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="SenateQuery\" />
@@ -95,7 +97,12 @@
     <Folder Include="USQuery\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BillQuery\static\scripts\dynamicTable.js" />
+    <Content Include="BillQuery\templates\BillQuery\about.html" />
+    <Content Include="BillQuery\templates\BillQuery\bill.html" />
+    <Content Include="BillQuery\templates\BillQuery\bills.html" />
     <Content Include="BillQuery\templates\BillQuery\index.html" />
+    <Content Include="BillQuery\templates\BillQuery\layout.html" />
     <Content Include="requirements.txt" />
     <Content Include="app\static\app\content\bootstrap.css" />
     <Content Include="app\static\app\content\bootstrap.min.css" />

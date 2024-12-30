@@ -12,7 +12,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 import posixpath
-import secrets
+from USQuery import secrets
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.admindocs',
     'django_select2',
     'bootstrap5',
+    'xmltodict',
 ]
 
 # Middleware framework

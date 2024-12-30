@@ -1,9 +1,19 @@
-<html>
-<head><title></title></head>
+{% extends "BillQuery/layout.html" %}
 
-<body>
+{% block content %}
+<h2>{{content}}</h2>
+<per> Selet a time range:</per>
+<div class="query-container">
+    {% load static %}
+    <form name="DateForm" id="id_DateForm" action="search/" method="get">
+        {{ date_form.non_field_errors }}
+        <h5>Start Date</h5>
+        {{date_form.start_date}}
+        <br />
+        <h5>End Date</h5>
+        {{date_form.end_date}}
+        <input type="submit" value="Search" />
+    </form>
+</div>
 
-{{ content }}
-
-</body>
-</html>
+{% endblock %}
