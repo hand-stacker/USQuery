@@ -1,13 +1,4 @@
-'''
-from abc import ABCMeta
-from asyncio.windows_events import NULL
-import http
-from pydoc import resolve
-from re import A
-from unittest import result
-from urllib import request
-from django.http.response import HttpResponseBase
-'''
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
 from datetime import datetime
@@ -18,7 +9,6 @@ from django.http import JsonResponse
 
 # Create your views here.
 def home(request):
-    """Renders the home page."""
     assert isinstance(request, HttpRequest)
     return render(
         request,
@@ -47,16 +37,9 @@ def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
     API_response = utils.updateMember(congress_num, member_id)
 
-    
     ## votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json?offset=0", "ProPublica")
     votes = []
-    '''
-    if (votes_response):
-        for vote in votes_response[0]["votes"]:
-            bill = vote["bill"]
-            if bill:
-                votes.append(("("+bill["bill_id"]+") "+str(bill["title"]), vote["description"], vote["position"]))
-                '''
+
     # find senator given member id and congress num
     congress = Congress.objects.get(congress_num = congress_num)
     member = congress.members.get(id = member_id)
@@ -86,7 +69,7 @@ def search(request, congress_num, member_id, isSenateSearch):
         }
     )
     
-    
+@staff_member_required
 def populate_congress(request, congress_id = 116):
     assert isinstance(request, HttpRequest) 
     utils.addMembersCongressAPILazy(congress_id)

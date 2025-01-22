@@ -44,6 +44,9 @@ urlpatterns = [
     path('bill-query/', BQviews.home, name = "billQueryHome"),
     path('bill-query/about', BQviews.about, name = "billQueryAbout"),
     path('bill-query/search/', BQviews.search, name = "billQuerySearch"),
-    path('bill-query/search/bill/<int:congress_id>/<str:type>/<int:num>', BQviews.bill, name = 'billQueryBill'),
+    path('bill-query/results/', BQviews.query, name='billQuery'),
+    path('bill-query/results/bill/<int:congress_id>/<str:type>/<int:num>', BQviews.bill, name = 'billQueryBill'),
+    path('bill-query/populate-bills', BQviews.populate_bills, name = 'billQueryPopulateBills'),
+    path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills')
     #path('bill-query/bills', BQviews.bills, name = "billQueryBills"),
 ]

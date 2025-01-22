@@ -101,6 +101,7 @@
     <Content Include="BillQuery\templates\BillQuery\about.html" />
     <Content Include="BillQuery\templates\BillQuery\bill.html" />
     <Content Include="BillQuery\templates\BillQuery\bills.html" />
+    <Content Include="BillQuery\templates\BillQuery\bill_list.html" />
     <Content Include="BillQuery\templates\BillQuery\index.html" />
     <Content Include="BillQuery\templates\BillQuery\layout.html" />
     <Content Include="requirements.txt" />

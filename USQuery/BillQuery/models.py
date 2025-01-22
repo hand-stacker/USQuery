@@ -7,18 +7,19 @@ from SenateQuery import models as SQmodels
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):
     id = models.IntegerField(primary_key=True)
-    title = models.CharField(max_length=50)
-    date = models.DateField()
+    title = models.CharField(max_length=1000)
+    origin_date = models.DateField()
+    latest_action  = models.DateField()
     def getOrigin(self):
-        n = (self.id / 10000) % 10
+        n = (self.id // 10000) % 10
         return "Senate" if n <4 else "House" 
     
     def getOriginCode(self):  
-        n = (self.id / 10000) % 10
+        n = (self.id // 10000) % 10
         return "S" if (n < 4) else "H"    
     
     def getType(self):
-        n = (self.id / 10000) % 10
+        n = (self.id // 10000) % 10
         types = {
             0 : "S",
             1 : "S.RES",
@@ -30,14 +31,36 @@ class Bill(models.Model):
             7 : "H.CON.RES"}
         return types[n]
     
+    def getTypeURL(self):
+        n = (self.id // 10000) % 10
+        types = {
+            0 : "s",
+            1 : "sres",
+            2 : "sjres",
+            3 : "sconres",
+            4 : "hr",
+            5 : "hres",
+            6 : "hjres",
+            7 : "hconres"}
+        return types[n]
+    
     def getNum(self):
         return self.id % 10000
     
-    def getCongress(self):
-        return self.id / 100000
+    def getNumStr(self):
+        return str(self.id % 10000)
     
-    def getStr(self):
-        return self.getType() + " " + str(self.getNum) 
+    def getCongress(self):
+        return self.id // 100000
+    
+    def getURL(self):
+        return str(self.getCongress()) + "/" + self.getTypeURL()
+    
+    def __str__(self):
+        return self.getType() + " " + self.getNumStr()
+    
+    class Meta():
+        ordering = ["origin_date", "latest_action"]
                 
         
         
@@ -57,7 +80,9 @@ class Vote(models.Model):
     pres = models.ManyToManyField(SQmodels.Membership, related_name='pres')
     novt = models.ManyToManyField(SQmodels.Membership, related_name='novt')
     def __str__(self):
-        return "congress " + self.congress.__str__() + " : Time "  + str(self.dateTime) + " : " + self.bill.getStr() + " " + self.question
+        return "congress " + self.congress.__str__() + " : Time "  + str(self.dateTime) + " : " + self.bill.__str__() + " " + self.question
+    class Meta():
+        ordering = ["dateTime"]
     
 class ChoiceVote(models.Model) :
     id = models.IntegerField(primary_key=True)
@@ -69,6 +94,8 @@ class ChoiceVote(models.Model) :
     result = models.CharField(max_length=40)
     def __str__(self):
         return "congress " +  self.congress.__str__() + " : " + self.bill.getStr() + " " + self.question
+    class Meta():
+        ordering = ["dateTime"]
 
 class Choice(models.Model) :
    id = models.BigAutoField(primary_key=True)
