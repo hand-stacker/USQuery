@@ -255,10 +255,7 @@ def getBillBlob(bill_list):
     for bill in bill_list:
         tableHTML += '<tr>';
         tableHTML += '<td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>';
-        tableHTML += '<td><a href="bill/' + str(bill.getCongress()) 
-        tableHTML += '/' + bill.getTypeURL() 
-        tableHTML += '/' + str(bill.getNum()) + '">' 
-        tableHTML += bill.__str__() + '</a></td>';
+        tableHTML += '<td>''<a href="bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
         tableHTML += '<td>' + bill.title + '</td>';
         tableHTML += '<td>' + bill.getOrigin() + '</td>';
         tableHTML += '</tr>';
@@ -271,11 +268,6 @@ def convertBillData(data):
     for i in range(len(data)):
         ret[str(i)] = data[i];
     return ret
-
-def getBill(API_url):
-    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
-    API_response = connect(settings.CONGRESS_DIR + "bill?" , headers).json()
-    return API_response
 
 ## mega function that creates bills, and from bills creates votes
 ## ideally do not add more than 100 bills per call!
@@ -359,6 +351,96 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
             if 'next' in API_response_actions['pagination']:
                 API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
             else : API_response_actions = None
+            
+def BillHtml(congress_id, bill_type, num):
+    apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
+    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : '250'}
+    API_response = connect(apiURL, headers).json()
+    
+    context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
+            'year' : datetime.now().year,
+            'bill' : bill_type.upper() + "-" + num,
+            }
+    
+    # actions and amendments need to be tablified
+
+    if ('actions' in API_response['bill']):
+        API_actions = connect(API_response['bill']['actions']['url'], headers).json()
+        if API_actions['actions'][0]['actionCode'] in ['E40000', '36000'] :
+            context['bill_state_type'] = 'Became Public Law'
+        else :
+            context['bill_state_type'] = 'Waiting...'
+            
+        context['actions_table'] = makeActionTable(API_actions)
+       
+    #if ('amendments' in API_response['bill']):
+    #    API_committees= connect(API_response['bill']['committees']['amendments'], headers).json()
+    #    context['amendments_table'] = makeAmendmentTable(API_committees)
+        
+    # Do we want committee data??
+    # if ('committiees' in API_response['bill']):
+        # API_committees= connect(API_response['bill']['committees']['url'], headers).json()
+        
+    # Handles sponsors and cosponsors
+    context['sponsor'] = '<a href="' +settings.BASE_DIR + '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
+    
+    if ('cosponsors' in API_response['bill']):
+        co_list = []
+        API_cosponsors= connect(API_response['bill']['cosponsors']['url'], headers).json()
+        for c in API_cosponsors['cosponsors']:
+            temp = '<a href="' +settings.BASE_DIR + "/members" + '">' + c['fullName'] + '</a>'
+            co_list.append(temp)
+        context['cosponsors'] = co_list
+        
+    if ('relatedBills' in API_response['bill']):
+        API_related= connect(API_response['bill']['relatedBills']['url'], headers).json()
+        re_list = []
+        for b in API_related['relatedBills'] : 
+            temp = '<a href="bill/' + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '">' + c['fullName'] + '</a>'
+            re_list.append(temp)
+        
+    if ('subjects' in API_response['bill']):
+        API_subjects= connect(API_response['bill']['subjects']['url'], headers).json()
+        sub_list = []
+        for s in API_subjects['subjects']['legislativeSubjects']:
+            sub_list.append(s['name'])
+        context['subjects'] = sub_list
+        context['policy_area'] = API_subjects['subjects']['policyArea']['name']
+            
+    # currently jut gets first summary in list...
+    if ('summaries' in API_response['bill']):
+        API_summaries= connect(API_response['bill']['summaries']['url'], headers).json()
+        context['summary'] = API_summaries['summaries'][0]['text']
+        
+    #if ('textVersions' in API_response['bill']):
+     #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()
+    
+    return context
+
+# type column will have links if its a vote
+def makeActionTable(act_list):
+    tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
+    for action in act_list['actions']:
+        #check if action is ignorable
+        if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000']):
+            continue
+        tableHTML += '<tr>';
+        tableHTML += '<td>' + action['actionDate'] + '</td>';
+        if ('recordedVotes' in action) :
+            tableHTML += '<td><a href="vote/' + str(action['recordedVote']['congress']) + '/' + str(action['recordedVote']['sessionNumber']) + '/' + str(action['recordedVote']['rollNumber']) + '">' + 'Vote' + '</a></td>';    
+        else : 
+            tableHTML += '<td>' + action['type'] + '</td>';
+        tableHTML += '<td>' + action['text'] + '</td>';
+        tableHTML += '<td>' + action['sourceSystem']['name'] + '</td>';
+        tableHTML += '</tr>';
+
+    tableHTML += '</table>';
+    return tableHTML
+
+def makeAmendmentTable(amend_list):
+    tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
+    tableHTML += '</table>';
+    return tableHTML
         
         
     

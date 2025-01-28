@@ -74,16 +74,11 @@ def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
 
 def bill(request, congress_id, type, num):
     assert isinstance(request, HttpRequest)
-    apiURL  ="https://api.congress.gov/v3/bill/" + str(congress_id) + "/" + type + "/" + str(num)
-    API_response = utils.getBill(apiURL)
+    context = utils.BillHtml(str(congress_id), type, str(num))
     return render(
         request,
         'BillQuery/bill.html',
-        {   
-            'title':"CONGRESS:" + str(congress_id) + "-" + type + ":" + str(num),
-            'content' : API_response,
-            'year':datetime.now().year,
-        }
+        context
     )
 
 @staff_member_required
