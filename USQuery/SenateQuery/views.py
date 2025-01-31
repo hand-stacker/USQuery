@@ -37,7 +37,6 @@ def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
     API_response = utils.updateMember(congress_num, member_id)
 
-    ## votes_response = utils.connect(settings.PROPUBLICA_DIR + "members/"+ member_id + "/votes.json?offset=0", "ProPublica")
     votes = []
 
     # find senator given member id and congress num
@@ -77,15 +76,11 @@ def populate_congress(request, congress_id = 116):
 
 def query(request):
     senate_form = forms.SenatorForm(request.GET)
+    rep_form = forms.RepresentativeForm(request.GET)
     if senate_form.is_valid():
         return search(request, senate_form.cleaned_data["congress_sen"].congress_num, senate_form.cleaned_data["senator"].id, True)
-    # have to not make response\
-    return HttpResponseRedirect('/member-query/')
-
-def rep_query(request):
-    form = forms.RepresentativeForm(request.GET)
-    if form.is_valid():
-        return search(request, form.cleaned_data["congress_rep"].congress_num, form.cleaned_data["representative"].id, False)
+    if rep_form.is_valid():
+        return search(request, rep_form.cleaned_data["congress_rep"].congress_num, rep_form.cleaned_data["representative"].id, False)
     return HttpResponseRedirect('/member-query/')
 
 def update_senators(request, congress_id):

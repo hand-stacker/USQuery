@@ -21,13 +21,13 @@
             <div class="collapse navbar-collapse" id="navbarUSQuery">
                 <ul class="navbar-nav me-auto mb-2 mb-md-0">
                     <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link" href="{% url 'senateQueryHome' %}">Senate Query</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'billQueryHome' %}">Bill Query</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link disabled" href="/">Guide</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'about' %}">About</a>
@@ -35,6 +35,7 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'contact' %}">Contact</a>
                     </li>
+
                 </ul>
                 {% include 'app/loginpartial.html' %}
             </div>
@@ -44,7 +45,7 @@
         {% block content %}{% endblock %}
         <hr />
         <footer>
-            <p> {{ year }} - USQuery, Powered by Congress API</p>
+            <p> {{ year }} - USQuery ~Demo~, Powered by Congress API</p>
         </footer>
     </div>
 

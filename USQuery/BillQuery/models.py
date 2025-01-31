@@ -60,7 +60,7 @@ class Bill(models.Model):
         return self.getType() + " " + self.getNumStr()
     
     class Meta():
-        ordering = ["origin_date", "latest_action"]
+        ordering = ["-origin_date", "-latest_action"]
                 
         
         
@@ -71,18 +71,20 @@ class Vote(models.Model):
     congress = models.ForeignKey(SQmodels.Congress, on_delete=models.CASCADE)
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, null = True)
     dateTime = models.DateTimeField()
-    question = models.CharField(max_length=40)
+    question = models.CharField(max_length=100)
     title = models.CharField(max_length=500, blank=True, null=True)
     result = models.CharField(max_length=20)
     
-    yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas')
-    nays = models.ManyToManyField(SQmodels.Membership, related_name='nays')
-    pres = models.ManyToManyField(SQmodels.Membership, related_name='pres')
-    novt = models.ManyToManyField(SQmodels.Membership, related_name='novt')
+    yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas', blank = True)
+    nays = models.ManyToManyField(SQmodels.Membership, related_name='nays', blank = True)
+    pres = models.ManyToManyField(SQmodels.Membership, related_name='pres', blank = True)
+    novt = models.ManyToManyField(SQmodels.Membership, related_name='novt', blank = True)
+    def inHouse(self):
+        return (self.id // 1000000) % 10 == 1
     def __str__(self):
         return "congress " + self.congress.__str__() + " : Time "  + str(self.dateTime) + " : " + self.bill.__str__() + " " + self.question
     class Meta():
-        ordering = ["dateTime"]
+        ordering = ["-dateTime"]
     
 class ChoiceVote(models.Model) :
     id = models.IntegerField(primary_key=True)
@@ -95,7 +97,7 @@ class ChoiceVote(models.Model) :
     def __str__(self):
         return "congress " +  self.congress.__str__() + " : " + self.bill.getStr() + " " + self.question
     class Meta():
-        ordering = ["dateTime"]
+        ordering = ["-dateTime"]
 
 class Choice(models.Model) :
    id = models.BigAutoField(primary_key=True)

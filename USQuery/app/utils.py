@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import member
 from token import COMMA
 import requests, json, time, xmltodict
 from USQuery import settings
@@ -141,7 +142,6 @@ def getFirstAndLastName(reverseName):
         endIndx+=1
     return [reverseName[commaIndx: endIndx], lastName]
 
-
 def addMembersCongressAPILazy(congress_num):
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
     headers['curerentMember'] = 'false'
@@ -204,8 +204,7 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
     for i in range(len(roles)):
         if (roles[i]['congress'] == str(congress_num)) & (roles[i]['chamber'] == chamber): 
             return i
-    return -1   
-        
+    return -1    
                     
 def updateMember(congress_num, member_id): 
     _congress = Congress.objects.get(congress_num__exact = congress_num)    
@@ -240,7 +239,6 @@ def updateMember(congress_num, member_id):
         birth_year = API_response_member['member']['birthYear'],
         death_year = death_year,
         phone = phone_num
-       
         )
     # need to somehow store history of legislation and party history and leadership
     return API_response_member;
@@ -283,7 +281,6 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
             "hconres" : 7}
     base_id = congress_num * 100000 + types[_type] * 10000
     _congress = Congress.objects.get(congress_num__exact = congress_num)
-    in_house = 0 if (types[_type] <= 3) else 1
     ## what do when type is h range...
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : str(limit), 'offset' : str(offset)}
     API_response = connect(settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "?", headers).json()
@@ -302,6 +299,7 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
                     ## what do when data is house vote???
                     vote_xml = connect(a['recordedVotes'][0]['url'], {}).content
                     vote_dict = xmltodict.parse(vote_xml)
+                    in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                     vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
                     if (Vote.objects.filter(id=vote_id).first() != None): break
                     if (a['recordedVotes'][0]['chamber'] == 'House'):
@@ -352,7 +350,7 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
                 API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
             else : API_response_actions = None
             
-def BillHtml(congress_id, bill_type, num):
+def billHtml(congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : '250'}
     API_response = connect(apiURL, headers).json()
@@ -366,10 +364,10 @@ def BillHtml(congress_id, bill_type, num):
 
     if ('actions' in API_response['bill']):
         API_actions = connect(API_response['bill']['actions']['url'], headers).json()
-        if API_actions['actions'][0]['actionCode'] in ['E40000', '36000'] :
+        if ('actionCode' in API_actions['actions'][0]) and (API_actions['actions'][0]['actionCode'] in ['E40000', '36000']) :
             context['bill_state_type'] = 'Became Public Law'
         else :
-            context['bill_state_type'] = 'Waiting...'
+            context['bill_state_type'] = 'Still Just a Bill'
             
         context['actions_table'] = makeActionTable(API_actions)
        
@@ -382,28 +380,33 @@ def BillHtml(congress_id, bill_type, num):
         # API_committees= connect(API_response['bill']['committees']['url'], headers).json()
         
     # Handles sponsors and cosponsors
-    context['sponsor'] = '<a href="' +settings.BASE_DIR + '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
+    if 'disrtict' in API_response['bill']['sponsors'][0]:
+        context['sponsor'] = '<a href="/member-query/results/?congress_rep=' + congress_id  + '&representative=' + API_response['bill']['sponsors'][0]['bioguideId']+ '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
+    else:
+        context['sponsor'] = '<a href="/member-query/results/?congress_sen=' + congress_id  + '&senator=' + API_response['bill']['sponsors'][0]['bioguideId']+ '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
     
     if ('cosponsors' in API_response['bill']):
-        co_list = []
+        co_list = ''
         API_cosponsors= connect(API_response['bill']['cosponsors']['url'], headers).json()
         for c in API_cosponsors['cosponsors']:
-            temp = '<a href="' +settings.BASE_DIR + "/members" + '">' + c['fullName'] + '</a>'
-            co_list.append(temp)
+            if 'district' in c:
+                co_list += '<li class="list-group-item"><a href="/member-query/results/?congress_rep=' + congress_id  + '&representative=' + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
+            else: 
+                co_list += '<li class="list-group-item"><a href="/member-query/results/?congress_sen=' + congress_id  + '&senator=' + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
         context['cosponsors'] = co_list
         
     if ('relatedBills' in API_response['bill']):
         API_related= connect(API_response['bill']['relatedBills']['url'], headers).json()
-        re_list = []
+        related_bills = ''
         for b in API_related['relatedBills'] : 
-            temp = '<a href="bill/' + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '">' + c['fullName'] + '</a>'
-            re_list.append(temp)
-        
+            related_bills += '<li class="list-group-item"><a href="/bill-query/results/bill/' + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '">' + b['type'] + '-' + str(b['number']) + '</a></li>'
+        context['related_bills'] = related_bills
+                  
     if ('subjects' in API_response['bill']):
         API_subjects= connect(API_response['bill']['subjects']['url'], headers).json()
-        sub_list = []
+        sub_list = ''
         for s in API_subjects['subjects']['legislativeSubjects']:
-            sub_list.append(s['name'])
+            sub_list +=  '<li class="list-group-item">' + s['name'] + '</li>'
         context['subjects'] = sub_list
         context['policy_area'] = API_subjects['subjects']['policyArea']['name']
             
@@ -422,17 +425,16 @@ def makeActionTable(act_list):
     tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
     for action in act_list['actions']:
         #check if action is ignorable
-        if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000']):
+        if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000', 'E30000', 'E40000']):
             continue
-        tableHTML += '<tr>';
-        tableHTML += '<td>' + action['actionDate'] + '</td>';
+        tableHTML += '<tr><td>' + action['actionDate'] + '</td>';
         if ('recordedVotes' in action) :
-            tableHTML += '<td><a href="vote/' + str(action['recordedVote']['congress']) + '/' + str(action['recordedVote']['sessionNumber']) + '/' + str(action['recordedVote']['rollNumber']) + '">' + 'Vote' + '</a></td>';    
+            in_house = 0 if (action['recordedVotes'][0]['chamber'] != 'House') else 1
+            vote_id = action['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(action['recordedVotes'][0]['sessionNumber']) * 100000 + int(action['recordedVotes'][0]['rollNumber'])
+            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '">' + 'Vote' + '</a></td>';    
         else : 
             tableHTML += '<td>' + action['type'] + '</td>';
-        tableHTML += '<td>' + action['text'] + '</td>';
-        tableHTML += '<td>' + action['sourceSystem']['name'] + '</td>';
-        tableHTML += '</tr>';
+        tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>';
 
     tableHTML += '</table>';
     return tableHTML
@@ -441,6 +443,49 @@ def makeAmendmentTable(amend_list):
     tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
     tableHTML += '</table>';
     return tableHTML
+
+def voteHtml(vote,):
+    congress_id = vote.congress.__str__()
+    if vote.inHouse():
+        q_1 = 'congress_rep='
+        q_2 = '&representative='
+    else:
+        q_1 = 'congress_sen='
+        q_2 = '&senator='
+       
+    yeas_list= ''
+    yeas_cnt = vote.yeas.count()
+    for membership in vote.yeas:
+        yeas_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+    
+    nays_list = ''
+    nays_cnt = vote.nays.count()
+    for membership in vote.nays:
+        nays_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+    
+    pres_list = ''
+    pres_cnt = vote.pres.count()
+    for membership in vote.pres:
+        pres_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+    
+    novt_list = ''
+    novt_cnt = vote.novt.count()
+    for membership in vote.novt:
+        novt_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+    
+    context = {'title': str(vote.id),
+            'year' : datetime.now().year,
+            'bill' : vote.bill.__str__(),
+            'congress' : congress_id,
+            'yeas_list' : yeas_list,
+            'nays_list' : nays_list,
+            'pres_list' : pres_list,
+            'novt_list' : novt_list,
+            'yeas_cnt' : yeas_cnt,
+            'nays_cnt' : nays_cnt,
+            'pres_cnt' : pres_cnt,
+            'novt_cnt' : novt_cnt,
+            }
         
         
     

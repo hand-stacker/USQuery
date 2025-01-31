@@ -74,7 +74,7 @@ def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
 
 def bill(request, congress_id, type, num):
     assert isinstance(request, HttpRequest)
-    context = utils.BillHtml(str(congress_id), type, str(num))
+    context = utils.billHtml(str(congress_id), type, str(num))
     return render(
         request,
         'BillQuery/bill.html',
@@ -86,3 +86,15 @@ def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0
     assert isinstance(request, HttpRequest)
     utils.addBills(congress, _type, limit, offset)
     return HttpResponseRedirect("/")
+
+def vote(request, vote_id):
+    try:
+        vote = Vote.objects.get(id = vote_id)
+    except Vote.DoesNotExist:
+        return HttpResponseRedirect('/bill-query')
+    context = utils.voteHtml(vote)
+    return render(
+        request,
+        'BillQuery/bill.html',
+        context
+    )

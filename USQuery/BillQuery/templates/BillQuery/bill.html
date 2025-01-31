@@ -1,25 +1,32 @@
 {% extends "BillQuery/layout.html" %}
 {% block content %}
 {% load static %}
-<div class="col-md-9">
-    <div class="h-400 p-2 bg-body-tertiary border rounded-2">
-        <h2>{{bill}} : {{bill_state_type}}</h2>
-        <h5>{{summary | safe}}</h5>
+<div class="row align-items-md-stretch">
+    <div class="col-md-9">
+        <div class="h-400 p-3 bg-body-tertiary border rounded-2">
+            <h2>{{bill}} : {{bill_state_type}}</h2>
+            <h5>{{summary | safe}}</h5>
+            <br />
+            <h4>Actions:</h4>
+            {{actions_table | safe}}
+        </div>
     </div>
-</div>
-<div class="col-md-3">
-    <div class="h-400 p-3 bg-body-tertiary border rounded-2">
-        <h5>
+    <div class="col-md-3">
+        <div class="h-400 p-3 bg-body-tertiary border rounded-2 accordion">
             <ul class="list-group">
-                <li class="list-group-item list-group-item-primary">Sponsor : {{sponsor}}</li>
+                <li class="list-group-item list-group-item-primary">Sponsor : {{sponsor | safe}}</li>
+                {{cosponsors | safe}}
             </ul>
-        </h5>
-    </div>
-</div>
-<div class="col-md-9">
-    <div class="h-400 p-4 bg-body-tertiary border rounded-2">
-        <h4>Actions:</h4>
-        {{actions_table | safe}}
+            <h4>Policy Area : {{policy_area}}</h4>
+            <ul>
+                {{subjects | safe}}
+            </ul>
+            <br />
+            <h4>Related Bills</h4>
+            <ul>
+                {{related_bills | safe}}
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}
