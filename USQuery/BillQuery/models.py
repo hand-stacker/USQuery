@@ -1,4 +1,3 @@
-from tkinter import CASCADE
 from django.db import models
 from SenateQuery import models as SQmodels
 
@@ -60,7 +59,7 @@ class Bill(models.Model):
         return self.getType() + " " + self.getNumStr()
     
     class Meta():
-        ordering = ["-origin_date", "-latest_action"]
+        ordering = ["-origin_date", "-latest_action", "-id"]
                 
         
         
@@ -69,11 +68,12 @@ class Bill(models.Model):
 class Vote(models.Model):
     id = models.IntegerField(primary_key=True)
     congress = models.ForeignKey(SQmodels.Congress, on_delete=models.CASCADE)
+    house = models.BooleanField(null = True, blank = True)
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, null = True)
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=100)
     title = models.CharField(max_length=500, blank=True, null=True)
-    result = models.CharField(max_length=20)
+    result = models.CharField(max_length=42)
     
     yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas', blank = True)
     nays = models.ManyToManyField(SQmodels.Membership, related_name='nays', blank = True)

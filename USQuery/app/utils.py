@@ -1,6 +1,4 @@
 from datetime import datetime
-from enum import member
-from token import COMMA
 import requests, json, time, xmltodict
 from USQuery import settings
 from requests.exceptions import HTTPError
@@ -111,6 +109,17 @@ reverse_state_dict = {'Alabama' : 'AL',
               'Wyoming' : 'WY',
               }
 
+types = {
+            "s" : 0,
+            "sres" : 1,
+            "sjres" : 2,
+            "sconres" : 3,
+            "hr" : 4,
+            "hres" : 5,
+            "hjres" : 6,
+            "hconres" : 7}
+
+## connects to an API with given headers
 def connect(fullpath, headers):
     try:
         response = requests.get(fullpath, headers, timeout=20)
@@ -123,25 +132,9 @@ def connect(fullpath, headers):
         print("TIMEOUT ERROR")
     else:
         print('Connected to ' + fullpath)
-        return response
-    
-## last name is correct, need to fix first name
-def getFirstAndLastName(reverseName):
-    try:
-        commaIndx = reverseName.index(',')
-    except ValueError:
-            return ValueError
-    lastName = reverseName[:commaIndx]
-    commaIndx += 1
-    while (reverseName[commaIndx] == ' '):
-        commaIndx+=1
-    endIndx = commaIndx
-    while(endIndx != len(reverseName)):
-        if (reverseName[endIndx] in {' ', ','}):
-            break
-        endIndx+=1
-    return [reverseName[commaIndx: endIndx], lastName]
+        return response    
 
+## mega function to add members for a given congress
 def addMembersCongressAPILazy(congress_num):
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
     headers['curerentMember'] = 'false'
@@ -200,85 +193,9 @@ def addMembersCongressAPILazy(congress_num):
         else : API_response = None
     return
 
-def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
-    for i in range(len(roles)):
-        if (roles[i]['congress'] == str(congress_num)) & (roles[i]['chamber'] == chamber): 
-            return i
-    return -1    
-                    
-def updateMember(congress_num, member_id): 
-    _congress = Congress.objects.get(congress_num__exact = congress_num)    
-    _member = Member.objects.get(id__exact = member_id)
-    Membership.objects.get(
-                            congress = _congress,
-                            member = _member
-                            )
-    if _member.image_link != "empty": return
-    
-    API_response_member = connect(_member.api_url, {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
-    office_addr = None
-    phone_num = None
-    death_year = None
-    site = None
-    
-    if ('deathYear' in API_response_member['member']) :
-        death_year = API_response_member['member']['deathYear']
-        
-    if (API_response_member['member']['currentMember']) :
-        site = API_response_member['member']['officialWebsiteUrl']
-        office_addr = API_response_member['member']['addressInformation']['officeAddress']
-        phone_num = API_response_member['member']['addressInformation']['phoneNumber']
-
-    Member.objects.filter(id = member_id).update(
-        full_name = API_response_member['member']['directOrderName'],
-        first_name = API_response_member['member']['firstName'],
-        last_name = API_response_member['member']['lastName'], 
-        image_link = API_response_member['member']['depiction']['imageUrl'],
-        office = office_addr,
-        official_link = site,
-        birth_year = API_response_member['member']['birthYear'],
-        death_year = death_year,
-        phone = phone_num
-        )
-    # need to somehow store history of legislation and party history and leadership
-    return API_response_member;
-
-def getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y):
-    start_date = datetime(int(s_y), int(s_m), int(s_d))
-    end_date = datetime(int(e_y), int(e_m), int(e_d))
-    return Bill.objects.filter(origin_date__gte=start_date, origin_date__lte=end_date)
-
-def getBillBlob(bill_list):
-    tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Origin Date</th><th>Bill ID</th><th>Title</th><th>Source</tr></thead>'
-    for bill in bill_list:
-        tableHTML += '<tr>';
-        tableHTML += '<td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>';
-        tableHTML += '<td>''<a href="bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
-        tableHTML += '<td>' + bill.title + '</td>';
-        tableHTML += '<td>' + bill.getOrigin() + '</td>';
-        tableHTML += '</tr>';
-
-    tableHTML += '</table>';
-    return tableHTML
-
-def convertBillData(data):
-    ret = {}
-    for i in range(len(data)):
-        ret[str(i)] = data[i];
-    return ret
-
 ## mega function that creates bills, and from bills creates votes
 ## ideally do not add more than 100 bills per call!
 def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
-    types = {
-            "s" : 0,
-            "sres" : 1,
-            "sjres" : 2,
-            "sconres" : 3,
-            "hr" : 4,
-            "hres" : 5,
-            "hjres" : 6,
-            "hconres" : 7}
     base_id = congress_num * 100000 + types[_type] * 10000
     _congress = Congress.objects.get(congress_num__exact = congress_num)
     ## what do when type is h range...
@@ -325,6 +242,7 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
                     else :
                         _vote = Vote.objects.get_or_create(id = vote_id,
                                                             congress = _congress,
+                                                            house = (in_house == 1),
                                                             bill = _bill,
                                                             dateTime = a['recordedVotes'][0]['date'],
                                                             question = vote_dict['roll_call_vote']['question'],
@@ -349,7 +267,86 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
             if 'next' in API_response_actions['pagination']:
                 API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
             else : API_response_actions = None
-            
+
+def getFirstAndLastName(reverseName):
+    try:
+        commaIndx = reverseName.index(',')
+    except ValueError:
+            return ValueError
+    lastName = reverseName[:commaIndx]
+    commaIndx += 1
+    while (reverseName[commaIndx] == ' '):
+        commaIndx+=1
+    endIndx = commaIndx
+    while(endIndx != len(reverseName)):
+        if (reverseName[endIndx] in {' ', ','}):
+            break
+        endIndx+=1
+    return [reverseName[commaIndx: endIndx], lastName]
+
+def getNumSuffix(num):
+    if (num % 10 == 1 and num // 10 != 1) : return 'rst'
+    elif (num % 10 == 2 and num // 10 != 1) : return 'nd'
+    elif (num % 10 == 3 and num // 10 != 1) : return 'rd'
+    return 'th'
+
+def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
+    for i in range(len(roles)):
+        if (roles[i]['congress'] == str(congress_num)) & (roles[i]['chamber'] == chamber): 
+            return i
+    return -1    
+                    
+def updateMember(congress_num, member_id): 
+    _congress = Congress.objects.get(congress_num__exact = congress_num)    
+    _member = Member.objects.get(id__exact = member_id)
+    API_response_member = connect(_member.api_url, {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
+    Membership.objects.get(
+                            congress = _congress,
+                            member = _member
+                            )
+    if _member.image_link != "empty": API_response_member
+    
+    office_addr = None
+    phone_num = None
+    death_year = None
+    site = None
+    
+    if ('deathYear' in API_response_member['member']) :
+        death_year = API_response_member['member']['deathYear']
+        
+    if (API_response_member['member']['currentMember']) :
+        site = API_response_member['member']['officialWebsiteUrl']
+        office_addr = API_response_member['member']['addressInformation']['officeAddress']
+        phone_num = API_response_member['member']['addressInformation']['phoneNumber']
+
+    Member.objects.filter(id = member_id).update(
+        full_name = API_response_member['member']['directOrderName'],
+        first_name = API_response_member['member']['firstName'],
+        last_name = API_response_member['member']['lastName'], 
+        image_link = API_response_member['member']['depiction']['imageUrl'],
+        office = office_addr,
+        official_link = site,
+        birth_year = API_response_member['member']['birthYear'],
+        death_year = death_year,
+        phone = phone_num
+        )
+    # need to somehow store history of legislation and party history and leadership
+    return API_response_member;
+
+def getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y):
+    start_date = datetime(int(s_y), int(s_m), int(s_d))
+    end_date = datetime(int(e_y), int(e_m), int(e_d))
+    return Bill.objects.filter(origin_date__gte=start_date, origin_date__lte=end_date)
+
+def convertBillData(data):
+    ret = {}
+    for i in range(len(data)):
+        ret[str(i)] = data[i];
+    return ret
+   
+#### 
+##  return a context for http request to fill html page with content
+####
 def billHtml(congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : '250'}
@@ -369,7 +366,7 @@ def billHtml(congress_id, bill_type, num):
         else :
             context['bill_state_type'] = 'Still Just a Bill'
             
-        context['actions_table'] = makeActionTable(API_actions)
+        context['actions_table'] = actionTable(API_actions)
        
     #if ('amendments' in API_response['bill']):
     #    API_committees= connect(API_response['bill']['committees']['amendments'], headers).json()
@@ -420,9 +417,57 @@ def billHtml(congress_id, bill_type, num):
     
     return context
 
-# type column will have links if its a vote
-def makeActionTable(act_list):
-    tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
+def voteHtml(vote):
+    congress_id = vote.congress.__str__()
+    if vote.inHouse():
+        q_1 = 'congress_rep='
+        q_2 = '&representative='
+    else:
+        q_1 = 'congress_sen='
+        q_2 = '&senator='
+       
+    votes_list = [vote.yeas, vote.nays, vote.pres, vote.novt]
+    html_lists = ['', '', '', '']
+    counts = [{}, {}, {}, {}]
+    
+    for i in range(4):
+        votes = votes_list[i].all()
+        for membership in votes:
+            html_lists[i] += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+            if (membership.party not in counts[i]) : counts[i][membership.party] = 0
+            counts[i][membership.party] += 1
+        
+    context = {'title': str(vote.id),
+            'year' : datetime.now().year,
+            'bill' : vote.bill.__str__(),
+            'vote_time' : str(vote.dateTime),
+            'vote_title' : vote.title,
+            'vote_question' : vote.question,
+            'vote_result' : vote.result,
+            'congress' : congress_id,
+            'yeas_list' : html_lists[0],
+            'nays_list' : html_lists[1],
+            'pres_list' : html_lists[2],
+            'novt_list' : html_lists[3],
+            'yeas_cnts' : counts[0],
+            'nays_cnts' : counts[1],
+            'pres_cnts' : counts[2],
+            'novt_cnts' : counts[3],
+            'yeas_cnt' : votes_list[0].count(),
+            'nays_cnt' : votes_list[1].count(),
+            'pres_cnt' : votes_list[2].count(),
+            'novt_cnt' : votes_list[3].count(),
+            
+            }
+    return context
+
+
+####
+##  These functions return an html table of a given queryset, with links when appropriate
+##  Not done on JS because we need to access django model data anyways
+####
+def actionTable(act_list):
+    tableHTML = '<table class="table table-bordered table-small table-hover"><thead><tr><th>Action Date</th><th>Type</th><th>Text</th><th>Source</th></tr></thead><tbody>'
     for action in act_list['actions']:
         #check if action is ignorable
         if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000', 'E30000', 'E40000']):
@@ -435,58 +480,68 @@ def makeActionTable(act_list):
         else : 
             tableHTML += '<td>' + action['type'] + '</td>';
         tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>';
-
-    tableHTML += '</table>';
+    tableHTML += '</tbody></table>';
     return tableHTML
 
-def makeAmendmentTable(amend_list):
+def billTable(bill_list):
+    tableHTML = '<table class="table table-bordered table-small table-hover"><thead><tr><th>Origin Date</th><th>Bill ID</th><th>Title</th><th>Source</th></tr></thead><tbody>'
+    for bill in bill_list:
+        tableHTML += '<tr><td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>';
+        tableHTML += '<td><a href="bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
+        tableHTML += '<td>' + bill.title + '</td>';
+        tableHTML += '<td>' + bill.getOrigin() + '</td></tr>';
+    tableHTML += '</tbody></table>';
+    return tableHTML
+
+def voteTable(vote_list):
+    tableHTML = '<table class="table table-bordered table-small table-hover"><thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th></tr></thead><tbody>'
+    for vote in vote_list:
+        bill = vote.bill
+        c = 'table-success'
+        tableHTML += '<tr class="' + c + '"><td>' + str(vote.dateTime) + '</td>';
+        tableHTML += '<td><a href="/bill-query/results/bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '">' + vote.question + '</a></td></tr>';
+    tableHTML += '</tbody></table>';
+    return tableHTML
+    
+def amendmentTable(amend_list):
     tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
     tableHTML += '</table>';
     return tableHTML
 
-def voteHtml(vote,):
-    congress_id = vote.congress.__str__()
-    if vote.inHouse():
-        q_1 = 'congress_rep='
-        q_2 = '&representative='
-    else:
-        q_1 = 'congress_sen='
-        q_2 = '&senator='
-       
-    yeas_list= ''
-    yeas_cnt = vote.yeas.count()
-    for membership in vote.yeas:
-        yeas_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
-    
-    nays_list = ''
-    nays_cnt = vote.nays.count()
-    for membership in vote.nays:
-        nays_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
-    
-    pres_list = ''
-    pres_cnt = vote.pres.count()
-    for membership in vote.pres:
-        pres_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
-    
-    novt_list = ''
-    novt_cnt = vote.novt.count()
-    for membership in vote.novt:
-        novt_list += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
-    
-    context = {'title': str(vote.id),
-            'year' : datetime.now().year,
-            'bill' : vote.bill.__str__(),
-            'congress' : congress_id,
-            'yeas_list' : yeas_list,
-            'nays_list' : nays_list,
-            'pres_list' : pres_list,
-            'novt_list' : novt_list,
-            'yeas_cnt' : yeas_cnt,
-            'nays_cnt' : nays_cnt,
-            'pres_cnt' : pres_cnt,
-            'novt_cnt' : novt_cnt,
-            }
+def partyList(party_history):
+    party_list = ''
+    for history in party_history:
+        party_list += '<li class="list-group-item">' + history['partyName'] + ' (' + str(history['startYear']) + '-'
+        if ('endYear' in history) : party_list += str(history['endYear'])
+        else : party_list += 'Present'
+        party_list += ')</li>'
+    return party_list
+
+def leadershipList(leaderships):
+    leadership_list = ''
+    for leadership in leaderships:
+        leadership_list += '<li class="list-group-item">' + str(leadership['congress']) + getNumSuffix(leadership['congress'])
+        leadership_list += ' Congress : ' + leadership['type']+ '</li>'
+    return leadership_list
         
-        
+def termList(terms, bioguideID):
+    term_list = ''
+    for term in reversed(terms):
+        num = term['congress']
+        if ('district' in term):
+            link = '/member-query/results/?congress_rep=' + str(num) + '&representative=' + bioguideID
+            district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District'
+        else :
+            link = '/member-query/results/?congress_sen=' + str(num) + '&senator=' + bioguideID
+            district = ''
+            
+        term_list += '<li class="list-group-item">'  + str(num) + getNumSuffix(num) + ' Congress : '
+        term_list += '<a href="' + link + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
+        term_list += '(' + str(term['startYear']) + '-'
+        if ('endYear' in term) : term_list += str(term['endYear'])
+        else : term_list += 'Present'
+        term_list += ')</a></li>'
+    return term_list
     
     

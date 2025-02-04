@@ -1,5 +1,68 @@
 {% extends "BillQuery/layout.html" %}
 {% block content %}
 {% load static %}
+{{ yeas_cnt | json_script:"yeas_cnt" }}
+{{ nays_cnt | json_script:"nays_cnt" }}
+{{ pres_cnt | json_script:"pres_cnt" }}
+{{ novt_cnt | json_script:"novt_cnt" }}
+{{ yeas_cnts | json_script:"yeas_cnts" }}
+{{ nays_cnts | json_script:"nays_cnts" }}
+{{ pres_cnts | json_script:"pres_cnts" }}
+{{ novt_cnts | json_script:"novt_cnts" }}
 
+<div class="col-md-12 border rounded-2 p-3">
+    <h4><b>Time : {{vote_time}}</b></h4>
+    <h5>
+        Title : {{vote_title}}
+        <br />
+        Question :  {{vote_question}}
+        <br />
+        Result : {{vote_result}}
+    </h5>
+</div>
+<div class="col-md-12 border rounded-2 p-3">
+    <div class="row align-items-md-stretch">
+        <div class="col-md-6">
+            <div class="h-500 w-500">
+                <div id="donut" style="width:500px;height:500px;"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="h-500 w-500">
+                <div id="bar" style="width:500px;height:500px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-md-12 border rounded-2 p-3">
+    <div id="cloropleth"></div>
+</div>
+
+<div class="col-md-12 border rounded-2">
+    <table class="table table-bordered table-small table-hover">
+        <thead>
+            <tr>
+                <th>Yeas</th>
+                <th>Nays</th>
+                <th>Present</th>
+                <th>No Vote</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{yeas_list | safe}}</td>
+                <td>{{nays_list | safe}}</td>
+                <td>{{pres_list | safe}}</td>
+                <td>{{novt_list | safe}}</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
+<script src="{% static 'scripts/barPlot.js' %}"></script>
+<script src="{% static 'scripts/donutPlot.js' %}"></script>
+<script src="{% static 'scripts/cloroplethPlot.js' %}"></script>
 {% endblock%}

@@ -33,15 +33,15 @@ class Membership(models.Model):
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     district_num = models.IntegerField(null = True, blank = True)
     chamber = models.CharField(max_length=25)
-    state = models.CharField(max_length=2)
+    state = models.CharField(max_length=14)
     party = models.CharField(max_length=30)
     leadership = models.CharField(max_length=50, null = True, blank = True)
     start_date = models.CharField(max_length=10)
     end_date = models.CharField(max_length=10, null = True)
     def __str__(self):
         if self.chamber == "Senate":
-            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator:" + self.member.__str__()
+            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator: " + self.member.__str__()
         else:
-            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative:" + self.member.__str__()
+            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative: " + self.member.__str__()
     
 

@@ -4,7 +4,7 @@
 {% load static %}
 <div class="row align-items-md-stretch">
     <div class="col-md-6">
-        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
+        <div class="h-400 p-3 bg-body-tertiary border rounded-2">
             <h2>{{rep_name}}</h2>
             <table vertical-align="top" padding="15px" border-spacing="30px">
                 <tr>
@@ -15,7 +15,7 @@
                         <h5>
                             <b>
                                 {{rep_title}}
-                                <br/>
+                                <br />
                                 {{congress_num}}th Congress
                                 <br />
                                 {{rep_state}}
@@ -39,20 +39,25 @@
                     </td>
                 </tr>
             </table>
-            
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
             <h2>Votes in this office</h2>
-            <p>{{rep_votes}}</p>
+            <p>{{vote_table | safe}}</p>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="h-400 p-5 bg-body-tertiary border rounded-3">
-            <h2>Recent Votes</h2>
-            <p>{{rep_votes}}</p>
-        </div>
+        <h2 class="text-center">Party History</h2>
+        <ul>
+            {{party_list | safe}}
+        </ul>
+        <h2 class="text-center">Term History</h2>
+        <ul>
+            {{term_list | safe}}
+        </ul>
+        <h2 class="text-center">Leadership Roles</h2>
+        <ul>
+            {{leadership_list | safe}}
+        </ul>
     </div>
+    
+
 </div>
 {% endblock %}

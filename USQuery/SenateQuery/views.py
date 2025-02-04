@@ -1,9 +1,11 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
 from django.http import HttpRequest, HttpResponseRedirect
+from django.core.paginator import Paginator
 from datetime import datetime
 from app import utils, forms
 from SenateQuery.models import Member, Congress, Membership
+from BillQuery.models import Vote, Bill
 from USQuery import settings
 from django.http import JsonResponse
 
@@ -35,18 +37,27 @@ def about(request):
     )
 def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
+    
     API_response = utils.updateMember(congress_num, member_id)
-
     votes = []
-
+    urlPath = ""
+    past_context = request.GET.dict()
+    for key in past_context:
+        urlPath += key + "=" + past_context[key] + "&"
+        
     # find senator given member id and congress num
     congress = Congress.objects.get(congress_num = congress_num)
     member = congress.members.get(id = member_id)
     membership = Membership.objects.get(congress = congress, member = member)
-    return render(
-        request,
-        'SenateQuery/representative.html',
-        {
+    
+    in_house = (membership.chamber != 'Senate')
+    votes_in_congress = Vote.objects.filter(congress = congress, house = in_house)
+    
+    paginator = Paginator(votes_in_congress, 25)
+    page_number = request.GET.get("page")
+    vote_list = paginator.get_page(page_number)
+    vote_table = utils.voteTable(vote_list)
+    context = {
             'title': member.full_name,
             'year':datetime.now().year,
             'rep_name'  : member.full_name,
@@ -65,7 +76,23 @@ def search(request, congress_num, member_id, isSenateSearch):
             'rep_office': member.office,
             'congress_num'  : congress_num,
             'rep_url' : member.official_link,
+            "vote_table": vote_table,
+            "vote_list" : vote_list,
+            "urlPath" : urlPath,
         }
+    
+    if ('partyHistory' in API_response['member']):
+        context['party_list'] = utils.partyList(API_response['member']['partyHistory'])
+    if ('leadership' in API_response['member']):
+        context['leadership_list'] = utils.leadershipList(API_response['member']['leadership'])
+    else : context['leadership_list'] = 'None'
+    if ('terms' in API_response['member']):
+        context['term_list'] = utils.termList(API_response['member']['terms'], member_id)
+            
+    return render(
+        request,
+        'SenateQuery/representative.html',
+        context
     )
     
 @staff_member_required

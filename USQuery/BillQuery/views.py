@@ -52,14 +52,14 @@ def query(request):
 def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
     q_set = utils.getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y)
     urlPath = ""
-    context = request.GET.dict()
-    for key in context:
-        urlPath += key + "=" + context[key] + "&"
+    past_context = request.GET.dict()
+    for key in past_context:
+        urlPath += key + "=" + past_context[key] + "&"
         
     paginator = Paginator(q_set, 25)
     page_number = request.GET.get("page")
     bill_list = paginator.get_page(page_number)
-    content = utils.getBillBlob(bill_list)
+    content = utils.billTable(bill_list)
     return render(
         request,
         'BillQuery/bill_list.html',
@@ -95,6 +95,6 @@ def vote(request, vote_id):
     context = utils.voteHtml(vote)
     return render(
         request,
-        'BillQuery/bill.html',
+        'BillQuery/vote.html',
         context
     )
