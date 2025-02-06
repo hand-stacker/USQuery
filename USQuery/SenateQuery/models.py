@@ -24,6 +24,8 @@ class Member(models.Model):
 class Congress(models.Model):
     congress_num = models.IntegerField(primary_key=True)
     members = models.ManyToManyField(Member, through="Membership", related_name="members_set")
+    start_year = models.IntegerField(null=True)
+    end_year = models.IntegerField(null=True)
     def __str__(self):
         return str(self.congress_num)
     

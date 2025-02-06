@@ -5,7 +5,7 @@ let novt_cnts = JSON.parse(document.getElementById('novt_cnts').textContent);
 
 const parties = ['Democratic', 'Republican', 'Independent', 'Libertarian', 'Green'];
 const colors = {
-    'Democrat': 'rgb(51,101,138)',
+    'Democratic': 'rgb(51,101,138)',
     'Republican': 'rgb(165,1,4)',
     'Independent': 'rgb(209,227,221)',
     'Libertarian': 'rgb(246,174,45)',
@@ -60,6 +60,7 @@ let barLayout = {
     title: {
         text: 'Grouped By Party'
     },
+    margin: {b: 50, t: 80 },
     showlegend : true,
     grid: { rows: 1, columns: cols, pattern: 'independent' },
 };

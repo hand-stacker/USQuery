@@ -149,7 +149,9 @@ def addMembersCongressAPILazy(congress_num):
     end_sen = API_cong['congress']['sessions'][3]['endDate']
     
     API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
-    congress = Congress.objects.get_or_create(congress_num = congress_num)[0]
+    congress = Congress.objects.get_or_create(congress_num = congress_num,
+                                              start_year = int(API_cong['congress']['startYear']),
+                                              end_year = int(API_cong['congress']['endYear']))[0]
     
     while (API_response != None):
         for member in API_response['members']:
@@ -285,6 +287,7 @@ def getFirstAndLastName(reverseName):
     return [reverseName[commaIndx: endIndx], lastName]
 
 def getNumSuffix(num):
+    num = num % 100
     if (num % 10 == 1 and num // 10 != 1) : return 'rst'
     elif (num % 10 == 2 and num // 10 != 1) : return 'nd'
     elif (num % 10 == 3 and num // 10 != 1) : return 'rd'
@@ -300,11 +303,7 @@ def updateMember(congress_num, member_id):
     _congress = Congress.objects.get(congress_num__exact = congress_num)    
     _member = Member.objects.get(id__exact = member_id)
     API_response_member = connect(_member.api_url, {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
-    Membership.objects.get(
-                            congress = _congress,
-                            member = _member
-                            )
-    if _member.image_link != "empty": API_response_member
+    if _member.image_link != "empty": return API_response_member
     
     office_addr = None
     phone_num = None
@@ -318,6 +317,16 @@ def updateMember(congress_num, member_id):
         site = API_response_member['member']['officialWebsiteUrl']
         office_addr = API_response_member['member']['addressInformation']['officeAddress']
         phone_num = API_response_member['member']['addressInformation']['phoneNumber']
+
+    ## find this term's party
+    if (len(API_response_member['member']['partyHistory']) > 1):
+        _membership = Membership.objects.get(congress = _congress, member = _member)
+        for hist in API_response_member['member']['partyHistory']:
+            if (hist['startYear'] < _congress.end_year and ('endYear' not in hist or hist['endYear'] > _congress.start_year)):
+                _membership.party = hist['partyName']
+                _membership.save()
+                break
+                
 
     Member.objects.filter(id = member_id).update(
         full_name = API_response_member['member']['directOrderName'],
@@ -356,47 +365,39 @@ def billHtml(congress_id, bill_type, num):
             'year' : datetime.now().year,
             'bill' : bill_type.upper() + "-" + num,
             }
-    
-    # actions and amendments need to be tablified
 
-    if ('actions' in API_response['bill']):
-        API_actions = connect(API_response['bill']['actions']['url'], headers).json()
-        if ('actionCode' in API_actions['actions'][0]) and (API_actions['actions'][0]['actionCode'] in ['E40000', '36000']) :
-            context['bill_state_type'] = 'Became Public Law'
-        else :
-            context['bill_state_type'] = 'Still Just a Bill'
+    API_actions = connect(API_response['bill']['actions']['url'], headers).json()
+    if ('actionCode' in API_actions['actions'][0]) and (API_actions['actions'][0]['actionCode'] in ['E40000', '36000']) :
+        context['bill_state_type'] = 'Became Public Law'
+    else :
+        context['bill_state_type'] = 'Still Just a Bill'
             
-        context['actions_table'] = actionTable(API_actions)
-       
-    #if ('amendments' in API_response['bill']):
-    #    API_committees= connect(API_response['bill']['committees']['amendments'], headers).json()
-    #    context['amendments_table'] = makeAmendmentTable(API_committees)
-        
-    # Do we want committee data??
-    # if ('committiees' in API_response['bill']):
-        # API_committees= connect(API_response['bill']['committees']['url'], headers).json()
+    context['actions_table'] = actionTable(API_actions)
         
     # Handles sponsors and cosponsors
-    if 'disrtict' in API_response['bill']['sponsors'][0]:
-        context['sponsor'] = '<a href="/member-query/results/?congress_rep=' + congress_id  + '&representative=' + API_response['bill']['sponsors'][0]['bioguideId']+ '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
-    else:
-        context['sponsor'] = '<a href="/member-query/results/?congress_sen=' + congress_id  + '&senator=' + API_response['bill']['sponsors'][0]['bioguideId']+ '">' + API_response['bill']['sponsors'][0]['fullName'] + '</a>'
-    
+    list_start = '<li class="list-group-item"><a href="'
+    member_link = '/member-query/results/?'
+    bill_link = '/bill-query/results/bill/'
+    qstring1 = ['congress_rep=', 'congress_sen=']
+    qstring2 = ['&representative=', '&senator=']
+
+    sponsor = API_response['bill']['sponsors'][0]
+    i = 0 if ('disrtict' in sponsor) else 1
+    context['sponsor'] = '<a href="' + member_link + qstring1[i] + congress_id + qstring2[i] + sponsor['bioguideId']+ '">' + sponsor['fullName'] + '</a>'
+
     if ('cosponsors' in API_response['bill']):
         co_list = ''
         API_cosponsors= connect(API_response['bill']['cosponsors']['url'], headers).json()
         for c in API_cosponsors['cosponsors']:
-            if 'district' in c:
-                co_list += '<li class="list-group-item"><a href="/member-query/results/?congress_rep=' + congress_id  + '&representative=' + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
-            else: 
-                co_list += '<li class="list-group-item"><a href="/member-query/results/?congress_sen=' + congress_id  + '&senator=' + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
+            i = 0 if ('district' in c) else 1
+            co_list += list_start + member_link + qstring1[i] + congress_id + qstring2[i] + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
         context['cosponsors'] = co_list
         
     if ('relatedBills' in API_response['bill']):
         API_related= connect(API_response['bill']['relatedBills']['url'], headers).json()
         related_bills = ''
         for b in API_related['relatedBills'] : 
-            related_bills += '<li class="list-group-item"><a href="/bill-query/results/bill/' + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '">' + b['type'] + '-' + str(b['number']) + '</a></li>'
+            related_bills += list_start + bill_link + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '">' + b['type'] + '-' + str(b['number']) + '</a></li>'
         context['related_bills'] = related_bills
                   
     if ('subjects' in API_response['bill']):
@@ -427,19 +428,37 @@ def voteHtml(vote):
         q_2 = '&senator='
        
     votes_list = [vote.yeas, vote.nays, vote.pres, vote.novt]
+    list_color = {
+        'Democratic': ' list-group-item-primary',
+        'Republican': ' list-group-item-danger',
+        'Independent': ' list-group-item-secondary',
+        'Libertarian': ' list-group-item-warning',
+        'Green': ' list-group-item-success'
+        }
+    list_party = {
+        'Democratic': ' [D]',
+        'Republican': ' [R]',
+        'Independent': ' [I]',
+        'Libertarian': ' [L]',
+        'Green': ' [G]'
+        }
     html_lists = ['', '', '', '']
     counts = [{}, {}, {}, {}]
     
     for i in range(4):
         votes = votes_list[i].all()
         for membership in votes:
-            html_lists[i] += '<li class="list-group-item"><a href="/member-query/results/?' + q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + '</a></li>'
+            
+            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?' 
+            html_lists[i] += q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
             if (membership.party not in counts[i]) : counts[i][membership.party] = 0
             counts[i][membership.party] += 1
         
     context = {'title': str(vote.id),
             'year' : datetime.now().year,
             'bill' : vote.bill.__str__(),
+            'bill_title' : vote.bill.title,
+            'bill_link' : '/bill-query/results/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
             'vote_time' : str(vote.dateTime),
             'vote_title' : vote.title,
             'vote_question' : vote.question,
@@ -493,22 +512,28 @@ def billTable(bill_list):
     tableHTML += '</tbody></table>';
     return tableHTML
 
-def voteTable(vote_list):
-    tableHTML = '<table class="table table-bordered table-small table-hover"><thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th></tr></thead><tbody>'
+def voteTable(vote_list, bioguideID, congress_num):
+    _congress = Congress.objects.get(congress_num__exact = congress_num)    
+    _member = Member.objects.get(id__exact = bioguideID)
+    tableHTML = '<table class="table table-bordered table-small table-hover"><thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th><th>Vote</th></tr></thead><tbody>'
+    colors = ['table-success', 'table-danger', 'table-secondary', '']
+    vote_type = ['Yea', 'Nay', 'Present', 'No Vote']
     for vote in vote_list:
         bill = vote.bill
-        c = 'table-success'
-        tableHTML += '<tr class="' + c + '"><td>' + str(vote.dateTime) + '</td>';
+        i = 3
+        if vote.yeas.filter(congress = _congress, member = _member).exists():
+            i = 0
+        elif vote.nays.filter(congress = _congress, member = _member).exists():
+            i = 1
+        elif vote.pres.filter(congress = _congress, member = _member).exists():
+            i = 2
+        tableHTML += '<tr class="' + colors[i] + '"><td>' + str(vote.dateTime) + '</td>';
         tableHTML += '<td><a href="/bill-query/results/bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '">' + vote.question + '</a></td></tr>';
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '">' + vote.question + '</a></td>';
+        tableHTML += '<td>' + vote_type[i] + '</td></tr>';
     tableHTML += '</tbody></table>';
     return tableHTML
     
-def amendmentTable(amend_list):
-    tableHTML = '<table class="table table-bordered table-small table-hover"><tr><thead><th>Action Date</th><th>Type</th><th>Text</th><th>Source</tr></thead>'
-    tableHTML += '</table>';
-    return tableHTML
-
 def partyList(party_history):
     party_list = ''
     for history in party_history:
@@ -525,7 +550,7 @@ def leadershipList(leaderships):
         leadership_list += ' Congress : ' + leadership['type']+ '</li>'
     return leadership_list
         
-def termList(terms, bioguideID):
+def termList(terms, bioguideID, congress_num):
     term_list = ''
     for term in reversed(terms):
         num = term['congress']
@@ -535,8 +560,9 @@ def termList(terms, bioguideID):
         else :
             link = '/member-query/results/?congress_sen=' + str(num) + '&senator=' + bioguideID
             district = ''
-            
-        term_list += '<li class="list-group-item">'  + str(num) + getNumSuffix(num) + ' Congress : '
+        term_list += '<li class="list-group-item'
+        if (term['congress'] == congress_num): term_list += ' list-group-item-primary'       
+        term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
         term_list += '<a href="' + link + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
         term_list += '(' + str(term['startYear']) + '-'
         if ('endYear' in term) : term_list += str(term['endYear'])

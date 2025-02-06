@@ -102,6 +102,7 @@
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
     <Content Include="BillQuery\static\scripts\dynamicTable.js" />
     <Content Include="BillQuery\static\scripts\barPlot.js" />
+    <Content Include="BillQuery\static\scripts\sunburstPlot.js" />
     <Content Include="BillQuery\templates\BillQuery\about.html" />
     <Content Include="BillQuery\templates\BillQuery\bill.html" />
     <Content Include="BillQuery\templates\BillQuery\bills.html" />

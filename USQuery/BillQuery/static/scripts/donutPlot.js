@@ -1,19 +1,19 @@
-console.log('hi');
 let yeas = JSON.parse(document.getElementById('yeas_cnt').textContent);
 let nays = JSON.parse(document.getElementById('nays_cnt').textContent);
 let pres = JSON.parse(document.getElementById('pres_cnt').textContent);
 let novt = JSON.parse(document.getElementById('novt_cnt').textContent);
 
+const literal_colors = [
+    'rgb(36, 130, 50)',
+    'rgb(242, 43, 41)',
+    'rgb(38, 35, 34)',
+    'rgb(242, 229, 215)'
+]
 let donutData = [{
     values: [yeas, nays, pres, novt],
     labels: ['Yeas', 'Nays', 'Present', 'No Vote'],
     marker: {
-      colors: [
-        'rgb(36, 130, 50)',
-        'rgb(242, 43, 41)',
-        'rgb(38, 35, 34)',
-        'rgb(242, 229, 215)'
-      ]
+        colors: literal_colors
     },
     domain: {
         row: 0,
@@ -43,6 +43,7 @@ let donutLayout = {
             y: 0
         }
     ],
+    margin: {b: 50, t: 80 },
     grid: { rows: 1, columns: 1},
     showlegend: true,
 };

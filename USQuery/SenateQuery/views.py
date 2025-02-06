@@ -39,7 +39,6 @@ def search(request, congress_num, member_id, isSenateSearch):
     assert isinstance(request, HttpRequest)
     
     API_response = utils.updateMember(congress_num, member_id)
-    votes = []
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -56,7 +55,7 @@ def search(request, congress_num, member_id, isSenateSearch):
     paginator = Paginator(votes_in_congress, 25)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
-    vote_table = utils.voteTable(vote_list)
+    vote_table = utils.voteTable(vote_list, member_id, congress_num)
     context = {
             'title': member.full_name,
             'year':datetime.now().year,
@@ -71,7 +70,6 @@ def search(request, congress_num, member_id, isSenateSearch):
             'rep_twt'   : member.twitter,
             'rep_fac'   : member.facebook,
             'rep_ytb'   : member.youtube,
-            'rep_votes' : votes,
             'rep_phone' : member.phone,
             'rep_office': member.office,
             'congress_num'  : congress_num,
@@ -87,7 +85,7 @@ def search(request, congress_num, member_id, isSenateSearch):
         context['leadership_list'] = utils.leadershipList(API_response['member']['leadership'])
     else : context['leadership_list'] = 'None'
     if ('terms' in API_response['member']):
-        context['term_list'] = utils.termList(API_response['member']['terms'], member_id)
+        context['term_list'] = utils.termList(API_response['member']['terms'], member_id, congress_num)
             
     return render(
         request,

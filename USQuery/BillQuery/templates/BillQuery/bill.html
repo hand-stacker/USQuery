@@ -3,7 +3,7 @@
 {% load static %}
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
-        <div class="h-400 p-3 bg-body-tertiary border rounded-2">
+        <div class="h-400 p-4 bg-body-tertiary border rounded shadow-sm">
             <h2>{{bill}} : {{bill_state_type}}</h2>
             <h5>{{summary | safe}}</h5>
             <br />
@@ -12,20 +12,43 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="h-400 p-3 bg-body-tertiary border rounded-2 accordion">
-            <ul class="list-group">
-                <li class="list-group-item list-group-item-primary">Sponsor : {{sponsor | safe}}</li>
-                {{cosponsors | safe}}
-            </ul>
-            <h4>Policy Area : {{policy_area}}</h4>
-            <ul>
-                {{subjects | safe}}
-            </ul>
-            <br />
-            <h4>Related Bills</h4>
-            <ul>
-                {{related_bills | safe}}
-            </ul>
+        <div class="h-400 p-4 bg-body-tertiary border rounded position-sticky shadow-sm" style="top: 0rem;">
+            <div class="mt-2">
+                <h5>Sponsor :</h5>
+                {{sponsor | safe}}
+                <details>
+                    <summary>
+                        See Cosponsors
+                    </summary>
+                    <ul class="list-group p-0 list-group-flush">
+                        {{cosponsors | safe}}
+                    </ul>
+                </details>
+            </div>
+
+            <hr />
+            <div class="mt-2">
+                <h5>Policy Area :</h5>
+                {{policy_area}}
+                <details>
+                    <summary>
+                        See Subjects
+                    </summary>
+                    <ul class="list-group p-0 list-group-flush">
+                        {{subjects | safe}}
+                    </ul>
+                </details>
+            </div>
+
+            <hr />
+            <div class="mt-2">
+                <h5>Related Bills</h5>
+
+                <ul class="list-group p-0 list-group-flush">
+                    {{related_bills | safe}}
+                </ul>
+            </div>
+            
         </div>
     </div>
 </div>

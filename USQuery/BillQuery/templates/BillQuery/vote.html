@@ -10,37 +10,59 @@
 {{ pres_cnts | json_script:"pres_cnts" }}
 {{ novt_cnts | json_script:"novt_cnts" }}
 
-<div class="col-md-12 border rounded-2 p-3">
-    <h4><b>Time : {{vote_time}}</b></h4>
-    <h5>
-        Title : {{vote_title}}
-        <br />
-        Question :  {{vote_question}}
-        <br />
-        Result : {{vote_result}}
-    </h5>
-</div>
-<div class="col-md-12 border rounded-2 p-3">
-    <div class="row align-items-md-stretch">
-        <div class="col-md-6">
-            <div class="h-500 w-500">
-                <div id="donut" style="width:500px;height:500px;"></div>
+<div class="row mb-2">
+    <div class="col-md-12">
+        <div class="row g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative">
+            <div class="col-md-6 p-4 overflow-auto flex-column position-relative">
+                <h2 class="mb-1">{{vote_title}}</h2>
+                <h6 class="mb-2">{{vote_time}}</h6>
+                <h5>
+                    {{vote_question}}
+                    <br />
+                    Result : {{vote_result}}
+                </h5>
+                <hr />
+                <h3><a href="{{bill_link}}" class="link-dark link-offset-2">{{bill}} </a></h3>
+                <p>{{bill_title}}</p>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="h-500 w-500">
-                <div id="bar" style="width:500px;height:500px;"></div>
+            <div class="col p-2 d-flex flex-column position-static">
+                <div class="h-500 w-500">
+                    <div id="donut" style="width:500px;height:500px;"></div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="col-md-12 border rounded-2 p-3">
-    <div id="cloropleth"></div>
+<div class="row mb-2">
+    <div class="col-md-12">
+        <div class="row g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative">
+            <div class="col p-2 d-flex flex-column position-static">
+                <div class="h-500 w-500">
+                    <div id="sunburst" style="width:500px;height:500px;"></div>
+                </div>
+            </div>
+            <div class="col p-2 d-flex flex-column position-static">
+                <div class="h-500 w-500">
+                    <div id="bar" style="width:500px;height:500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="col-md-12 border rounded-2">
-    <table class="table table-bordered table-small table-hover">
+<div class="row mb-2">
+    <div class="col-md-12 g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm">
+        <div class="row p-2 d-flex flex-column position-static">
+            <div class="h-100 w-100">
+                <div id="cloropleth" style="width:100px;height:100px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="col-md-12 g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm">
+    <table class="table table-bordered table-small">
         <thead>
             <tr>
                 <th>Yeas</th>
@@ -64,5 +86,6 @@
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
 <script src="{% static 'scripts/barPlot.js' %}"></script>
 <script src="{% static 'scripts/donutPlot.js' %}"></script>
+<script src="{% static 'scripts/sunburstPlot.js' %}"></script>
 <script src="{% static 'scripts/cloroplethPlot.js' %}"></script>
 {% endblock%}
