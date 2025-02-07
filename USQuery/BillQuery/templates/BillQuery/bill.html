@@ -3,7 +3,7 @@
 {% load static %}
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
-        <div class="h-400 p-4 bg-body-tertiary border rounded shadow-sm">
+        <div class="p-4 bg-body-tertiary border rounded shadow-sm">
             <h2>{{bill}} : {{bill_state_type}}</h2>
             <h5>{{summary | safe}}</h5>
             <br />
@@ -12,7 +12,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="h-400 p-4 bg-body-tertiary border rounded position-sticky shadow-sm" style="top: 0rem;">
+        <div class="p-4 bg-body-tertiary border rounded position-sticky shadow-sm" style="top: 0rem;">
             <div class="mt-2">
                 <h5>Sponsor :</h5>
                 {{sponsor | safe}}

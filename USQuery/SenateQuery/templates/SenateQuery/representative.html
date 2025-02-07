@@ -4,60 +4,84 @@
 {% load static %}
 <div class="row align-items-md-stretch">
     <div class="col-md-6">
-        <div class="h-400 p-3 bg-body-tertiary border rounded-2">
-            <h2>{{rep_name}}</h2>
-            <table vertical-align="top" padding="15px" border-spacing="30px">
-                <tr>
-                    <td>
-                        <img src="{{rep_img}}" alt="Rep Image">
-                    </td>
-                    <td>
-                        <h5>
-                            <b>
-                                {{rep_title}}
-                                <br />
-                                {{congress_num}}th Congress
-                                <br />
-                                {{rep_state}}
-                                {% if rep_district %}
-                                District {{rep_district}}
-                                {% endif %}
-                                <br />
-                                {{rep_party}} Party
-                            </b>
-                        </h5>
-                        <h6>({{rep_start}} - {{rep_end}})</h6>
-                        <h6>
-                            {% if rep_office == None %}
-                            <b>No Longer in Office</b>
-                            {% else %}
-                            Office : {{rep_office}}
-                            <br />Phone : {{rep_phone}}
-                            <br /> <a href={{rep_url}}>Official Website</a>
-                            {% endif %}
-                        </h6>
-                    </td>
-                </tr>
-            </table>
-            <h2>Votes in this office</h2>
-            <p>{{vote_table | safe}}</p>
+        <div class="g-0 row h-400 p-4 bg-dark mb-4 border rounded shadow-sm text-white align-items-md-stretch">
+            <div class="col pt-3 position-relative">
+                <img src="{{rep_img}}" alt="Rep Image">
+            </div>
+            <div class="col pt-3 position-relative">
+                <h4>
+                    {{rep_name}} [{{rep_party_code}}]
+                    <br />
+                    {{rep_title}}, {{rep_state}}
+                    {% if rep_district %}
+                    District {{rep_district}}
+                    {% endif %}
+                    <br />
+                    {{congress_num}}{{congress_suffix}} Congress
+                </h4>
+                <h6>({{rep_start}} - {{rep_end}})</h6>
+            </div>
+            <div class="row g-0 align-items-md-stretch">
+                <div class="col pt-3 position-relative">
+                    <h6>
+                        {% if rep_office == None %}
+                        <b>No Longer in Office</b>
+                        {% else %}
+                        Office : {{rep_office}}
+                        <br />Phone : {{rep_phone}}
+                        {% endif %}
+                    </h6>
+                </div>
+                <div class="col p-3 position-relative">
+                    <h6>
+                        {% if rep_office != None %}
+                        <a href={{rep_url}}>Official Website</a>
+                        {% endif %}
+                    </h6>
+                </div>
+            </div>
+        </div>
+        <div class="g-0 row h-400 p-4 border rounded shadow-sm align-items-md-stretch">
+            <div class="col position-relative">
+                <h2 class="text-center">Term History</h2>
+                <details>
+                    <summary>Click to View Term History</summary>
+                    <ul>
+                        {{term_list | safe}}
+                    </ul>
+                </details>
+            </div>
+            <div class="col position-relative">
+                <h2 class="text-center">Party History</h2>
+                <details>
+                    <summary>Click to View Party History</summary>
+                    <ul>
+                        {{party_list | safe}}
+                    </ul>
+                </details>
+            </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <h2 class="text-center">Party History</h2>
-        <ul>
-            {{party_list | safe}}
-        </ul>
-        <h2 class="text-center">Term History</h2>
-        <ul>
-            {{term_list | safe}}
-        </ul>
-        <h2 class="text-center">Leadership Roles</h2>
-        <ul>
-            {{leadership_list | safe}}
-        </ul>
-    </div>
-    
+    <div class="col-md-6 rounded border p-4">
+        <h2>Votes in this office</h2>
+        <p>{{vote_table | safe}}</p>
+        <div class="pagination">
+            <span class="step-links">
+                {% if vote_list.has_previous %}
+                <a href="?{{urlPath}}page=1">&laquo; first</a>
+                <a href="?{{urlPath}}page={{vote_list.previous_page_number }}">previous</a>
+                {% endif %}
 
+                <span class="current">
+                    Page {{vote_list.number }} of {{vote_list.paginator.num_pages }}.
+                </span>
+
+                {% if vote_list.has_next %}
+                <a href="?{{urlPath}}page={{vote_list.next_page_number }}">next</a>
+                <a href="?{{urlPath}}page={{vote_list.paginator.num_pages }}">last &raquo;</a>
+                {% endif %}
+            </span>
+        </div>
+    </div>
 </div>
 {% endblock %}

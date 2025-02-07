@@ -8,6 +8,11 @@
             <div>{{sen_form.congress_sen}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
+            {{ sen_form.state_sen.errors }}
+            <label for="id_state_sen"> Select State:</label>
+            <div>{{sen_form.state_sen}}</div>
+        </div>
+        <div class="fieldWrapper col-md-3">
             {{ sen_form.senator.errors }}
             <label for="{{ sen_form.senator.id_for_label }}"> Select Senator:</label>
             <div>{{sen_form.senator}}</div>

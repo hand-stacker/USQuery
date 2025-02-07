@@ -52,7 +52,7 @@ def search(request, congress_num, member_id, isSenateSearch):
     in_house = (membership.chamber != 'Senate')
     votes_in_congress = Vote.objects.filter(congress = congress, house = in_house)
     
-    paginator = Paginator(votes_in_congress, 25)
+    paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
     vote_table = utils.voteTable(vote_list, member_id, congress_num)
@@ -62,6 +62,7 @@ def search(request, congress_num, member_id, isSenateSearch):
             'rep_name'  : member.full_name,
             'rep_title' : 'Senator' if isSenateSearch else "Representative",
             'rep_party' : membership.party,
+            'rep_party_code' : membership.party[0],
             'rep_district' : membership.district_num,
             'rep_state' : membership.state,
             'rep_start' : membership.start_date,
@@ -73,6 +74,7 @@ def search(request, congress_num, member_id, isSenateSearch):
             'rep_phone' : member.phone,
             'rep_office': member.office,
             'congress_num'  : congress_num,
+            'congress_suffix' : utils.getNumSuffix(congress_num),
             'rep_url' : member.official_link,
             "vote_table": vote_table,
             "vote_list" : vote_list,
@@ -108,10 +110,14 @@ def query(request):
         return search(request, rep_form.cleaned_data["congress_rep"].congress_num, rep_form.cleaned_data["representative"].id, False)
     return HttpResponseRedirect('/member-query/')
 
-def update_senators(request, congress_id):
-    senators = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate').values('id', 'full_name')
+def update_senators(request, congress_id, state = '!'):
+    senators = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate')
+    if (state != '!') : senators = senators.filter(membership__state = state)
+    senators = senators.values('id', 'full_name')
     return JsonResponse({'senators': list(senators)})
 
-def update_reps(request, congress_id):
-    reps = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives').values('id', 'full_name')
+def update_reps(request, congress_id, state = '!'):
+    reps = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives')
+    if (state != '!') : reps = reps.filter(membership__state = state)
+    reps = reps.values('id', 'full_name')
     return JsonResponse({'representatives': list(reps)})

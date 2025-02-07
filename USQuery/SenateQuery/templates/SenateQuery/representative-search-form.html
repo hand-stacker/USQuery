@@ -8,6 +8,11 @@
             <div>{{rep_form.congress_rep}}</div>
         </div>
         <div class="fieldWrapper col-md-3">
+            {{ rep_form.state_rep.errors }}
+            <label for="id_state_rep"> Select State:</label>
+            <div>{{rep_form.state_rep}}</div>
+        </div>
+        <div class="fieldWrapper col-md-3">
             {{ rep_form.representative.errors }}
             <label for="{{ rep_form.representative.id_for_label }}"> Select Representative:</label>
             <div>{{rep_form.representative}}</div>
