@@ -19,8 +19,7 @@ def home(request):
             'title':"Senate Query", 
             'content':"Make a senate Query",
             'year':datetime.now().year,
-            "sen_form": forms.SenatorForm(request.GET),
-            "rep_form" : forms.RepresentativeForm(request.GET),
+            "mem_form" : forms.MemberForm(request.GET)
         }
     )
 
@@ -35,7 +34,7 @@ def about(request):
             'year':datetime.now().year,
         }
     )
-def search(request, congress_num, member_id, isSenateSearch):
+def search(request, congress_num, member_id):
     assert isinstance(request, HttpRequest)
     
     API_response = utils.updateMember(congress_num, member_id)
@@ -60,7 +59,7 @@ def search(request, congress_num, member_id, isSenateSearch):
             'title': member.full_name,
             'year':datetime.now().year,
             'rep_name'  : member.full_name,
-            'rep_title' : 'Senator' if isSenateSearch else "Representative",
+            'rep_title' : 'Senator' if not in_house else "Representative",
             'rep_party' : membership.party,
             'rep_party_code' : membership.party[0],
             'rep_district' : membership.district_num,
@@ -102,22 +101,17 @@ def populate_congress(request, congress_id = 116):
     return HttpResponseRedirect("/")
 
 def query(request):
-    senate_form = forms.SenatorForm(request.GET)
-    rep_form = forms.RepresentativeForm(request.GET)
-    if senate_form.is_valid():
-        return search(request, senate_form.cleaned_data["congress_sen"].congress_num, senate_form.cleaned_data["senator"].id, True)
-    if rep_form.is_valid():
-        return search(request, rep_form.cleaned_data["congress_rep"].congress_num, rep_form.cleaned_data["representative"].id, False)
-    return HttpResponseRedirect('/member-query/')
+    member_form = forms.MemberForm(request.GET)
+    try:
+        congress_num = int(member_form.data["congress"])
+    except:
+        print("FATA L ER_R0R")
+        return HttpResponseRedirect('/member-query/')        
+    return search(request, congress_num, member_form.data["member"])
+    
 
-def update_senators(request, congress_id, state = '!'):
-    senators = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'Senate')
-    if (state != '!') : senators = senators.filter(membership__state = state)
-    senators = senators.values('id', 'full_name')
-    return JsonResponse({'senators': list(senators)})
-
-def update_reps(request, congress_id, state = '!'):
-    reps = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = 'House of Representatives')
-    if (state != '!') : reps = reps.filter(membership__state = state)
-    reps = reps.values('id', 'full_name')
-    return JsonResponse({'representatives': list(reps)})
+def update_members(request, congress_id, chamber, state):
+    mems = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = chamber)
+    if (state != 'All') : mems = mems.filter(membership__state = state)
+    mems = mems.values('id', 'full_name')
+    return JsonResponse({'members': list(mems)})

@@ -139,13 +139,11 @@
     <Content Include="app\templates\app\layout.html" />
     <Content Include="app\templates\app\login.html" />
     <Content Include="app\templates\app\loginpartial.html" />
-    <Content Include="SenateQuery\static\scripts\updateRepForm.js" />
-    <Content Include="SenateQuery\static\scripts\updateSenatorForm.js" />
+    <Content Include="SenateQuery\static\scripts\updateMemForm.js" />
     <Content Include="SenateQuery\templates\SenateQuery\about.html" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\layout.html" />
-    <Content Include="SenateQuery\templates\SenateQuery\representative-search-form.html" />
-    <Content Include="SenateQuery\templates\SenateQuery\senator-search-form.html" />
+    <Content Include="SenateQuery\templates\SenateQuery\member-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\vote_info.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
   </ItemGroup>

@@ -1,0 +1,28 @@
+{% load static %}
+<form name="MemberForm" id="id_MemberForm" action="results/" method="get">
+    {{ mem_form.non_field_errors }}
+    <div class="row align-items-md-stretch">
+        <div class="fieldWrapper col-md-3">
+            {{ mem_form.congress.errors }}
+            <label for="{{ mem_form.congress.id_for_label }}"> Select Congress:</label>
+            <div>{{mem_form.congress}}</div>
+        </div>
+        <div class="fieldWrapper col-md-3">
+            {{ mem_form.chamber.errors }}
+            <label for="{{mem_form.chamber.id_for_label}}"> Select Chamber:</label>
+            <div>{{mem_form.chamber}}</div>
+        </div>
+        <div class="fieldWrapper col-md-3">
+            {{ mem_form.state.errors }}
+            <label for="{{mem_form.state.id_for_label}}"> Select State:</label>
+            <div>{{mem_form.state}}</div>
+        </div>
+        <div class="fieldWrapper col-md-3">
+            {{ mem_form.member.errors }}
+            <label for="{{ mem_form.member.id_for_label }}"> Select Representative:</label>
+            <div>{{mem_form.member}}</div>
+        </div>
+    </div>
+    <input type="submit" value="Search" />
+</form>
+<script src="{% static 'scripts/updateMemForm.js' %}"></script>

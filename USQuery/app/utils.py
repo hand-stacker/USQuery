@@ -376,21 +376,20 @@ def billHtml(congress_id, bill_type, num):
         
     # Handles sponsors and cosponsors
     list_start = '<li class="list-group-item"><a href="'
-    member_link = '/member-query/results/?'
+    member_link = '/member-query/results/?congress='
     bill_link = '/bill-query/results/bill/'
-    qstring1 = ['congress_rep=', 'congress_sen=']
-    qstring2 = ['&representative=', '&senator=']
+    q_2 = '&member='
 
     sponsor = API_response['bill']['sponsors'][0]
     i = 0 if ('disrtict' in sponsor) else 1
-    context['sponsor'] = '<a href="' + member_link + qstring1[i] + congress_id + qstring2[i] + sponsor['bioguideId']+ '">' + sponsor['fullName'] + '</a>'
+    context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId']+ '">' + sponsor['fullName'] + '</a>'
 
     if ('cosponsors' in API_response['bill']):
         co_list = ''
         API_cosponsors= connect(API_response['bill']['cosponsors']['url'], headers).json()
         for c in API_cosponsors['cosponsors']:
             i = 0 if ('district' in c) else 1
-            co_list += list_start + member_link + qstring1[i] + congress_id + qstring2[i] + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
+            co_list += list_start + member_link + congress_id + q_2 + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
         context['cosponsors'] = co_list
         
     if ('relatedBills' in API_response['bill']):
@@ -420,12 +419,7 @@ def billHtml(congress_id, bill_type, num):
 
 def voteHtml(vote):
     congress_id = vote.congress.__str__()
-    if vote.inHouse():
-        q_1 = 'congress_rep='
-        q_2 = '&representative='
-    else:
-        q_1 = 'congress_sen='
-        q_2 = '&senator='
+    q_2 = '&member='
        
     votes_list = [vote.yeas, vote.nays, vote.pres, vote.novt]
     list_color = {
@@ -449,8 +443,8 @@ def voteHtml(vote):
         votes = votes_list[i].all()
         for membership in votes:
             
-            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?' 
-            html_lists[i] += q_1 + congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
+            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
+            html_lists[i] += congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
             if (membership.party not in counts[i]) : counts[i][membership.party] = 0
             counts[i][membership.party] += 1
         
@@ -554,12 +548,11 @@ def termList(terms, bioguideID, congress_num):
     term_list = ''
     for term in reversed(terms):
         num = term['congress']
+        link = '/member-query/results/?congress=' + str(num) + '&member=' + bioguideID
+        district = ''
         if ('district' in term):
-            link = '/member-query/results/?congress_rep=' + str(num) + '&representative=' + bioguideID
             district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District'
-        else :
-            link = '/member-query/results/?congress_sen=' + str(num) + '&senator=' + bioguideID
-            district = ''
+            
         term_list += '<li class="list-group-item'
         if (term['congress'] == congress_num): term_list += ' list-group-item-primary'       
         term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '

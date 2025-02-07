@@ -2,13 +2,9 @@
 
 {% block content %}
 <h2>{{content}}</h2>
-<per> Search for a member of the Senate :</per>
+<pre> Search for a MEMBER :</pre>
 <div class="query-container">
-    {% include "SenateQuery/senator-search-form.html" with congresses=congresses %}
-</div>
-<pre> Or search for a member of the House of Representatives :</pre>
-<div class="query-container">
-    {% include "SenateQuery/representative-search-form.html" with congresses=congresses %}
+    {% include "SenateQuery/member-search-form.html" with congresses=congresses %}
 </div>
 {% endblock %}
 
