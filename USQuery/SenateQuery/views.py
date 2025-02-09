@@ -18,22 +18,10 @@ def home(request):
         {   
             'title':"Senate Query", 
             'content':"Make a senate Query",
-            'year':datetime.now().year,
             "mem_form" : forms.MemberForm(request.GET)
         }
     )
 
-def about(request):
-    assert isinstance(request, HttpRequest)
-    return render(
-        request,
-        'SenateQuery/about.html',
-        {   
-            'title':"About Senate Query",
-            'content':"About Senate Query",
-            'year':datetime.now().year,
-        }
-    )
 def search(request, congress_num, member_id):
     assert isinstance(request, HttpRequest)
     
@@ -57,7 +45,6 @@ def search(request, congress_num, member_id):
     vote_table = utils.voteTable(vote_list, member_id, congress_num)
     context = {
             'title': member.full_name,
-            'year':datetime.now().year,
             'rep_name'  : member.full_name,
             'rep_title' : 'Senator' if not in_house else "Representative",
             'rep_party' : membership.party,
@@ -94,12 +81,6 @@ def search(request, congress_num, member_id):
         context
     )
     
-@staff_member_required
-def populate_congress(request, congress_id = 116):
-    assert isinstance(request, HttpRequest) 
-    utils.addMembersCongressAPILazy(congress_id)
-    return HttpResponseRedirect("/")
-
 def query(request):
     member_form = forms.MemberForm(request.GET)
     try:
@@ -115,3 +96,9 @@ def update_members(request, congress_id, chamber, state):
     if (state != 'All') : mems = mems.filter(membership__state = state)
     mems = mems.values('id', 'full_name')
     return JsonResponse({'members': list(mems)})
+
+@staff_member_required
+def populate_congress(request, congress_id = 116):
+    assert isinstance(request, HttpRequest) 
+    utils.addMembersCongressAPILazy(congress_id)
+    return HttpResponseRedirect("/")

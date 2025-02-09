@@ -362,7 +362,6 @@ def billHtml(congress_id, bill_type, num):
     API_response = connect(apiURL, headers).json()
     
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
-            'year' : datetime.now().year,
             'bill' : bill_type.upper() + "-" + num,
             }
 
@@ -449,7 +448,6 @@ def voteHtml(vote):
             counts[i][membership.party] += 1
         
     context = {'title': str(vote.id),
-            'year' : datetime.now().year,
             'bill' : vote.bill.__str__(),
             'bill_title' : vote.bill.title,
             'bill_link' : '/bill-query/results/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),

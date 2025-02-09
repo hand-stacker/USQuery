@@ -19,21 +19,8 @@ def home(request):
         {   
             'title':"Bill Query", 
             'content':"Make a bill Query",
-            'year':datetime.now().year,
             "cong_form": forms.CongressForm,
             "date_form": forms.DateForm(request.GET),
-        }
-    )
-
-def about(request):
-    assert isinstance(request, HttpRequest)
-    return render(
-        request,
-        'BillQuery/about.html',
-        {   
-            'title':"About Bill Query",
-            'content':"About Bill Query",
-            'year':datetime.now().year,
         }
     )
 
@@ -68,7 +55,6 @@ def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
             "bill_list" : bill_list,
             "urlPath" : urlPath,
             'title':"Results",
-            'year':datetime.now().year,
         }
     )
 
@@ -80,13 +66,6 @@ def bill(request, congress_id, type, num):
         'BillQuery/bill.html',
         context
     )
-
-@staff_member_required
-def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0):
-    assert isinstance(request, HttpRequest)
-    utils.addBills(congress, _type, limit, offset)
-    return HttpResponseRedirect("/")
-
 def vote(request, vote_id):
     try:
         vote = Vote.objects.get(id = vote_id)
@@ -98,3 +77,9 @@ def vote(request, vote_id):
         'BillQuery/vote.html',
         context
     )
+
+@staff_member_required
+def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0):
+    assert isinstance(request, HttpRequest)
+    utils.addBills(congress, _type, limit, offset)
+    return HttpResponseRedirect("/")

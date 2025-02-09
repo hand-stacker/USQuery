@@ -1,7 +1,0 @@
-{% extends "BillQuery/layout.html" %}
-{% block content %}
-{% load static %}
-{{ bill_data|json_script:"bill_data" }}
-<script src="{% static 'scripts/dynamicTable.js' %}"></script>
-
-{% endblock %}

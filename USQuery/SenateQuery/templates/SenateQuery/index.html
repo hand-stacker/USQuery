@@ -1,8 +1,5 @@
-{% extends "SenateQuery/layout.html" %}
-
+{% extends "app/layout.html" %}
 {% block content %}
-<h2>{{content}}</h2>
-<pre> Search for a MEMBER :</pre>
 <div class="query-container">
     {% include "SenateQuery/member-search-form.html" with congresses=congresses %}
 </div>

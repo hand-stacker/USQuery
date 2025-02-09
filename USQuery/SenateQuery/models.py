@@ -20,6 +20,8 @@ class Member(models.Model):
     death_year = models.CharField(max_length=4, null = True, blank = True)
     def __str__(self):
         return self.full_name
+    class Meta():
+        ordering = ["full_name"]
       
 class Congress(models.Model):
     congress_num = models.IntegerField(primary_key=True)
@@ -28,6 +30,8 @@ class Congress(models.Model):
     end_year = models.IntegerField(null=True)
     def __str__(self):
         return str(self.congress_num)
+    class Meta():
+        ordering = ["-congress_num"]
     
 class Membership(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -45,5 +49,7 @@ class Membership(models.Model):
             return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator: " + self.member.__str__()
         else:
             return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative: " + self.member.__str__()
+    class Meta():
+        ordering = ["state", "member__full_name"]
     
 

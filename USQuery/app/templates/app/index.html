@@ -1,25 +1,25 @@
 {% extends "app/layout.html" %}
 
 {% block content %}
-<div class="container my-5">
-    <div class="position-relative p-5 text-center text-muted bg-body border border-dashed rounded-5">
+<div class="row md-4">
+    <div class="p-4 border rounded shadow-sm position-relative text-center text-muted mb-4">
         <h1 class="text-body-emphasis">Representative Search</h1>
         <p class="col-lg-6 mx-auto mb-4">
-            Get comprehensive data on a senator or representative by congress and state. Information includes contacts, social media, held office history, vote history, committee history, and more.
+            Get information on what your representative has done in a specific Congress Session. Information includes contacts, term history, vote history, committee positions, and more.
         </p>
-        <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Let's Search!</a>
+        <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
     </div>
 </div>
 
 <div class="b-example-divider"></div>
 
-<div class="container my-5">
-    <div class="position-relative p-5 text-center text-muted bg-body border border-dashed rounded-5">
+<div class="row md-4">
+    <div class="p-4 border rounded shadow-sm position-relative text-center text-muted mb-4">
         <h1 class="text-body-emphasis">Bill Search</h1>
         <p class="col-lg-6 mx-auto mb-4">
-            This is a placeholder for further functionality of search for bills.
+            Get information on bills introduced to Congress. Information includes a history of actions Congress has made on the bill, list of sponsors and cosponsors, topics the bill is related to, and more.
         </p>
-        <a href="{% url 'billQueryHome' %}" class="btn btn-primary px-5 mb-5">Let's Search!</a>
+        <a href="{% url 'billQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
     </div>
 </div>
 {% endblock %}

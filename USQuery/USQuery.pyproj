@@ -100,15 +100,11 @@
   <ItemGroup>
     <Content Include="BillQuery\static\scripts\cloroplethPlot.js" />
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
-    <Content Include="BillQuery\static\scripts\dynamicTable.js" />
     <Content Include="BillQuery\static\scripts\barPlot.js" />
     <Content Include="BillQuery\static\scripts\sunburstPlot.js" />
-    <Content Include="BillQuery\templates\BillQuery\about.html" />
     <Content Include="BillQuery\templates\BillQuery\bill.html" />
-    <Content Include="BillQuery\templates\BillQuery\bills.html" />
     <Content Include="BillQuery\templates\BillQuery\bill_list.html" />
     <Content Include="BillQuery\templates\BillQuery\index.html" />
-    <Content Include="BillQuery\templates\BillQuery\layout.html" />
     <Content Include="BillQuery\templates\BillQuery\vote.html" />
     <Content Include="requirements.txt" />
     <Content Include="app\static\app\content\bootstrap.css" />
@@ -140,11 +136,8 @@
     <Content Include="app\templates\app\login.html" />
     <Content Include="app\templates\app\loginpartial.html" />
     <Content Include="SenateQuery\static\scripts\updateMemForm.js" />
-    <Content Include="SenateQuery\templates\SenateQuery\about.html" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
-    <Content Include="SenateQuery\templates\SenateQuery\layout.html" />
     <Content Include="SenateQuery\templates\SenateQuery\member-search-form.html" />
-    <Content Include="SenateQuery\templates\SenateQuery\vote_info.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
   </ItemGroup>
   <ItemGroup>
