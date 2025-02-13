@@ -35,6 +35,9 @@
   <ItemGroup>
     <Compile Include="app\forms.py" />
     <Compile Include="app\models.py" />
+    <Compile Include="app\siteutils.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="app\tests.py" />
     <Compile Include="app\utils.py">
       <SubType>Code</SubType>
@@ -85,6 +88,7 @@
     <Folder Include="BillQuery\" />
     <Folder Include="BillQuery\migrations\" />
     <Folder Include="BillQuery\static\" />
+    <Folder Include="BillQuery\static\geojsons\" />
     <Folder Include="BillQuery\static\scripts\" />
     <Folder Include="BillQuery\templates\" />
     <Folder Include="BillQuery\templates\BillQuery\" />
@@ -98,7 +102,11 @@
     <Folder Include="USQuery\" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="BillQuery\static\geojsons\cb_us_state_5m.geojson" />
+    <Content Include="BillQuery\static\geojsons\cb_us_cd116_5m.geojson" />
+    <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.geojson" />
     <Content Include="BillQuery\static\scripts\cloroplethPlot.js" />
+    <Content Include="BillQuery\static\scripts\cloroplethTilePlot.js" />
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
     <Content Include="BillQuery\static\scripts\barPlot.js" />
     <Content Include="BillQuery\static\scripts\sunburstPlot.js" />

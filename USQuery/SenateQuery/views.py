@@ -16,8 +16,7 @@ def home(request):
         request,
         'SenateQuery/index.html',
         {   
-            'title':"Senate Query", 
-            'content':"Make a senate Query",
+            'title':"Senate Query",
             "mem_form" : forms.MemberForm(request.GET)
         }
     )
@@ -35,9 +34,7 @@ def search(request, congress_num, member_id):
     congress = Congress.objects.get(congress_num = congress_num)
     member = congress.members.get(id = member_id)
     membership = Membership.objects.get(congress = congress, member = member)
-    
-    in_house = (membership.chamber != 'Senate')
-    votes_in_congress = Vote.objects.filter(congress = congress, house = in_house)
+    votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house)
     
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
@@ -46,11 +43,11 @@ def search(request, congress_num, member_id):
     context = {
             'title': member.full_name,
             'rep_name'  : member.full_name,
-            'rep_title' : 'Senator' if not in_house else "Representative",
+            'rep_title' : 'Representative' if membership.house else "Senator",
             'rep_party' : membership.party,
             'rep_party_code' : membership.party[0],
             'rep_district' : membership.district_num,
-            'rep_state' : membership.state,
+            'rep_state' : utils.state_dict[membership.state],
             'rep_start' : membership.start_date,
             'rep_end'   : membership.end_date,
             'rep_img'   : member.image_link,
@@ -92,7 +89,8 @@ def query(request):
     
 
 def update_members(request, congress_id, chamber, state):
-    mems = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__chamber = chamber)
+    is_house = chamber != 'Senate'
+    mems = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__house = is_house)
     if (state != 'All') : mems = mems.filter(membership__state = state)
     mems = mems.values('id', 'full_name')
     return JsonResponse({'members': list(mems)})

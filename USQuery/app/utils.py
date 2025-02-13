@@ -55,6 +55,12 @@ state_dict = {'AL' : 'Alabama',
               'WV' : 'West Virginia',
               'WI' : 'Wisconsin',
               'WY' : 'Wyoming',
+              'DC' : 'District of Columbia',
+              'AS' : 'American Samoa',
+              'GU' : 'Guam',
+              'MP' : 'Northern Mariana Islands',
+              'PR' : 'Puerto Rico',
+              'VI' : 'Virgin Islands'
               }
 
 reverse_state_dict = {'Alabama' : 'AL',
@@ -107,17 +113,51 @@ reverse_state_dict = {'Alabama' : 'AL',
               'West Virginia' : 'WV',
               'Wisconsin' : 'WI',
               'Wyoming' : 'WY',
+              'District of Columbia' : 'DC',
+              'American Samoa' : 'AS',
+              'Guam' : 'GU',
+              'Northern Mariana Islands' : 'MP',
+              'Puerto Rico' : 'PR',
+              'Virgin Islands' : 'VI'
               }
 
+state_fips = {
+    'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06',
+    'CO': '08', 'CT': '09', 'DE': '10', 'FL': '12', 'GA': '13',
+    'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 'IA': '19',
+    'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 'MD': '24',
+    'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 'MO': '29',
+    'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 'NJ': '34',
+    'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 'OH': '39',
+    'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 'SC': '45',
+    'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 'VT': '50',
+    'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 'WY': '56',
+    'DC': '11', 'AS': '60', 'GU': '66', 'MP': '69', 'PR': '72', 'VI': '78'
+}
+
+fips_to_count = {
+    '01' : 0, '02' : 1, '04' : 2, '05' : 3, '06' : 4,
+    '08' : 5, '09' : 6, '10' : 7, '12' : 8, '13'  :9,
+    '15' : 10, '16' : 11, '17'  :12, '18' : 13, '19' : 14,
+    '20' : 15, '21' : 16, '22' : 17, '23' : 18, '24' : 19,
+    '25' : 20, '26' : 21, '27' : 22, '28' : 23, '29' : 24,
+    '30' : 25, '31' : 26, '32' : 27, '33' : 28, '34' : 29,
+    '35' : 30, '36' : 31, '37' : 32, '38' : 33, '39' : 34,
+    '40' : 35, '41' : 36, '42' : 37, '44' : 38, '45' : 39,
+    '46' : 40, '47' : 41, '48' : 42, '49' : 43, '50' : 44,
+    '51' : 45, '53' : 46, '54' : 47, '55' : 48, '56' : 49,
+    '11' : None, '60' : None, '66' : None, '69' : None, '72' : None, '78' : None
+}
+
 types = {
-            "s" : 0,
-            "sres" : 1,
-            "sjres" : 2,
-            "sconres" : 3,
-            "hr" : 4,
-            "hres" : 5,
-            "hjres" : 6,
-            "hconres" : 7}
+            's' : 0,
+            'sres' : 1,
+            'sjres' : 2,
+            'sconres' : 3,
+            'hr' : 4,
+            'hres' : 5,
+            'hjres' : 6,
+            'hconres' : 7}
 
 ## connects to an API with given headers
 def connect(fullpath, headers):
@@ -129,12 +169,12 @@ def connect(fullpath, headers):
     except Exception as err:
         print(f'MISC ERROR : {err}')
     except TimeoutError:
-        print("TIMEOUT ERROR")
+        print('TIMEOUT ERROR')
     else:
         print('Connected to ' + fullpath)
         return response    
 
-## mega function to add members for a given congress
+## mega function to add members for a given congress, to fully load a member we need to make an updateMember call, which costs one api call...
 def addMembersCongressAPILazy(congress_num):
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
     headers['curerentMember'] = 'false'
@@ -143,25 +183,25 @@ def addMembersCongressAPILazy(congress_num):
     
     API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), headers).json()
     
-    start_rep = API_cong['congress']['sessions'][0]['startDate']
-    end_rep = API_cong['congress']['sessions'][2]['endDate']
-    start_sen = API_cong['congress']['sessions'][1]['startDate']
-    end_sen = API_cong['congress']['sessions'][3]['endDate']
+    start_date = API_cong['congress']['sessions'][0]['startDate']
+    end_date = API_cong['congress']['sessions'][2]['endDate']
     
     API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
-    congress = Congress.objects.get_or_create(congress_num = congress_num,
-                                              start_year = int(API_cong['congress']['startYear']),
-                                              end_year = int(API_cong['congress']['endYear']))[0]
+    congress = Congress.objects.get_or_create(
+        congress_num = congress_num,
+        start_year = int(API_cong['congress']['startYear']),
+        end_year = int(API_cong['congress']['endYear'])
+        )[0]
     
     while (API_response != None):
         for member in API_response['members']:
             _id=member['bioguideId']
-            if (member['district'] == None):
-                district = None
-                role = "Senate"
-            else :
+            district = None
+            in_house = False  
+            if (member['district'] != None):
                 district = member['district']
-                role = "House of Representatives"
+                in_house = True
+                
             _set = congress.members.filter(id = _id)
             if _set.exists() and Membership.objects.filter(congress = congress, member = _set[0]).exists():
                 continue    
@@ -172,22 +212,25 @@ def addMembersCongressAPILazy(congress_num):
             if (_set_member.exists()):
                 _member = _set_member[0]
             else :
-                _member = Member.objects.get_or_create(id = _id, 
-                full_name = full_name,
-                first_name = name[0],
-                last_name = name[1],
-                image_link = "empty",
-                api_url = member['url'])[0] 
+                _member = Member.objects.get_or_create(
+                    id = _id, 
+                    full_name = full_name,
+                    first_name = name[0],
+                    last_name = name[1],
+                    image_link = "empty"
+                    )[0] 
                     
+            state_code = reverse_state_dict[member['state']]
             Membership.objects.get_or_create(
                         congress = congress,
                         member = _member,
                         district_num = district,
-                        chamber = role,
-                        state = member['state'],
+                        house = in_house,
+                        state = state_code,
+                        geoid = state_fips[state_code] + ('' if not in_house else intToFIPS(district)),
                         party = member['partyName'],
-                        start_date = start_sen if (role == "Senate") else start_rep,
-                        end_date = end_sen if (role == "Senate") else end_rep,
+                        start_date = start_date,
+                        end_date = end_date,
                         )
             print("added member " + _id)
         if 'next' in API_response['pagination']:
@@ -202,14 +245,24 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
     _congress = Congress.objects.get(congress_num__exact = congress_num)
     ## what do when type is h range...
     headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : str(limit), 'offset' : str(offset)}
-    API_response = connect(settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "?", headers).json()
+    API_response = connect(settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type, headers).json()
     for b in API_response['bills']:
         _id = base_id + int(b['number'])
         API_response_bill = connect(b['url'], headers).json()
+        _member = Member.objects.get(id = API_response_bill['bill']['sponsors'][0]['bioguideId'])
+        _membership = Membership.objects.get(congress = _congress, member = _member)
         
-        _bill = Bill.objects.get_or_create(id = _id, title = b['title'], origin_date = API_response_bill['bill']['introducedDate'], latest_action = API_response_bill['bill']['latestAction']['actionDate'])[0]
+        _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
+        _bill = Bill.objects.get_or_create(
+            id = _id,
+            title = b['title'],
+            sponsor = _membership,
+            status = _status,
+            origin_date = API_response_bill['bill']['introducedDate'],
+            latest_action = API_response_bill['bill']['latestAction']['actionDate']
+            )[0]
   
-        API_response_actions = connect(API_response_bill['bill']['actions']['url'], {'api_key' : settings.CONGRESS_KEY}).json()
+        API_response_actions = connect(API_response_bill['bill']['actions']['url'], {'api_key' : settings.CONGRESS_KEY, 'limit' : '250'}).json()
         
         while API_response_actions != None:
             for a in API_response_actions['actions']:
@@ -221,15 +274,17 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
                     in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                     vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
                     if (Vote.objects.filter(id=vote_id).first() != None): break
-                    if (a['recordedVotes'][0]['chamber'] == 'House'):
-                        _vote = Vote.objects.get_or_create(id = vote_id,
-                                                            congress = _congress,
-                                                            bill = _bill,
-                                                            dateTime = a['recordedVotes'][0]['date'],
-                                                            question = vote_dict['rollcall-vote']['vote-metadata']['vote-question'],
-                                                            title = vote_dict['rollcall-vote']['vote-metadata']['vote-desc'],
-                                                            result = vote_dict['rollcall-vote']['vote-metadata']['vote-result']
-                                                            )[0]
+                    if (in_house == 1):
+                        _vote = Vote.objects.get_or_create(
+                            id = vote_id,
+                            congress = _congress,
+                            house = True,
+                            bill = _bill,
+                            dateTime = a['recordedVotes'][0]['date'],
+                            question = vote_dict['rollcall-vote']['vote-metadata']['vote-question'],
+                            title = vote_dict['rollcall-vote']['vote-metadata']['vote-desc'],
+                            result = vote_dict['rollcall-vote']['vote-metadata']['vote-result']
+                            )[0]
                         _vote.save()
                         for m in vote_dict['rollcall-vote']['vote-data']['recorded-vote']:
                             member = Membership.objects.filter(member__id= m['legislator']['@name-id'], congress = _congress)[0]
@@ -242,21 +297,24 @@ def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
                             else :
                                 _vote.pres.add(member)
                     else :
-                        _vote = Vote.objects.get_or_create(id = vote_id,
-                                                            congress = _congress,
-                                                            house = (in_house == 1),
-                                                            bill = _bill,
-                                                            dateTime = a['recordedVotes'][0]['date'],
-                                                            question = vote_dict['roll_call_vote']['question'],
-                                                            title = vote_dict['roll_call_vote']['vote_title'],
-                                                            result = vote_dict['roll_call_vote']['vote_result']
-                                                            )[0]
+                        _vote = Vote.objects.get_or_create(
+                            id = vote_id,
+                            congress = _congress,
+                            house = False,
+                            bill = _bill,
+                            dateTime = a['recordedVotes'][0]['date'],
+                            question = vote_dict['roll_call_vote']['question'],
+                            title = vote_dict['roll_call_vote']['vote_title'],
+                            result = vote_dict['roll_call_vote']['vote_result']
+                            )[0]
                         _vote.save()
                         for m in vote_dict['roll_call_vote']['members']['member']:
-                            member = Membership.objects.filter(congress = _congress,
-                                                               member__last_name__iexact = m['last_name'],
-                                                               chamber = 'Senate',
-                                                               state = state_dict[m['state']])[0]
+                            member = Membership.objects.filter(
+                                congress = _congress,
+                                member__last_name__iexact = m['last_name'],
+                                house = False,
+                                state = m['state']
+                                )[0]
                             if m['vote_cast'] == 'Yea' :
                                 _vote.yeas.add(member)
                             elif m['vote_cast'] == 'Nay':
@@ -302,7 +360,7 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
 def updateMember(congress_num, member_id): 
     _congress = Congress.objects.get(congress_num__exact = congress_num)    
     _member = Member.objects.get(id__exact = member_id)
-    API_response_member = connect(_member.api_url, {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
+    API_response_member = connect(_member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
     if _member.image_link != "empty": return API_response_member
     
     office_addr = None
@@ -353,6 +411,9 @@ def convertBillData(data):
         ret[str(i)] = data[i];
     return ret
    
+def intToFIPS(num):
+    if num < 10 : return '0' + str(num)
+    return str(num)
 #### 
 ##  return a context for http request to fill html page with content
 ####
@@ -366,6 +427,8 @@ def billHtml(congress_id, bill_type, num):
             }
 
     API_actions = connect(API_response['bill']['actions']['url'], headers).json()
+    
+    ## can use status of bill object...
     if ('actionCode' in API_actions['actions'][0]) and (API_actions['actions'][0]['actionCode'] in ['E40000', '36000']) :
         context['bill_state_type'] = 'Became Public Law'
     else :
@@ -380,14 +443,12 @@ def billHtml(congress_id, bill_type, num):
     q_2 = '&member='
 
     sponsor = API_response['bill']['sponsors'][0]
-    i = 0 if ('disrtict' in sponsor) else 1
     context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId']+ '">' + sponsor['fullName'] + '</a>'
 
     if ('cosponsors' in API_response['bill']):
         co_list = ''
         API_cosponsors= connect(API_response['bill']['cosponsors']['url'], headers).json()
         for c in API_cosponsors['cosponsors']:
-            i = 0 if ('district' in c) else 1
             co_list += list_start + member_link + congress_id + q_2 + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
         context['cosponsors'] = co_list
         
@@ -420,7 +481,7 @@ def voteHtml(vote):
     congress_id = vote.congress.__str__()
     q_2 = '&member='
        
-    votes_list = [vote.yeas, vote.nays, vote.pres, vote.novt]
+    votes_list = [vote.nays, vote.yeas, vote.pres, vote.novt]
     list_color = {
         'Democratic': ' list-group-item-primary',
         'Republican': ' list-group-item-danger',
@@ -436,16 +497,31 @@ def voteHtml(vote):
         'Green': ' [G]'
         }
     html_lists = ['', '', '', '']
-    counts = [{}, {}, {}, {}]
-    
+    partyCountsbyVote = [{}, {}, {}, {}]
+    isHouseVote = vote.house
+    j = 0
+    mult = 435 if isHouseVote else 50
+    geojson_source = 'geojsons/cb_us_cd' + str(congress_id) + '_5m.geojson' if isHouseVote else 'geojsons/cb_us_state_5m.geojson'
+    geoids = [None] * mult
+    values = [0] * mult
+    #          0 : Nay, 1 : Yea, 2 : Present, 3 : No Vote
     for i in range(4):
         votes = votes_list[i].all()
         for membership in votes:
-            
             html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
             html_lists[i] += congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
-            if (membership.party not in counts[i]) : counts[i][membership.party] = 0
-            counts[i][membership.party] += 1
+            if (membership.party not in partyCountsbyVote[i]) : partyCountsbyVote[i][membership.party] = 0
+            partyCountsbyVote[i][membership.party] += 1
+            if isHouseVote:
+                geoids[j] = membership.geoid
+                values[j] = i
+                j+=1
+            else:
+                indx = fips_to_count[membership.geoid]
+                if indx == None : continue
+                geoids[indx] = membership.geoid
+                if i == 1: values[indx] += 1
+                
         
     context = {'title': str(vote.id),
             'bill' : vote.bill.__str__(),
@@ -456,19 +532,21 @@ def voteHtml(vote):
             'vote_question' : vote.question,
             'vote_result' : vote.result,
             'congress' : congress_id,
-            'yeas_list' : html_lists[0],
-            'nays_list' : html_lists[1],
+            'yeas_list' : html_lists[1],
+            'nays_list' : html_lists[0],
             'pres_list' : html_lists[2],
             'novt_list' : html_lists[3],
-            'yeas_cnts' : counts[0],
-            'nays_cnts' : counts[1],
-            'pres_cnts' : counts[2],
-            'novt_cnts' : counts[3],
-            'yeas_cnt' : votes_list[0].count(),
-            'nays_cnt' : votes_list[1].count(),
+            'yeas_cnts' : partyCountsbyVote[1],
+            'nays_cnts' : partyCountsbyVote[0],
+            'pres_cnts' : partyCountsbyVote[2],
+            'novt_cnts' : partyCountsbyVote[3],
+            'yeas_cnt' : votes_list[1].count(),
+            'nays_cnt' : votes_list[0].count(),
             'pres_cnt' : votes_list[2].count(),
             'novt_cnt' : votes_list[3].count(),
-            
+            'geojson_source' : geojson_source,
+            'geoids' : geoids,
+            'values' : values
             }
     return context
 

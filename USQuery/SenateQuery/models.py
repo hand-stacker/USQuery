@@ -9,7 +9,6 @@ class Member(models.Model):
     first_name = models.CharField(max_length=20)
     last_name = models.CharField(max_length=20)
     image_link = models.CharField(max_length=150, null = True, blank = True)
-    api_url = models.CharField(max_length=200, null = True, blank = True)
     official_link = models.CharField(max_length=200, null = True, blank = True)
     twitter = models.CharField(max_length=40, null = True, blank = True)
     facebook = models.CharField(max_length=40, null = True, blank = True)
@@ -20,6 +19,8 @@ class Member(models.Model):
     death_year = models.CharField(max_length=4, null = True, blank = True)
     def __str__(self):
         return self.full_name
+    def getAPIURL(self):
+        return "https://api.congress.gov/v3/member/" + self.id
     class Meta():
         ordering = ["full_name"]
       
@@ -38,17 +39,20 @@ class Membership(models.Model):
     congress = models.ForeignKey(Congress, on_delete=models.CASCADE)
     member = models.ForeignKey(Member, on_delete=models.CASCADE)
     district_num = models.IntegerField(null = True, blank = True)
-    chamber = models.CharField(max_length=25)
-    state = models.CharField(max_length=14)
+    house = models.BooleanField(default = True)
+    state = models.CharField(max_length=2)
+    geoid = models.CharField(max_length=4)
     party = models.CharField(max_length=30)
-    leadership = models.CharField(max_length=50, null = True, blank = True)
     start_date = models.CharField(max_length=10)
     end_date = models.CharField(max_length=10, null = True)
+    def getChamber(self):
+        if self.house: return "House of Representatives"
+        return "Senate"
     def __str__(self):
-        if self.chamber == "Senate":
-            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator: " + self.member.__str__()
-        else:
+        if self.house:
             return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative: " + self.member.__str__()
+        else:
+            return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Senator: " + self.member.__str__()
     class Meta():
         ordering = ["state", "member__full_name"]
     

@@ -31,6 +31,8 @@ urlpatterns = [
          name='login'),
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
     path('admin/', admin.site.urls),
+    path('updateJSON/<int:congress_id>/', views.updateJSON, name='updateJSON'),
+    path('updateSTATES/', views.updateSTATES, name='updateSTATES'),
     path('admin/doc/', include('django.contrib.admindocs.urls')),
     path('member-query/', SQviews.home, name='senateQueryHome'),
     path('member-query/search/', SQviews.search, name='senateQuerySearch'),

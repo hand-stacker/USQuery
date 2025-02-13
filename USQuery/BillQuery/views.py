@@ -7,8 +7,6 @@ from app import utils, forms
 from BillQuery.models import Vote, Choice, ChoiceVote
 from USQuery import settings
 from django.http import JsonResponse
-from json import dumps
-# Create your views here.
 
 def home(request):
     """Renders the home page."""
@@ -66,6 +64,7 @@ def bill(request, congress_id, type, num):
         'BillQuery/bill.html',
         context
     )
+
 def vote(request, vote_id):
     try:
         vote = Vote.objects.get(id = vote_id)

@@ -1,10 +1,9 @@
-"""
-Definition of views.
-"""
-
 from datetime import datetime
+from urllib import request
+from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponseRedirect
+from app import siteutils
 
 def home(request):
     """Renders the home page."""
@@ -39,3 +38,14 @@ def about(request):
         }
     )
 
+@staff_member_required
+def updateJSON(request, congress_id) : 
+    assert isinstance(request, HttpRequest)
+    siteutils.modifyCountyGeoJSON(congress_id)
+    return HttpResponseRedirect("/")
+
+@staff_member_required
+def updateSTATES(request) : 
+    assert isinstance(request, HttpRequest)
+    siteutils.modifyStateGeoJSON()
+    return HttpResponseRedirect("/")

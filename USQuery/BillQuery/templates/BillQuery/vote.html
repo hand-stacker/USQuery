@@ -9,6 +9,8 @@
 {{ nays_cnts | json_script:"nays_cnts" }}
 {{ pres_cnts | json_script:"pres_cnts" }}
 {{ novt_cnts | json_script:"novt_cnts" }}
+{{ geoids | json_script:"geoids" }}
+{{ values | json_script:"values" }}
 
 <div class="row mb-2">
     <div class="col-md-12">
@@ -54,8 +56,8 @@
 <div class="row mb-2">
     <div class="col-md-12 g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm">
         <div class="row p-2 d-flex flex-column position-static">
-            <div class="h-100 w-100">
-                <div id="cloropleth" style="width:100px;height:100px;"></div>
+            <div class="h-1000 w-800">
+                <div id="cloro" style="width:1000px;height:800px;"></div>
             </div>
         </div>
     </div>
@@ -84,6 +86,7 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="{% static geojson_source %}"></script>
 <script src="{% static 'scripts/barPlot.js' %}"></script>
 <script src="{% static 'scripts/donutPlot.js' %}"></script>
 <script src="{% static 'scripts/sunburstPlot.js' %}"></script>

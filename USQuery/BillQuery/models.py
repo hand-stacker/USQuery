@@ -6,9 +6,15 @@ from SenateQuery import models as SQmodels
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):
     id = models.IntegerField(primary_key=True)
+    sponsor = models.ForeignKey(SQmodels.Membership, on_delete=models.CASCADE)
+    status = models.BooleanField(default=False)
     title = models.CharField(max_length=1000)
     origin_date = models.DateField()
     latest_action  = models.DateField()
+    def getStatus(self):
+        if self.status : return "Became Public Law"
+        return "Still Just A Bill"
+    
     def getOrigin(self):
         n = (self.id // 10000) % 10
         return "Senate" if n <4 else "House" 
@@ -68,11 +74,11 @@ class Bill(models.Model):
 class Vote(models.Model):
     id = models.IntegerField(primary_key=True)
     congress = models.ForeignKey(SQmodels.Congress, on_delete=models.CASCADE)
-    house = models.BooleanField(null = True, blank = True)
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, null = True)
+    house = models.BooleanField(default=True)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, blank = True)
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=100)
-    title = models.CharField(max_length=500, blank=True, null=True)
+    title = models.CharField(max_length=500, blank=True)
     result = models.CharField(max_length=42)
     
     yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas', blank = True)
@@ -89,10 +95,10 @@ class Vote(models.Model):
 class ChoiceVote(models.Model) :
     id = models.IntegerField(primary_key=True)
     congress = models.ForeignKey(SQmodels.Congress, on_delete=models.CASCADE)
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, null = True)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, blank = True)
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=40)
-    title = models.CharField(max_length=500, blank=True, null=True)
+    title = models.CharField(max_length=500, blank=True)
     result = models.CharField(max_length=40)
     def __str__(self):
         return "congress " +  self.congress.__str__() + " : " + self.bill.getStr() + " " + self.question
