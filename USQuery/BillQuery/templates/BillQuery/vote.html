@@ -11,6 +11,7 @@
 {{ novt_cnts | json_script:"novt_cnts" }}
 {{ geoids | json_script:"geoids" }}
 {{ values | json_script:"values" }}
+{{ cloro_text | json_script:"cloro_text" }}
 
 <div class="row mb-2">
     <div class="col-md-12">
@@ -24,7 +25,7 @@
                     Result : {{vote_result}}
                 </h5>
                 <hr />
-                <h3><a href="{{bill_link}}" class="link-dark link-offset-2">{{bill}} </a></h3>
+                <h3><a href="{{bill_link}}" class="link-offset-2">{{bill}} </a></h3>
                 <p>{{bill_title}}</p>
             </div>
             <div class="col p-2 d-flex flex-column position-static">
@@ -54,10 +55,22 @@
 </div>
 
 <div class="row mb-2">
-    <div class="col-md-12 g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm">
-        <div class="row p-2 d-flex flex-column position-static">
-            <div class="h-1000 w-800">
-                <div id="cloro" style="width:1000px;height:800px;"></div>
+    <div class="col-md-12">
+        <div class="g-0 row border rounded overflow-auto flex-md-row mb-4 shadow-sm p-4 position-relative" style="height:800px;">
+            <div class="col d-flex flex-column position-static h-750 w-1000">
+                <div id="cloro" style="width:1000px;height:750px;"></div>
+            </div>
+            <div class="col d-flex flex-column position-static" style="width:200px">
+                <form name="CloroChoice" id="id_CloroChoice">
+                    <div class="d-flex flex-column flex-md-row p-4">
+                        {{ cloro_form.non_field_errors }}
+                        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow" style="width:300px;height:120px">
+                            {{ cloro_form.cloro_choice.errors }}
+                            <label for="{{ cloro_form.cloro_choice.id_for_label }}"> Select Vote Type:</label>
+                            <div>{{cloro_form.cloro_choice}}</div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -86,9 +99,10 @@
 </div>
 
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
-<script type="text/javascript" src="{% static geojson_source %}"></script>
 <script src="{% static 'scripts/barPlot.js' %}"></script>
 <script src="{% static 'scripts/donutPlot.js' %}"></script>
 <script src="{% static 'scripts/sunburstPlot.js' %}"></script>
+<script type="text/javascript" src="{% static geojson_source %}"></script>
+<script type="text/javascript" src="{% static geojson_load %}"></script>
 <script src="{% static 'scripts/cloroplethPlot.js' %}"></script>
 {% endblock%}

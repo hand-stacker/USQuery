@@ -4,14 +4,14 @@ let pres = JSON.parse(document.getElementById('pres_cnt').textContent);
 let novt = JSON.parse(document.getElementById('novt_cnt').textContent);
 
 const literal_colors = [
-    'rgb(36, 130, 50)',
     'rgb(242, 43, 41)',
+    'rgb(36, 130, 50)',
     'rgb(38, 35, 34)',
-    'rgb(242, 229, 215)'
+    'rgb(242, 175, 41)'
 ]
 let donutData = [{
-    values: [yeas, nays, pres, novt],
-    labels: ['Yeas', 'Nays', 'Present', 'No Vote'],
+    values: [nays, yeas, pres, novt],
+    labels: ['Nays', 'Yeas', 'Present', 'No Vote'],
     marker: {
         colors: literal_colors
     },

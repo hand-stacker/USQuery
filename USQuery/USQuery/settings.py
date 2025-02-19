@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django_select2',
     'bootstrap5',
     'xmltodict',
+    'aiohttp',
 ]
 
 # Middleware framework

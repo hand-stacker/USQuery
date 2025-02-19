@@ -106,12 +106,14 @@
     <Content Include="BillQuery\static\geojsons\cb_us_cd116_5m.geojson" />
     <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.geojson" />
     <Content Include="BillQuery\static\scripts\cloroplethPlot.js" />
-    <Content Include="BillQuery\static\scripts\cloroplethTilePlot.js" />
+    <Content Include="BillQuery\static\scripts\loadCounty.js" />
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
     <Content Include="BillQuery\static\scripts\barPlot.js" />
+    <Content Include="BillQuery\static\scripts\loadState.js" />
     <Content Include="BillQuery\static\scripts\sunburstPlot.js" />
     <Content Include="BillQuery\templates\BillQuery\bill.html" />
     <Content Include="BillQuery\templates\BillQuery\bill_list.html" />
+    <Content Include="BillQuery\templates\BillQuery\cloro_choice_form.html" />
     <Content Include="BillQuery\templates\BillQuery\index.html" />
     <Content Include="BillQuery\templates\BillQuery\vote.html" />
     <Content Include="requirements.txt" />

@@ -17,7 +17,6 @@ def home(request):
         {   
             'title':"Bill Query", 
             'content':"Make a bill Query",
-            "cong_form": forms.CongressForm,
             "date_form": forms.DateForm(request.GET),
         }
     )
@@ -71,6 +70,7 @@ def vote(request, vote_id):
     except Vote.DoesNotExist:
         return HttpResponseRedirect('/bill-query')
     context = utils.voteHtml(vote)
+    context['cloro_form'] = forms.CloroChoice(request.GET)
     return render(
         request,
         'BillQuery/vote.html',
@@ -81,4 +81,10 @@ def vote(request, vote_id):
 def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0):
     assert isinstance(request, HttpRequest)
     utils.addBills(congress, _type, limit, offset)
+    return HttpResponseRedirect("/")
+
+@staff_member_required
+def populate_bill_specific(request, congress, _type, _num): 
+    assert isinstance(request, HttpRequest)
+    utils.addBill(congress, _type, _num)
     return HttpResponseRedirect("/")

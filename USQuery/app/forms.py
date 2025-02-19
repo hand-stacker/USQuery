@@ -11,6 +11,8 @@ from SenateQuery import models as SQmodels
 
 YEAR_CHOICES = ["2019", "2020", '2021', '2022', '2023', '2024', '2025']
 
+CLORO_CHOICES = ((1, 'YEA'), (0, 'NAY'), (2, 'PRES'), (3, 'NOVT'))
+
 # ...
 # when migrating to web, make sure to change this to link to STATE ID's rather than full name for efficiency
 state_list = (
@@ -78,12 +80,6 @@ class BootstrapAuthenticationForm(AuthenticationForm):
                                    'class': 'form-control',
                                    'placeholder':'Password'}))
     
-class CongressForm(forms.Form):
-    congress = forms.ModelChoiceField(
-        queryset=SQmodels.Congress.objects.all(),
-        empty_label="Select a Congress"        
-        )
-    
 class MemberForm(forms.Form):
     congress = forms.ModelChoiceField(
         queryset=SQmodels.Congress.objects.all(),
@@ -118,3 +114,8 @@ class MemberForm(forms.Form):
 class DateForm(forms.Form):
     start_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))
     end_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))
+
+class CloroChoice(forms.Form): 
+    cloro_choice = forms.ChoiceField(
+        choices = CLORO_CHOICES
+        )

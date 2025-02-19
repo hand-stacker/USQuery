@@ -46,5 +46,6 @@ urlpatterns = [
     path('bill-query/results/bill/<int:congress_id>/<str:type>/<int:num>', BQviews.bill, name = 'billQueryBill'),
     path('bill-query/populate-bills', BQviews.populate_bills, name = 'billQueryPopulateBills'),
     path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills'),
+    path('bill-query/populate-bill/<int:congress>/<str:_type>/<int:_num>', BQviews.populate_bill_specific, name = 'billQueryPopulateBillSpecific'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
 ]

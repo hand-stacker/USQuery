@@ -1,6 +1,6 @@
-const origins = ['Yeas', 'Nays', 'Present', 'No Vote'];
-const vote_objs = [yeas_cnts, nays_cnts, pres_cnts, novt_cnts];
-const origin_vals = [yeas, nays, pres, novt]
+const origins = ['Nays', 'Yeas', 'Present', 'No Vote'];
+const vote_objs = [nays_cnts, yeas_cnts, pres_cnts, novt_cnts];
+const origin_vals = [nays, yeas, pres, novt]
 let burst_vals = [];
 let burst_ids = [];
 let burst_labels = [];
