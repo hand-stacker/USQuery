@@ -1,3 +1,4 @@
+import asyncio
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
@@ -57,7 +58,7 @@ def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
 
 def bill(request, congress_id, type, num):
     assert isinstance(request, HttpRequest)
-    context = utils.billHtml(str(congress_id), type, str(num))
+    context = asyncio.run(utils.billHtml(str(congress_id), type, str(num)))
     return render(
         request,
         'BillQuery/bill.html',
@@ -80,11 +81,11 @@ def vote(request, vote_id):
 @staff_member_required
 def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0):
     assert isinstance(request, HttpRequest)
-    utils.addBills(congress, _type, limit, offset)
+    asyncio.run(utils.addBills(congress, _type, limit, offset))
     return HttpResponseRedirect("/")
 
 @staff_member_required
 def populate_bill_specific(request, congress, _type, _num): 
     assert isinstance(request, HttpRequest)
-    utils.addBill(congress, _type, _num)
+    asyncio.run(utils.addBill(congress, _type, _num))
     return HttpResponseRedirect("/")

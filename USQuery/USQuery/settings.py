@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import dj_database_url
+
 import posixpath
 from USQuery import secrets
 
@@ -47,6 +49,7 @@ INSTALLED_APPS = [
     'bootstrap5',
     'xmltodict',
     'aiohttp',
+    'dj_database_url',
 ]
 
 # Middleware framework
@@ -91,6 +94,7 @@ DATABASES = {
     }
 }
 
+DATABASES['default'] = dj_database_url.parse('postgresql://usquery_db_user:kYqWhBDj35IeTrUXvDhvO9POwhEejfXA@dpg-curprcpopnds73bk4nk0-a.oregon-postgres.render.com/usquery_db')
 
 # Urls for models
 ABSOLUTE_URL_OVERRIDES = {

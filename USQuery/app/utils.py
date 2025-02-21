@@ -1,3 +1,4 @@
+from argparse import RawDescriptionHelpFormatter
 from datetime import datetime
 from asyncio.windows_events import NULL
 import requests, json, time, xmltodict, asyncio
@@ -6,6 +7,31 @@ from requests.exceptions import HTTPError
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Bill, Vote, ChoiceVote, Choice
 import aiohttp
+from asgiref.sync import sync_to_async
+
+from collections import defaultdict
+from xml.etree import cElementTree as ET
+## https://stackoverflow.com/a/10077069
+
+def etree_to_dict(t):
+    d = {t.tag: {} if t.attrib else None}
+    children = list(t)
+    if children:
+        dd = defaultdict(list)
+        for dc in map(etree_to_dict, children):
+            for k, v in dc.items():
+                dd[k].append(v)
+        d = {t.tag: {k:v[0] if len(v) == 1 else v for k, v in dd.items()}}
+    if t.attrib:
+        d[t.tag].update(('@' + k, v) for k, v in t.attrib.items())
+    if t.text:
+        text = t.text.strip()
+        if children or t.attrib:
+            if text:
+              d[t.tag]['#text'] = text
+        else:
+            d[t.tag] = text
+    return d
 
 state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
               'HI','ID','IN','IL','IA','KS','KY','LA','ME','MD',
@@ -182,24 +208,26 @@ def connect(fullpath, headers):
         print('Connected to ' + fullpath)
         return response    
 
-async def connectASYNC(fullpath, header_str):
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(fullpath + '?' + header_str, timeout=20) as response:
-                response.raise_for_status()
-                print('Connected to ' + fullpath)
+async def connectASYNC(session, fullpath, header_str, jsonify = True):
+    try:
+        async with session.get(fullpath + header_str, timeout=40) as response:
+            response.raise_for_status()
+            print('Connected to ' + fullpath)
+            if jsonify:
                 return await response.json()
-        except aiohttp.ClientError as http_err:
-            print(f'HTTP ERROR : {http_err}')
-        except Exception as err:
-            print(f'MISC ERROR : {err}')
-        except asyncio.TimeoutError:
-            print('TIMEOUT ERROR')
+            else:
+                return response
+    except aiohttp.ClientError as http_err:
+        print(f'HTTP ERROR : {http_err}')
+    except Exception as err:
+        print(f'MISC ERROR : {err} when connecting to {fullpath}')
+    except asyncio.TimeoutError:
+        print('TIMEOUT ERROR')
 
-async def run_concurrent_connect(requests, headers) : 
+async def run_concurrent_connect(session, requests, headers) : 
     tasks = []
     for request in requests: 
-        ret = connectASYNC(request, headers)
+        ret = connectASYNC(session, request, headers)
         tasks.append(ret)
     return await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -268,95 +296,114 @@ def addMembersCongressAPILazy(congress_num):
     return
 
 ## mega function that creates bills, and from bills creates votes
-## ideally do not add more than 100 bills per call!
-def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
-    base_id = congress_num * 100000 + types[_type] * 10000
-    _congress = Congress.objects.get(congress_num__exact = congress_num)
-    ## what do when type is h range...
-    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : str(limit), 'offset' : str(offset)}
-    API_response = connect(settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type, headers).json()
-    for b in API_response['bills']:
-        _id = base_id + int(b['number'])
-        API_response_bill = connect(b['url'], headers).json()
-        _member = Member.objects.get(id = API_response_bill['bill']['sponsors'][0]['bioguideId'])
-        _membership = Membership.objects.get(congress = _congress, member = _member)
-        
-        _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
-        _bill = Bill.objects.get_or_create(
-            id = _id,
-            title = b['title'],
-            sponsor = _membership,
-            status = _status,
-            origin_date = API_response_bill['bill']['introducedDate'],
-            latest_action = API_response_bill['bill']['latestAction']['actionDate']
-            )[0]
-  
-        API_response_actions = connect(API_response_bill['bill']['actions']['url'], {'api_key' : settings.CONGRESS_KEY, 'limit' : '250'}).json()
-        
-        while API_response_actions != None:
-            for a in API_response_actions['actions']:
-                if 'recordedVotes' in a:
-                    ##gets data from gov, in xml format...
-                    ## what do when data is house vote???
-                    vote_xml = connect(a['recordedVotes'][0]['url'], {}).content
-                    vote_dict = xmltodict.parse(vote_xml)
-                    in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
-                    vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
-                    if (Vote.objects.filter(id=vote_id).first() != None): continue
-                    if (in_house == 1):
-                        _vote = Vote.objects.get_or_create(
-                            id = vote_id,
-                            congress = _congress,
-                            house = True,
-                            bill = _bill,
-                            dateTime = a['recordedVotes'][0]['date'],
-                            question = vote_dict['rollcall-vote']['vote-metadata']['vote-question'],
-                            title = vote_dict['rollcall-vote']['vote-metadata']['vote-desc'],
-                            result = vote_dict['rollcall-vote']['vote-metadata']['vote-result']
-                            )[0]
-                        _vote.save()
-                        for m in vote_dict['rollcall-vote']['vote-data']['recorded-vote']:
-                            member = Membership.objects.filter(member__id= m['legislator']['@name-id'], congress = _congress)[0]
-                            if m['vote'] == 'Yea' :
-                                _vote.yeas.add(member)
-                            elif m['vote'] == 'Nay':
-                                _vote.nays.add(member)
-                            elif m['vote'] == 'Not Voting':
-                                _vote.novt.add(member)
-                            else :
-                                _vote.pres.add(member)
-                    else :
-                        _vote = Vote.objects.get_or_create(
-                            id = vote_id,
-                            congress = _congress,
-                            house = False,
-                            bill = _bill,
-                            dateTime = a['recordedVotes'][0]['date'],
-                            question = vote_dict['roll_call_vote']['question'],
-                            title = vote_dict['roll_call_vote']['vote_title'],
-                            result = vote_dict['roll_call_vote']['vote_result']
-                            )[0]
-                        _vote.save()
-                        for m in vote_dict['roll_call_vote']['members']['member']:
-                            member = Membership.objects.filter(
-                                congress = _congress,
-                                member__last_name__iexact = m['last_name'],
-                                house = False,
-                                state = m['state']
-                                )[0]
-                            if m['vote_cast'] == 'Yea' :
-                                _vote.yeas.add(member)
-                            elif m['vote_cast'] == 'Nay':
-                                _vote.nays.add(member)
-                            elif m['vote_cast'] == 'Not Voting':
-                                _vote.novt.add(member)
-                            else :
-                                _vote.pres.add(member)
-                    print('Added Vote : '  + str(vote_id))
-            if 'next' in API_response_actions['pagination']:
-                API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
-            else : API_response_actions = None
+## too many api calls will lead to being blocked by congress api
+## currently not optimized to ignore already added bills
+async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
+    header_str_sp = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=' + str(limit) + '&offset=' + str(offset)
+    header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
+    session = aiohttp.ClientSession()
+    vote_session = aiohttp.ClientSession()
+    API_response = await connectASYNC(session, settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "?", header_str_sp)
+    _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
+    
+    indx = 0
+    limit = 10
+    n = len(API_response['bills'])
+    
+    while (indx < n) : 
+        end = min (indx + limit, n)
+        sets = API_response['bills'][indx:end]
+        async with asyncio.TaskGroup() as tg:
+            for bill in sets:
+                tg.create_task(addBillASYNC(session, vote_session, congress_num, _type, bill, _congress, header_str))
+        indx = end
+    await session.close()
+    await vote_session.close()
 
+
+
+async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str):
+    _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
+    API_response_bill = await connectASYNC(session, b['url'], header_str)
+    API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
+    _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
+    _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member)
+            
+    _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
+    _bill = await sync_to_async(Bill.objects.get_or_create)(
+        id = _id,
+        title = b['title'],
+        sponsor = _membership,
+        status = _status,
+        origin_date = API_response_bill['bill']['introducedDate'],
+        latest_action = API_response_bill['bill']['latestAction']['actionDate']
+        )
+
+    _bill = _bill[0]
+      
+    senators = await sync_to_async(Membership.objects.filter)(congress=_congress, house=False)
+    representatives = await sync_to_async(Membership.objects.filter)(congress=_congress, house=True)
+    while API_response_actions is not None:
+        for a in API_response_actions['actions']:
+            if 'recordedVotes' in a:
+                in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
+                vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
+                try:
+                    vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
+                    vote_xml = vote_xml.content._buffer[0]
+                    vote_xml = ET.XML(vote_xml)
+                except aiohttp.ClientConnectionError as e:
+                    print(f"Connection error: {e}")
+                    return
+                vote_dict = etree_to_dict(vote_xml)
+                     
+                vote_data = {
+                    'id': vote_id,
+                    'congress': _congress,
+                    'house': in_house == 1,
+                    'bill': _bill,
+                    'dateTime': a['recordedVotes'][0]['date'],
+                    'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
+                    'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
+                    'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
+                }
+                _vote, created = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
+                if created:
+                    members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
+                    member_votes = {
+                        'Yea': _vote.yeas,
+                        'Nay': _vote.nays,
+                        'Not Voting': _vote.novt,
+                        'Present': _vote.pres
+                    }
+                    q_sets = {
+                        'Yea': await sync_to_async(Membership.objects.none)(),
+                        'Aye': await sync_to_async(Membership.objects.none)(),
+                        'Nay': await sync_to_async(Membership.objects.none)(),
+                        'No': await sync_to_async(Membership.objects.none)(),
+                        'Not Voting': await sync_to_async(Membership.objects.none)(),
+                        'Present': await sync_to_async(Membership.objects.none)()
+                    }
+                    keys = ['Yea', 'Nay', 'Not Voting', 'Present']
+                    for m in members:
+                        member = representatives.filter(member__id=m['legislator']['@name-id']) if in_house == 1 else senators.filter(
+                            congress=_congress,
+                            member__last_name__iexact=m['last_name'],
+                            state=m['state']
+                        )
+                        q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
+                    q_sets['Yea'] |= q_sets['Aye']
+                    q_sets['Nay'] |= q_sets['No']
+                    for key in keys:
+                        await sync_to_async(member_votes[key].set)(q_sets[key])
+                    print('Added Vote : ' + str(vote_id))
+        if 'next' in API_response_actions['pagination']:
+            API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
+        else:
+            API_response_actions = None
+    return 1
+
+## need to update this.. defunct
 def addBill(congress_num, _type, _num):
     _id = congress_num * 100000 + types[_type] * 10000 + _num
     _congress = Congress.objects.get(congress_num__exact = congress_num)
@@ -373,67 +420,59 @@ def addBill(congress_num, _type, _num):
         id = _id)
   
     API_response_actions = connect(API_response_bill['bill']['actions']['url'], headers).json()
-        
+    senators = Membership.objects.filter(congress = _congress, house = False)
+    representatives = Membership.objects.filter(congress = _congress, house = True)
     while API_response_actions != None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
-                ##gets data from gov, in xml format...
-                ## what do when data is house vote???
-                vote_xml = connect(a['recordedVotes'][0]['url'], {}).content
-                vote_dict = xmltodict.parse(vote_xml)
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
-                if (Vote.objects.filter(id=vote_id).first() != None): continue
-                if (in_house == 1):
-                    _vote = Vote.objects.get_or_create(
-                        id = vote_id,
-                        congress = _congress,
-                        house = True,
-                        bill = _bill,
-                        dateTime = a['recordedVotes'][0]['date'],
-                        question = vote_dict['rollcall-vote']['vote-metadata']['vote-question'],
-                        title = vote_dict['rollcall-vote']['vote-metadata']['vote-desc'],
-                        result = vote_dict['rollcall-vote']['vote-metadata']['vote-result']
-                        )[0]
-                    _vote.save()
-                    for m in vote_dict['rollcall-vote']['vote-data']['recorded-vote']:
-                        member = Membership.objects.filter(member__id= m['legislator']['@name-id'], congress = _congress)[0]
-                        if m['vote'] == 'Yea' :
-                            _vote.yeas.add(member)
-                        elif m['vote'] == 'Nay':
-                            _vote.nays.add(member)
-                        elif m['vote'] == 'Not Voting':
-                            _vote.novt.add(member)
-                        else :
-                            _vote.pres.add(member)
-                else :
-                    _vote = Vote.objects.get_or_create(
-                        id = vote_id,
-                        congress = _congress,
-                        house = False,
-                        bill = _bill,
-                        dateTime = a['recordedVotes'][0]['date'],
-                        question = vote_dict['roll_call_vote']['question'],
-                        title = vote_dict['roll_call_vote']['vote_title'],
-                        result = vote_dict['roll_call_vote']['vote_result']
-                        )[0]
-                    _vote.save()
-                    for m in vote_dict['roll_call_vote']['members']['member']:
-                        member = Membership.objects.filter(
-                            congress = _congress,
-                            member__last_name__iexact = m['last_name'],
-                            house = False,
-                            state = m['state']
-                            )[0]
-                        if m['vote_cast'] == 'Yea' :
-                            _vote.yeas.add(member)
-                        elif m['vote_cast'] == 'Nay':
-                            _vote.nays.add(member)
-                        elif m['vote_cast'] == 'Not Voting':
-                            _vote.novt.add(member)
-                        else :
-                            _vote.pres.add(member)
-                print('Added Vote : '  + str(vote_id))
+                if (True):
+                    ##gets data from gov, in xml format...
+                    ## what do when data is house vote???
+                    vote_xml = connect(a['recordedVotes'][0]['url'], {}).content
+                    vote_dict = xmltodict.parse(vote_xml)
+                 
+                    vote_data = {
+                        'id': vote_id,
+                        'congress': _congress,
+                        'house': in_house == 1,
+                        'bill': _bill,
+                        'dateTime': a['recordedVotes'][0]['date'],
+                        'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
+                        'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
+                        'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
+                    }
+                    _vote, created = Vote.objects.get_or_create(**vote_data)
+                    if True:
+                        members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
+                        member_votes = {
+                            'Yea': _vote.yeas,
+                            'Nay': _vote.nays,
+                            'Not Voting': _vote.novt,
+                            'Present': _vote.pres
+                        }
+                        q_sets = {
+                            'Yea': Membership.objects.none(),
+                            'Aye': Membership.objects.none(),
+                            'Nay': Membership.objects.none(),
+                            'No' : Membership.objects.none(),
+                            'Not Voting': Membership.objects.none(),
+                            'Present': Membership.objects.none()
+                            }
+                        keys = ['Yea' ,'Nay', 'Not Voting', 'Present']
+                        for m in members:
+                            member = representatives.filter(member__id=m['legislator']['@name-id']) if in_house == 1 else senators.filter(
+                                congress=_congress,
+                                member__last_name__iexact=m['last_name'],
+                                state=m['state']
+                            )
+                            q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
+                        q_sets['Yea'] |= q_sets['Aye']
+                        q_sets['Nay'] |= q_sets['No']
+                        for key in keys:
+                            member_votes[key].set(q_sets[key])
+                    print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
         else : API_response_actions = None
@@ -515,23 +554,18 @@ def getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y):
     end_date = datetime(int(e_y), int(e_m), int(e_d))
     return Bill.objects.filter(origin_date__gte=start_date, origin_date__lte=end_date)
 
-def convertBillData(data):
-    ret = {}
-    for i in range(len(data)):
-        ret[str(i)] = data[i];
-    return ret
-   
 def intToFIPS(num):
     if num < 10 : return '0' + str(num)
     return str(num)
 #### 
 ##  return a context for http request to fill html page with content
 ####
-def billHtml(congress_id, bill_type, num):
+async def billHtml(congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     requests = [apiURL, apiURL + '/actions', apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects', apiURL + '/summaries']
-    header_str = 'api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
-    API_data = asyncio.run(run_concurrent_connect(requests, header_str))
+    header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
+    session = aiohttp.ClientSession()
+    API_data = await run_concurrent_connect(session, requests, header_str)
     
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
             'bill' : bill_type.upper() + "-" + num,
