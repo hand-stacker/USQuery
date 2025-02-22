@@ -47,6 +47,4 @@ let donutLayout = {
     grid: { rows: 1, columns: 1},
     showlegend: true,
 };
-
-console.log(donutData.toString)
 Plotly.newPlot('donut', donutData, donutLayout, {displayModeBar: false });
