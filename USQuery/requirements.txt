@@ -8,3 +8,4 @@ psycopg2
 dj-database-url
 asyncio
 aiohttp
+gunicorn
