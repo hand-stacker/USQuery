@@ -2,6 +2,8 @@
 Definition of urls for USQuery.
 """
 
+from django.urls import re_path
+from django.views.static import serve
 from datetime import datetime
 from django.urls import path, include
 from django.contrib import admin
@@ -49,4 +51,5 @@ urlpatterns = [
     path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills'),
     path('bill-query/populate-bill/<int:congress>/<str:_type>/<int:_num>', BQviews.populate_bill_specific, name = 'billQueryPopulateBillSpecific'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
+    re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
