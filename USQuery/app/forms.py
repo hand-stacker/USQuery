@@ -1,8 +1,3 @@
-from asyncio.windows_events import NULL
-from random import choice
-from app import utils
-from encodings import search_function
-from re import search
 from django import forms
 from django_select2 import forms as s2forms
 from django.contrib.auth.forms import AuthenticationForm
