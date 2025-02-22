@@ -116,6 +116,7 @@
     <Content Include="BillQuery\templates\BillQuery\cloro_choice_form.html" />
     <Content Include="BillQuery\templates\BillQuery\index.html" />
     <Content Include="BillQuery\templates\BillQuery\vote.html" />
+    <Content Include="build.sh" />
     <Content Include="requirements.txt" />
     <Content Include="app\static\app\content\bootstrap.css" />
     <Content Include="app\static\app\content\bootstrap.min.css" />
