@@ -8,6 +8,7 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from app import forms, views
 from USQuery import settings
+from django.conf.urls.static import static
 from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
 admin.autodiscover()
@@ -48,4 +49,4 @@ urlpatterns = [
     path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills'),
     path('bill-query/populate-bill/<int:congress>/<str:_type>/<int:_num>', BQviews.populate_bill_specific, name = 'billQueryPopulateBillSpecific'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
-]
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
