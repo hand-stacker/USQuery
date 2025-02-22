@@ -14,7 +14,7 @@ class Member(models.Model):
     facebook = models.CharField(max_length=40, null = True, blank = True)
     youtube = models.CharField(max_length=40, null = True, blank = True)
     office = models.CharField(max_length=100, null = True, blank = True)
-    phone = models.CharField(max_length=12, null = True, blank = True)
+    phone = models.CharField(max_length=15, null = True, blank = True)
     birth_year = models.CharField(max_length=4, null = True, blank = True)
     death_year = models.CharField(max_length=4, null = True, blank = True)
     def __str__(self):
