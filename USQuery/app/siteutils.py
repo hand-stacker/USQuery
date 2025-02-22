@@ -1,9 +1,4 @@
-from datetime import datetime
-import requests, json, time, xmltodict
-from USQuery import settings
-from requests.exceptions import HTTPError
-from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Bill, Vote, ChoiceVote, Choice
+import json
 
 def modifyCountyGeoJSON(congress_id):
     read_url = 'BillQuery/static/geojsons/cb_us_cd' + str(congress_id) + '_5m.geojson'

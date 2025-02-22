@@ -1,6 +1,4 @@
-from argparse import RawDescriptionHelpFormatter
 from datetime import datetime
-from asyncio.windows_events import NULL
 import requests, json, time, xmltodict, asyncio
 from USQuery import settings
 from requests.exceptions import HTTPError
