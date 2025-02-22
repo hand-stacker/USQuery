@@ -102,9 +102,9 @@
     <Folder Include="USQuery\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="BillQuery\static\geojsons\cb_us_state_5m.geojson" />
-    <Content Include="BillQuery\static\geojsons\cb_us_cd116_5m.geojson" />
-    <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.geojson" />
+    <Content Include="BillQuery\static\geojsons\cb_us_state_5m.js" />
+    <Content Include="BillQuery\static\geojsons\cb_us_cd116_5m.js" />
+    <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.js" />
     <Content Include="BillQuery\static\scripts\cloroplethPlot.js" />
     <Content Include="BillQuery\static\scripts\loadCounty.js" />
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
