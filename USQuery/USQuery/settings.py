@@ -24,12 +24,12 @@ CONGRESS_DIR = 'https://api.congress.gov/v3/'
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = secrets.SECRET_KEY
-CONGRESS_KEY = secrets.CONGRESS_KEY
+SECRET_KEY = os.environ.get('SECRET_KEY')
+CONGRESS_KEY = os.environ.get('CONGRESS_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-ALLOWED_HOSTS = ['usquery.com', 'localhost']
+DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
 
 # Application references
 # https://docs.djangoproject.com/en/2.1/ref/settings/#std:setting-INSTALLED_APPS
@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'app',
     'SenateQuery',
     'BillQuery',
-    # Add your apps here to enable them
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -94,7 +93,8 @@ DATABASES = {
     }
 }
 
-DATABASES['default'] = dj_database_url.parse('postgresql://usquery_db_user:kYqWhBDj35IeTrUXvDhvO9POwhEejfXA@dpg-curprcpopnds73bk4nk0-a.oregon-postgres.render.com/usquery_db')
+database_url = os.environ.get('DATABASE_URL')
+DATABASES['default'] = dj_database_url.parse(database_url)
 
 # Urls for models
 ABSOLUTE_URL_OVERRIDES = {
