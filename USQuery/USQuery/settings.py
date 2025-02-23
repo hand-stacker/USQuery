@@ -44,9 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admindocs',
-    'django_select2',
     'bootstrap5',
-    'xmltodict',
     'aiohttp',
     'dj_database_url',
 ]

@@ -1,5 +1,5 @@
 from datetime import datetime
-import requests, json, time, xmltodict, asyncio
+import requests, asyncio
 from USQuery import settings
 from requests.exceptions import HTTPError
 from SenateQuery.models import Member, Congress, Membership
@@ -239,7 +239,9 @@ def addMembersCongressAPILazy(congress_num):
     API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), headers).json()
     
     start_date = API_cong['congress']['sessions'][0]['startDate']
-    end_date = API_cong['congress']['sessions'][2]['endDate']
+    end_date = None
+    if len(API_cong['congress']['sessions']) > 2 :
+        end_date = API_cong['congress']['sessions'][2]['endDate']
     
     API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
     congress = Congress.objects.get_or_create(
@@ -400,80 +402,6 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         else:
             API_response_actions = None
     return 1
-
-## need to update this.. defunct
-def addBill(congress_num, _type, _num):
-    _id = congress_num * 100000 + types[_type] * 10000 + _num
-    _congress = Congress.objects.get(congress_num__exact = congress_num)
-    ## what do when type is h range...
-    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json', 'limit' : '250'}
-
-    API_response_bill = connect(settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "/" + str(_num), headers).json()
-
-    _member = Member.objects.get(id = API_response_bill['bill']['sponsors'][0]['bioguideId'])
-    _membership = Membership.objects.get(congress = _congress, member = _member)
-        
-    _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
-    _bill = Bill.objects.get(
-        id = _id)
-  
-    API_response_actions = connect(API_response_bill['bill']['actions']['url'], headers).json()
-    senators = Membership.objects.filter(congress = _congress, house = False)
-    representatives = Membership.objects.filter(congress = _congress, house = True)
-    while API_response_actions != None:
-        for a in API_response_actions['actions']:
-            if 'recordedVotes' in a:
-                in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
-                vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
-                if (True):
-                    ##gets data from gov, in xml format...
-                    ## what do when data is house vote???
-                    vote_xml = connect(a['recordedVotes'][0]['url'], {}).content
-                    vote_dict = xmltodict.parse(vote_xml)
-                 
-                    vote_data = {
-                        'id': vote_id,
-                        'congress': _congress,
-                        'house': in_house == 1,
-                        'bill': _bill,
-                        'dateTime': a['recordedVotes'][0]['date'],
-                        'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
-                        'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
-                        'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
-                    }
-                    _vote, created = Vote.objects.get_or_create(**vote_data)
-                    if True:
-                        members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                        member_votes = {
-                            'Yea': _vote.yeas,
-                            'Nay': _vote.nays,
-                            'Not Voting': _vote.novt,
-                            'Present': _vote.pres
-                        }
-                        q_sets = {
-                            'Yea': Membership.objects.none(),
-                            'Aye': Membership.objects.none(),
-                            'Nay': Membership.objects.none(),
-                            'No' : Membership.objects.none(),
-                            'Not Voting': Membership.objects.none(),
-                            'Present': Membership.objects.none()
-                            }
-                        keys = ['Yea' ,'Nay', 'Not Voting', 'Present']
-                        for m in members:
-                            member = representatives.filter(member__id=m['legislator']['@name-id']) if in_house == 1 else senators.filter(
-                                congress=_congress,
-                                member__last_name__iexact=m['last_name'],
-                                state=m['state']
-                            )
-                            q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
-                        q_sets['Yea'] |= q_sets['Aye']
-                        q_sets['Nay'] |= q_sets['No']
-                        for key in keys:
-                            member_votes[key].set(q_sets[key])
-                    print('Added Vote : ' + str(vote_id))
-        if 'next' in API_response_actions['pagination']:
-            API_response_actions = connect(API_response_actions['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
-        else : API_response_actions = None
     
 def getFirstAndLastName(reverseName):
     try:

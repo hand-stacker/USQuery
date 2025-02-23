@@ -83,9 +83,3 @@ def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0
     assert isinstance(request, HttpRequest)
     asyncio.run(utils.addBills(congress, _type, limit, offset))
     return HttpResponseRedirect("/")
-
-@staff_member_required
-def populate_bill_specific(request, congress, _type, _num): 
-    assert isinstance(request, HttpRequest)
-    asyncio.run(utils.addBill(congress, _type, _num))
-    return HttpResponseRedirect("/")
