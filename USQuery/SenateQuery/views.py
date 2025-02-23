@@ -90,8 +90,9 @@ def query(request):
 
 def update_members(request, congress_id, chamber, state):
     is_house = chamber != 'Senate'
+    _congress = Congress.objects.get(congress_num__exact=congress_id)
     mems = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__house = is_house)
-    if (state != 'All') : mems = mems.filter(membership__state = state)
+    if (state != 'All') : mems = mems.filter(congress = _congress, membership__state = state)
     mems = mems.values('id', 'full_name')
     return JsonResponse({'members': list(mems)})
 
