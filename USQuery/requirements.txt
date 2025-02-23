@@ -1,6 +1,7 @@
 django>=3.2.14
 docutils
 requests
+django_select2
 django-bootstrap-v5
 psycopg2
 dj-database-url
