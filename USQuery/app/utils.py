@@ -214,7 +214,7 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
             if jsonify:
                 return await response.json()
             else:
-                return response
+                return await response.text()
     except aiohttp.ClientError as http_err:
         print(f'HTTP ERROR : {http_err}')
     except Exception as err:
@@ -307,7 +307,7 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
     _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
     
     indx = 0
-    limit = 10
+    limit = 5
     n = len(API_response['bills'])
     
     while (indx < n) : 
@@ -324,6 +324,9 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
 
 async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str):
     _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
+    _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)
+    if (await sync_to_async(_set_bill.exists)()):
+        return
     API_response_bill = await connectASYNC(session, b['url'], header_str)
     API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
     _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
@@ -348,9 +351,11 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
+                _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
+                if (await sync_to_async(_set_vote.exists)()):
+                    return
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
-                    vote_xml = vote_xml.content._buffer[0]
                     vote_xml = ET.XML(vote_xml)
                 except aiohttp.ClientConnectionError as e:
                     print(f"Connection error: {e}")

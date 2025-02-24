@@ -8,7 +8,7 @@ class Bill(models.Model):
     id = models.IntegerField(primary_key=True)
     sponsor = models.ForeignKey(SQmodels.Membership, on_delete=models.CASCADE)
     status = models.BooleanField(default=False)
-    title = models.CharField(max_length=1000)
+    title = models.CharField(max_length=2000)
     origin_date = models.DateField()
     latest_action  = models.DateField()
     def getStatus(self):
