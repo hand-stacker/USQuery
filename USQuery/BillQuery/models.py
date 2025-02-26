@@ -65,7 +65,7 @@ class Bill(models.Model):
         return self.getType() + " " + self.getNumStr()
     
     class Meta():
-        ordering = ["-id", "-origin_date", "-latest_action"]
+        ordering = ["-latest_action", "-origin_date", "-id"]
                 
         
         
@@ -78,7 +78,7 @@ class Vote(models.Model):
     bill = models.ForeignKey(Bill, on_delete=models.CASCADE, blank = True)
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=100)
-    title = models.CharField(max_length=500, blank=True)
+    title = models.CharField(max_length=500, blank=True, null=True)
     result = models.CharField(max_length=42)
     
     yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas', blank = True)

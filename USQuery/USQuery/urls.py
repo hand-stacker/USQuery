@@ -49,6 +49,7 @@ urlpatterns = [
     path('bill-query/results/bill/<int:congress_id>/<str:type>/<int:num>', BQviews.bill, name = 'billQueryBill'),
     path('bill-query/populate-bills', BQviews.populate_bills, name = 'billQueryPopulateBills'),
     path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills'),
+    path('bill-query/update-bill/<int:congress>/<str:_type>/<int:_num>', BQviews.update_bill, name = 'billQueryUpdateBill'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
