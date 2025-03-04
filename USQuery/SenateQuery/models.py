@@ -1,8 +1,5 @@
 from django.db import models
 
-# Create your models here.
-# This class is mostly for filtering and for html forms, more useful info is collected from the ProPublica API
-
 class Member(models.Model):
     id = models.CharField(max_length=7, primary_key=True)
     full_name = models.CharField(max_length=40)

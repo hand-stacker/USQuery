@@ -297,10 +297,11 @@ def addMembersCongressAPILazy(congress_num):
         else : API_response = None
     return
 
-def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving_date, party) :
+def swapMembership(congress_num, leaving_id, l_house, leaving_date, arriving_id, arriving_date, party) :
+    in_house = (l_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_num)
-    leaving_member = _congress.members.get(id = leaving_id)
-    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member)       
+    leaving_member = Member.objects.get(id = leaving_id)
+    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member, house = in_house)       
     if (arriving_id != "!") :
         _set_member = Member.objects.filter(id = arriving_id)
         if (_set_member.exists()):
@@ -319,7 +320,7 @@ def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving
             congress = _congress,
             member = arriving_member,
             district_num = leaving_membership.district_num,
-            house = leaving_membership.house,
+            house = in_house,
             state = leaving_membership.state,
             geoid = leaving_membership.geoid,
             party = party ,
@@ -331,17 +332,18 @@ def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving
     leaving_membership.end_date = leaving_date
     leaving_membership.save()
 
-def updateArrival(congress_id, arriving_id, arriving_date) :
+def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
+    in_house = (in_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_id)
-    _member = _congress.members.get(id = arriving_id)
-    _membership = Membership.objects.get(congress = _congress, member = _member)       
+    _member = Member.objects.get(id = arriving_id)
+    _membership = Membership.objects.get(congress = _congress, member = _member, house = in_house)       
     _membership.start_date = arriving_date
     _membership.save()
 
 def createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num) :
     in_house = (in_house == 1) 
     _congress = Congress.objects.get(congress_num__exact = congress_id)
-    _member = _congress.members.get(id = member_id)
+    _member = Member.objects.get(id = member_id)
     _membership = Membership.objects.get_or_create(
             congress = _congress,
             member = _member,
@@ -393,8 +395,6 @@ async def updateBill(congress_num, _type, _num) :
     _bill = await sync_to_async(Bill.objects.get)(id__exact = _id)    
     
     API_response_actions = await connectASYNC(session, url, header_str)
-    senators = await sync_to_async(Membership.objects.filter)(congress=_congress, house=False)
-    representatives = await sync_to_async(Membership.objects.filter)(congress=_congress, house=True)
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
@@ -437,11 +437,15 @@ async def updateBill(congress_num, _type, _num) :
                 }
                 keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                 for m in members:
-                    member = representatives.filter(member__id=m['legislator']['@name-id']) if in_house == 1 else senators.filter(
-                        congress=_congress,
-                        member__last_name__iexact=m['last_name'],
-                        state=m['state']
-                    )
+                    if (in_house == 1):
+                        member = await sync_to_async(Membership.objects.filter)(congress=_congress, member__id=m['legislator']['@name-id'], house = True)
+                    else :
+                        member = await sync_to_async(Membership.objects.filter)(
+                            congress=_congress,
+                            house = False,
+                            member__last_name__iexact=m['last_name'],
+                            state=m['state']
+                            )
                     q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
                 q_sets['Yea'] |= q_sets['Aye'] | q_sets['Guilty']
                 q_sets['Nay'] |= q_sets['No'] | q_sets['Not Guilty']
@@ -463,7 +467,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         return
     API_response_bill = await connectASYNC(session, b['url'], header_str)
     if (API_response_bill['bill']['title'][:8] == 'Reserved'):
-        return
+        return # reserved bills are trivial, so we ignore them if their title was a reservation
     API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
     _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
     _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member)
@@ -477,8 +481,6 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         latest_action = API_response_bill['bill']['latestAction']['actionDate']
         )
     _bill = _bill[0]
-    senators = await sync_to_async(Membership.objects.filter)(congress=_congress, house=False)
-    representatives = await sync_to_async(Membership.objects.filter)(congress=_congress, house=True)
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
@@ -525,11 +527,15 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                     }
                     keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                     for m in members:
-                        member = representatives.filter(member__id=m['legislator']['@name-id']) if in_house == 1 else senators.filter(
-                            congress=_congress,
-                            member__last_name__iexact=m['last_name'],
-                            state=m['state']
-                        )
+                        if (in_house == 1):
+                            member = await sync_to_async(Membership.objects.filter)(congress=_congress, member__id=m['legislator']['@name-id'], house = True)
+                        else :
+                            member = await sync_to_async(Membership.objects.filter)(
+                                congress=_congress,
+                                house = False,
+                                member__last_name__iexact=m['last_name'],
+                                state=m['state']
+                                )
                         q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
                     q_sets['Yea'] |= q_sets['Aye'] | q_sets['Guilty']
                     q_sets['Nay'] |= q_sets['No'] | q_sets['Not Guilty']
@@ -649,14 +655,20 @@ async def billHtml(congress_id, bill_type, num):
     member_link = '/member-query/results/?congress='
     bill_link = '/bill-query/results/bill/'
     q_2 = '&member='
+    q_3 = '&chamber='
 
     sponsor = API_data[0]['bill']['sponsors'][0]
-    context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId']+ '">' + sponsor['fullName'] + '</a>'
+    if ('district' in sponsor) :  chamber = 'House+of+Representatives'
+    else: 
+        chamber = 'Senate' 
+    context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId'] + q_3 + chamber + '">' + sponsor['fullName'] + '</a>'
 
     if (API_data[2] != ''):
         co_list = ''
         for c in API_data[2]['cosponsors']:
-            co_list += list_start + member_link + congress_id + q_2 + c['bioguideId']+ '">' + c['fullName'] + '</a></li>'
+            if ('district' in c) :  chanber = 'House+of+Representatives'
+            else: chamber = 'Senate' 
+            co_list += list_start + member_link + congress_id + q_2 + c['bioguideId'] + q_3 + chamber + '">' + c['fullName'] + '</a></li>'
         context['cosponsors'] = co_list
         
     if (API_data[3] != ''):
@@ -684,6 +696,7 @@ async def billHtml(congress_id, bill_type, num):
 def voteHtml(vote):
     congress_id = vote.congress.__str__()
     q_2 = '&member='
+    q_3 = '&chamber='
        
     votes_list = [vote.nays, vote.yeas, vote.pres, vote.novt]
     list_color = {
@@ -722,8 +735,6 @@ def voteHtml(vote):
     for i in range(4):
         votes = votes_list[i].all()
         for membership in votes:
-            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
-            html_lists[i] += congress_id  + q_2 + membership.member.id+ '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
             if (membership.party not in partyCountsbyVote[i]) : partyCountsbyVote[i][membership.party] = 0
             partyCountsbyVote[i][membership.party] += 1
             if isHouseVote:
@@ -731,11 +742,15 @@ def voteHtml(vote):
                 geoids[j] = membership.geoid
                 values[j] = i
                 j+=1
+                chamber = 'House+of+Representatives'
             else:
                 indx = fips_to_count[membership.geoid]
                 if indx == None : continue
                 geoids[indx] = membership.geoid
                 values[i][indx] += 1
+                chamber = 'Senate'
+            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
+            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
                 
         
     context = {'title': str(vote.id),
@@ -838,20 +853,22 @@ def leadershipList(leaderships):
         leadership_list += '<li class="list-group-item">' + str(leadership['congress']) + getNumSuffix(leadership['congress'])
         leadership_list += ' Congress : ' + leadership['type']+ '</li>'
     return leadership_list
-        
+  
+link_dict = {'Senator' : 'Senate', 'Representative' : 'House+of+Representatives'}
+
 def termList(terms, bioguideID, congress_num):
     term_list = ''
     for term in reversed(terms):
         num = term['congress']
-        link = '/member-query/results/?congress=' + str(num) + '&member=' + bioguideID
+        link = '/member-query/results/?congress=' + str(num) + '&member=' + bioguideID + '&chamber='
         district = ''
         if ('district' in term):
-            district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District'
+            district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District' 
             
         term_list += '<li class="list-group-item'
         if (term['congress'] == congress_num): term_list += ' list-group-item-primary'       
         term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
-        term_list += '<a href="' + link + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
+        term_list += '<a href="' + link + link_dict[term['memberType']] + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
         term_list += '(' + str(term['startYear']) + '-'
         if ('endYear' in term) : term_list += str(term['endYear'])
         else : term_list += 'Present'

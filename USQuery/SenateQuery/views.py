@@ -21,7 +21,7 @@ def home(request):
         }
     )
 
-def search(request, congress_num, member_id):
+def search(request, congress_num, member_id, in_house):
     assert isinstance(request, HttpRequest)
     
     API_response = utils.updateMember(congress_num, member_id)
@@ -32,9 +32,12 @@ def search(request, congress_num, member_id):
         
     # find senator given member id and congress num
     congress = Congress.objects.get(congress_num = congress_num)
-    member = congress.members.get(id = member_id)
-    membership = Membership.objects.get(congress = congress, member = member)
-    votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date, dateTime__lt = membership.end_date)
+    member = Member.objects.get(id = member_id)
+    membership = Membership.objects.get(congress = congress, member = member, house = in_house)
+    if (membership.end_date == None):
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date)
+    else:
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date, dateTime__lt = membership.end_date)
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
@@ -81,17 +84,20 @@ def query(request):
     member_form = forms.MemberForm(request.GET)
     try:
         congress_num = int(member_form.data["congress"])
+        in_house = member_form.data["chamber"] != 'Senate'
     except:
         print("FATAL ER_R0R")
         return HttpResponseRedirect('/member-query/')        
-    return search(request, congress_num, member_form.data["member"])
+    return search(request, congress_num, member_form.data["member"], in_house)
     
 
 def update_members(request, congress_id, chamber, state):
     is_house = chamber != 'Senate'
     _congress = Congress.objects.get(congress_num__exact=congress_id)
-    mems = Congress.objects.get(congress_num__exact=int(congress_id)).members.filter(membership__house = is_house)
-    if (state != 'All') : mems = mems.filter(membership__congress = _congress, membership__state = state)
+    if (state == 'All'):
+        mems =Member.objects.filter(membership__congress = _congress, membership__house = is_house)
+    else :
+        mems = Member.objects.filter(membership__congress = _congress, membership__state = state, membership__house = is_house)
     mems = mems.values('id', 'full_name')
     return JsonResponse({'members': list(mems)})
 
@@ -102,9 +108,9 @@ def populate_congress(request, congress_id = 116):
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def swap_membership(request, congress_id, leaving_id, leaving_date, arriving_id = "!",arriving_date = "!", party = "!"):
+def swap_membership(request, congress_id, leaving_id, leaving_date, l_house, arriving_id = "!",arriving_date = "!", party = "!"):
     assert isinstance(request, HttpRequest)
-    utils.swapMembership(congress_id, leaving_id, arriving_id, leaving_date, arriving_date, party)
+    utils.swapMembership(congress_id, leaving_id, l_house, leaving_date, arriving_id, arriving_date, party)
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
