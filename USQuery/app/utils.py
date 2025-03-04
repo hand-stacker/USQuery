@@ -322,7 +322,7 @@ def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving
             house = leaving_membership.house,
             state = leaving_membership.state,
             geoid = leaving_membership.geoid,
-            party = party,
+            party = party ,
             )[0]
 
         arriving_membership.start_date = arriving_date
@@ -337,6 +337,22 @@ def updateArrival(congress_id, arriving_id, arriving_date) :
     _membership = Membership.objects.get(congress = _congress, member = _member)       
     _membership.start_date = arriving_date
     _membership.save()
+
+def createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num) :
+    in_house = (in_house == 1) 
+    _congress = Congress.objects.get(congress_num__exact = congress_id)
+    _member = _congress.members.get(id = member_id)
+    _membership = Membership.objects.get_or_create(
+            congress = _congress,
+            member = _member,
+            district_num = district_num,
+            house = in_house,
+            state = state,
+            geoid = state + ('' if not in_house else intToFIPS(district_num)),
+            party = party ,
+            start_date = arrival_date,
+            end_date = departure_date
+            )[0]
     
 
 ## mega function that creates bills, and creates any votes for a given bill

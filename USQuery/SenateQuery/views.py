@@ -82,7 +82,7 @@ def query(request):
     try:
         congress_num = int(member_form.data["congress"])
     except:
-        print("FATA L ER_R0R")
+        print("FATAL ER_R0R")
         return HttpResponseRedirect('/member-query/')        
     return search(request, congress_num, member_form.data["member"])
     
@@ -111,4 +111,10 @@ def swap_membership(request, congress_id, leaving_id, leaving_date, arriving_id 
 def update_arrival(request, congress_id, arriving_id, arriving_date):
     assert isinstance(request, HttpRequest)
     utils.updateArrival(congress_id, arriving_id, arriving_date)
+    return HttpResponseRedirect('/member-query/')
+
+@staff_member_required
+def create_membership(request, congress_id, member_id, state, in_house, party, arrival_date = None, departure_date = None, district_num = None):
+    assert isinstance(request, HttpRequest)
+    utils.createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num )
     return HttpResponseRedirect('/member-query/')
