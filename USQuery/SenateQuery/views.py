@@ -34,8 +34,7 @@ def search(request, congress_num, member_id):
     congress = Congress.objects.get(congress_num = congress_num)
     member = congress.members.get(id = member_id)
     membership = Membership.objects.get(congress = congress, member = member)
-    votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house)
-    
+    votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date, dateTime__lt = membership.end_date)
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
@@ -100,10 +99,16 @@ def update_members(request, congress_id, chamber, state):
 def populate_congress(request, congress_id = 116):
     assert isinstance(request, HttpRequest) 
     utils.addMembersCongressAPILazy(congress_id)
-    return HttpResponseRedirect("/")
+    return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def swap_membership(request, congress_num, leaving_id, leaving_date, arriving_id = "!",arriving_date = "!", party = "!"):
+def swap_membership(request, congress_id, leaving_id, leaving_date, arriving_id = "!",arriving_date = "!", party = "!"):
     assert isinstance(request, HttpRequest)
-    utils.swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving_date, party)
-    return HttpResponseRedirect("/")
+    utils.swapMembership(congress_id, leaving_id, arriving_id, leaving_date, arriving_date, party)
+    return HttpResponseRedirect('/member-query/')   
+
+@staff_member_required
+def update_arrival(request, congress_id, arriving_id, arriving_date):
+    assert isinstance(request, HttpRequest)
+    utils.updateArrival(congress_id, arriving_id, arriving_date)
+    return HttpResponseRedirect('/member-query/')

@@ -300,7 +300,7 @@ def addMembersCongressAPILazy(congress_num):
 def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving_date, party) :
     _congress = Congress.objects.get(congress_num__exact = congress_num)
     leaving_member = _congress.members.get(id = leaving_id)
-    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member)
+    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member)       
     if (arriving_id != "!") :
         _set_member = Member.objects.filter(id = arriving_id)
         if (_set_member.exists()):
@@ -315,19 +315,29 @@ def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving
                 image_link = "empty"
                 )[0]
     
-        Membership.objects.get_or_create(
-                            congress = _congress,
-                            member = arriving_member,
-                            district_num = leaving_member.district,
-                            house = leaving_member.in_house,
-                            state = leaving_member.state_code,
-                            geoid = leaving_member.geoid,
-                            party = party,
-                            start_date = arriving_date,
-                            end_date = leaving_member.end_date,
-                            )
-    leaving_membership.update(end_date = leaving_date)
+        arriving_membership = Membership.objects.get_or_create(
+            congress = _congress,
+            member = arriving_member,
+            district_num = leaving_membership.district_num,
+            house = leaving_membership.house,
+            state = leaving_membership.state,
+            geoid = leaving_membership.geoid,
+            party = party,
+            )[0]
 
+        arriving_membership.start_date = arriving_date
+        arriving_membership.end_date = leaving_membership.end_date
+        arriving_membership.save()
+    leaving_membership.end_date = leaving_date
+    leaving_membership.save()
+
+def updateArrival(congress_id, arriving_id, arriving_date) :
+    _congress = Congress.objects.get(congress_num__exact = congress_id)
+    _member = _congress.members.get(id = arriving_id)
+    _membership = Membership.objects.get(congress = _congress, member = _member)       
+    _membership.start_date = arriving_date
+    _membership.save()
+    
 
 ## mega function that creates bills, and creates any votes for a given bill
 ## too many api calls will lead to being blocked by congress api

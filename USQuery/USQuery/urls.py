@@ -40,6 +40,7 @@ urlpatterns = [
     path('member-query/', SQviews.home, name='senateQueryHome'),
     path('member-query/search/', SQviews.search, name='senateQuerySearch'),
     path('member-query/update-mems/<int:congress_id>/<str:chamber>/<str:state>/', SQviews.update_members, name='update_members'),
+    path('member-query/arrival/<int:congress_id>/<str:arriving_id>/<str:arriving_date>/', SQviews.update_arrival, name='update_arrival'),
     path('member-query/swap/<int:congress_id>/<str:leaving_id>/<str:leaving_date>/', SQviews.swap_membership, name='swap_membership'),
     path('member-query/swap/<int:congress_id>/<str:leaving_id>/<str:leaving_date>/<str:arriving_id>/<str:arriving_date>/<str:party>', SQviews.swap_membership, name='swap_membership'),
     path('member-query/results/', SQviews.query, name='senateQuery'),
