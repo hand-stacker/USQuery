@@ -1,5 +1,5 @@
 from datetime import datetime
-import requests, asyncio
+import requests, asyncio, json
 from USQuery import settings
 from requests.exceptions import HTTPError
 from SenateQuery.models import Member, Congress, Membership
@@ -217,6 +217,8 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
                 return await response.text()
     except aiohttp.ClientError as http_err:
         print(f'HTTP ERROR : {http_err}')
+    except json.JSONDecodeError as e:
+        print("Invalid JSON syntax:", e)
     except Exception as err:
         print(f'MISC ERROR : {err} when connecting to {fullpath}')
     except asyncio.TimeoutError:
@@ -295,6 +297,38 @@ def addMembersCongressAPILazy(congress_num):
         else : API_response = None
     return
 
+def swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving_date, party) :
+    _congress = Congress.objects.get(congress_num__exact = congress_num)
+    leaving_member = _congress.members.get(id = leaving_id)
+    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member)
+    if (arriving_id != "!") :
+        _set_member = Member.objects.filter(id = arriving_id)
+        if (_set_member.exists()):
+            arriving_member = _set_member[0]
+        else :
+            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + arriving_id).json()
+            arriving_member = Member.objects.get_or_create(
+                id = arriving_id, 
+                full_name = API_response_member['member']['directOrderName'],
+                first_name = API_response_member['member']['firstName'],
+                last_name = API_response_member['member']['lastName'],
+                image_link = "empty"
+                )[0]
+    
+        Membership.objects.get_or_create(
+                            congress = _congress,
+                            member = arriving_member,
+                            district_num = leaving_member.district,
+                            house = leaving_member.in_house,
+                            state = leaving_member.state_code,
+                            geoid = leaving_member.geoid,
+                            party = party,
+                            start_date = arriving_date,
+                            end_date = leaving_member.end_date,
+                            )
+    leaving_membership.update(end_date = leaving_date)
+
+
 ## mega function that creates bills, and creates any votes for a given bill
 ## too many api calls will lead to being blocked by congress api
 async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
@@ -316,6 +350,9 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
             for bill in sets:
                 tg.create_task(addBillASYNC(session, vote_session, congress_num, _type, bill, _congress, header_str))
         indx = end
+    print('added up to ' + str(offset + indx))
+    if 'next' in API_response['pagination']:
+        print(', need to get to ' + str(API_response['pagination']['count']))
     await session.close()
     await vote_session.close()
 
@@ -393,12 +430,14 @@ async def updateBill(congress_num, _type, _num) :
     await vote_session.close()
     return 1
 # meant to be used asynchronously to add batches of bills at one time
-async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = False):
+async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = True):
     _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
     _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)    
     if (ignore_exists and await sync_to_async(_set_bill.exists)()):
         return
     API_response_bill = await connectASYNC(session, b['url'], header_str)
+    if (API_response_bill['bill']['title'][:8] == 'Reserved'):
+        return
     API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
     _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
     _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member)

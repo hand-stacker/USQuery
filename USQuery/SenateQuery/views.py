@@ -101,3 +101,9 @@ def populate_congress(request, congress_id = 116):
     assert isinstance(request, HttpRequest) 
     utils.addMembersCongressAPILazy(congress_id)
     return HttpResponseRedirect("/")
+
+@staff_member_required
+def swap_membership(request, congress_num, leaving_id, leaving_date, arriving_id = "!",arriving_date = "!", party = "!"):
+    assert isinstance(request, HttpRequest)
+    utils.swapMembership(congress_num, leaving_id, arriving_id, leaving_date, arriving_date, party)
+    return HttpResponseRedirect("/")

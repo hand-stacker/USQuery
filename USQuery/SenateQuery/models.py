@@ -44,7 +44,7 @@ class Membership(models.Model):
     geoid = models.CharField(max_length=4)
     party = models.CharField(max_length=30)
     start_date = models.CharField(max_length=10)
-    end_date = models.CharField(max_length=10, null = True)
+    end_date = models.CharField(max_length=10, null = True, blank = True)
     def getChamber(self):
         if self.house: return "House of Representatives"
         return "Senate"
