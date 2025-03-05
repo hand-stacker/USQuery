@@ -1,16 +1,90 @@
 from datetime import datetime
-import requests, asyncio, json
-from USQuery import settings
+import requests, asyncio, json, aiohttp
 from requests.exceptions import HTTPError
+from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Bill, Vote, ChoiceVote, Choice
-import aiohttp
+from BillQuery.models import Bill, Vote
 from asgiref.sync import sync_to_async
-
 from collections import defaultdict
 from xml.etree import cElementTree as ET
-## https://stackoverflow.com/a/10077069
 
+## helpful objects that map state related data
+state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
+              'HI','ID','IN','IL','IA','KS','KY','LA','ME','MD',
+              'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
+              'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
+              'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
+state_dict = {'AL' : 'Alabama', 'AK' : 'Alaska', 'AZ' : 'Arizona', 'AR' : 'Arkansas',
+              'CA' : 'California', 'CO' : 'Colorado', 'CT' : 'Connecticut',
+              'DE' : 'Delaware', 'FL' : 'Florida', 'GA' : 'Georgia', 'HI' : 'Hawaii',
+              'ID' : 'Idaho', 'IN' : 'Indiana', 'IL' : 'Illinois', 'IA' : 'Iowa',
+              'KS' : 'Kansas', 'KY' : 'Kentucky', 'LA' : 'Louisiana', 'ME' : 'Maine',
+              'MD' : 'Maryland', 'MA' : 'Massachusetts', 'MI' : 'Michigan',
+              'MN' : 'Minnesota', 'MS' : 'Mississippi', 'MO' : 'Missouri', 'MT' : 'Montana',
+              'NE' : 'Nebraska', 'NV' : 'Nevada', 'NH' : 'New Hampshire', 'NJ' : 'New Jersey',
+              'NM' : 'New Mexico', 'NY' : 'New York', 'NC' : 'North Carolina',
+              'ND' : 'North Dakota', 'OH' : 'Ohio', 'OK' : 'Oklahoma', 'OR' : 'Oregon',
+              'PA' : 'Pennsylvania', 'RI' : 'Rhode Island', 'SC' : 'South Carolina',
+              'SD' : 'South Dakota', 'TN' : 'Tennessee', 'TX' : 'Texas', 'UT' : 'Utah',
+              'VT' : 'Vermont', 'VA' : 'Virginia', 'WA' : 'Washington', 'WV' : 'West Virginia',
+              'WI' : 'Wisconsin', 'WY' : 'Wyoming',
+              'DC' : 'District of Columbia', 'AS' : 'American Samoa', 'GU' : 'Guam',
+              'MP' : 'Northern Mariana Islands', 'PR' : 'Puerto Rico', 'VI' : 'Virgin Islands'
+              }
+reverse_state_dict = {'Alabama' : 'AL', 'Alaska' : 'AK', 'Arizona' : 'AZ', 'Arkansas' : 'AR',
+              'California' : 'CA', 'Colorado' : 'CO', 'Connecticut' : 'CT', 'Delaware' : 'DE',
+              'Florida' : 'FL', 'Georgia' : 'GA', 'Hawaii' : 'HI', 'Idaho' : 'ID',
+              'Indiana' : 'IN', 'Illinois' : 'IL', 'Iowa' : 'IA', 'Kansas' : 'KS',
+              'Kentucky' : 'KY', 'Louisiana' : 'LA', 'Maine' : 'ME', 'Maryland' : 'MD',
+              'Massachusetts' : 'MA', 'Michigan' : 'MI', 'Minnesota' : 'MN',
+              'Mississippi' : 'MS', 'Missouri' : 'MO', 'Montana' : 'MT', 'Nebraska' : 'NE',
+              'Nevada' : 'NV', 'New Hampshire' : 'NH', 'New Jersey' : 'NJ', 'New Mexico' : 'NM',
+              'New York' : 'NY', 'North Carolina' : 'NC', 'North Dakota' : 'ND', 'Ohio' : 'OH',
+              'Oklahoma' : 'OK', 'Oregon' : 'OR', 'Pennsylvania' : 'PA', 'Rhode Island' : 'RI',
+              'South Carolina' : 'SC', 'South Dakota' : 'SD', 'Tennessee' : 'TN', 'Texas' : 'TX',
+              'Utah' : 'UT', 'Vermont' : 'VT', 'Virginia' : 'VA', 'Washington' : 'WA',
+              'West Virginia' : 'WV', 'Wisconsin' : 'WI', 'Wyoming' : 'WY',
+              'District of Columbia' : 'DC', 'American Samoa' : 'AS', 'Guam' : 'GU',
+              'Northern Mariana Islands' : 'MP', 'Puerto Rico' : 'PR', 'Virgin Islands' : 'VI'
+              }
+state_fips = {
+    'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06',
+    'CO': '08', 'CT': '09', 'DE': '10', 'FL': '12', 'GA': '13',
+    'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 'IA': '19',
+    'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 'MD': '24',
+    'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 'MO': '29',
+    'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 'NJ': '34',
+    'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 'OH': '39',
+    'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 'SC': '45',
+    'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 'VT': '50',
+    'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 'WY': '56',
+    'DC': '11', 'AS': '60', 'GU': '66', 'MP': '69', 'PR': '72', 'VI': '78'
+}
+fips_to_count = {
+    '01' : 0, '02' : 1, '04' : 2, '05' : 3, '06' : 4,
+    '08' : 5, '09' : 6, '10' : 7, '12' : 8, '13'  :9,
+    '15' : 10, '16' : 11, '17'  :12, '18' : 13, '19' : 14,
+    '20' : 15, '21' : 16, '22' : 17, '23' : 18, '24' : 19,
+    '25' : 20, '26' : 21, '27' : 22, '28' : 23, '29' : 24,
+    '30' : 25, '31' : 26, '32' : 27, '33' : 28, '34' : 29,
+    '35' : 30, '36' : 31, '37' : 32, '38' : 33, '39' : 34,
+    '40' : 35, '41' : 36, '42' : 37, '44' : 38, '45' : 39,
+    '46' : 40, '47' : 41, '48' : 42, '49' : 43, '50' : 44,
+    '51' : 45, '53' : 46, '54' : 47, '55' : 48, '56' : 49,
+    '11' : None, '60' : None, '66' : None, '69' : None, '72' : None, '78' : None
+}
+## maps a bill type to numerical code in project
+types = {
+            's' : 0,
+            'sres' : 1,
+            'sjres' : 2,
+            'sconres' : 3,
+            'hr' : 4,
+            'hres' : 5,
+            'hjres' : 6,
+            'hconres' : 7}
+
+## Helpful function for making a xml tree into a dictionary. Source : https://stackoverflow.com/a/10077069
 def etree_to_dict(t):
     d = {t.tag: {} if t.attrib else None}
     children = list(t)
@@ -31,166 +105,6 @@ def etree_to_dict(t):
             d[t.tag] = text
     return d
 
-state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
-              'HI','ID','IN','IL','IA','KS','KY','LA','ME','MD',
-              'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
-              'NM','NY','NC','ND','OH','OK','OR','PA','RI','SC',
-              'SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
-
-state_dict = {'AL' : 'Alabama',
-              'AK' : 'Alaska',
-              'AZ' : 'Arizona' ,
-              'AR' : 'Arkansas',
-              'CA' : 'California',
-              'CO' : 'Colorado',
-              'CT' : 'Connecticut',
-              'DE' : 'Delaware',
-              'FL' : 'Florida',
-              'GA' : 'Georgia',
-              'HI' : 'Hawaii',
-              'ID' : 'Idaho',
-              'IN' : 'Indiana',
-              'IL' : 'Illinois',
-              'IA' : 'Iowa',
-              'KS' : 'Kansas',
-              'KY' : 'Kentucky',
-              'LA' : 'Louisiana',
-              'ME' : 'Maine',
-              'MD' : 'Maryland',
-              'MA' : 'Massachusetts',
-              'MI' : 'Michigan',
-              'MN' : 'Minnesota',
-              'MS' : 'Mississippi',
-              'MO' : 'Missouri',
-              'MT' : 'Montana',
-              'NE' : 'Nebraska',
-              'NV' : 'Nevada',
-              'NH' : 'New Hampshire',
-              'NJ' : 'New Jersey',
-              'NM' : 'New Mexico',
-              'NY' : 'New York',
-              'NC' : 'North Carolina',
-              'ND' : 'North Dakota',
-              'OH' : 'Ohio',
-              'OK' : 'Oklahoma',
-              'OR' : 'Oregon',
-              'PA' : 'Pennsylvania',
-              'RI' : 'Rhode Island',
-              'SC' : 'South Carolina',
-              'SD' : 'South Dakota',
-              'TN' : 'Tennessee',
-              'TX' : 'Texas',
-              'UT' : 'Utah',
-              'VT' : 'Vermont',
-              'VA' : 'Virginia',
-              'WA' : 'Washington',
-              'WV' : 'West Virginia',
-              'WI' : 'Wisconsin',
-              'WY' : 'Wyoming',
-              'DC' : 'District of Columbia',
-              'AS' : 'American Samoa',
-              'GU' : 'Guam',
-              'MP' : 'Northern Mariana Islands',
-              'PR' : 'Puerto Rico',
-              'VI' : 'Virgin Islands'
-              }
-
-reverse_state_dict = {'Alabama' : 'AL',
-              'Alaska' : 'AK',
-              'Arizona' : 'AZ',
-              'Arkansas' : 'AR',
-              'California' : 'CA',
-              'Colorado' : 'CO',
-              'Connecticut' : 'CT',
-              'Delaware' : 'DE',
-              'Florida' : 'FL',
-              'Georgia' : 'GA',
-              'Hawaii' : 'HI',
-              'Idaho' : 'ID',
-              'Indiana' : 'IN',
-              'Illinois' : 'IL',
-              'Iowa' : 'IA',
-              'Kansas' : 'KS',
-              'Kentucky' : 'KY',
-              'Louisiana' : 'LA',
-              'Maine' : 'ME',
-              'Maryland' : 'MD',
-              'Massachusetts' : 'MA',
-              'Michigan' : 'MI',
-              'Minnesota' : 'MN',
-              'Mississippi' : 'MS',
-              'Missouri' : 'MO',
-              'Montana' : 'MT',
-              'Nebraska' : 'NE',
-              'Nevada' : 'NV',
-              'New Hampshire' : 'NH',
-              'New Jersey' : 'NJ',
-              'New Mexico' : 'NM',
-              'New York' : 'NY',
-              'North Carolina' : 'NC',
-              'North Dakota' : 'ND',
-              'Ohio' : 'OH',
-              'Oklahoma' : 'OK',
-              'Oregon' : 'OR',
-              'Pennsylvania' : 'PA',
-              'Rhode Island' : 'RI',
-              'South Carolina' : 'SC',
-              'South Dakota' : 'SD',
-              'Tennessee' : 'TN',
-              'Texas' : 'TX',
-              'Utah' : 'UT',
-              'Vermont' : 'VT',
-              'Virginia' : 'VA',
-              'Washington' : 'WA',
-              'West Virginia' : 'WV',
-              'Wisconsin' : 'WI',
-              'Wyoming' : 'WY',
-              'District of Columbia' : 'DC',
-              'American Samoa' : 'AS',
-              'Guam' : 'GU',
-              'Northern Mariana Islands' : 'MP',
-              'Puerto Rico' : 'PR',
-              'Virgin Islands' : 'VI'
-              }
-
-state_fips = {
-    'AL': '01', 'AK': '02', 'AZ': '04', 'AR': '05', 'CA': '06',
-    'CO': '08', 'CT': '09', 'DE': '10', 'FL': '12', 'GA': '13',
-    'HI': '15', 'ID': '16', 'IL': '17', 'IN': '18', 'IA': '19',
-    'KS': '20', 'KY': '21', 'LA': '22', 'ME': '23', 'MD': '24',
-    'MA': '25', 'MI': '26', 'MN': '27', 'MS': '28', 'MO': '29',
-    'MT': '30', 'NE': '31', 'NV': '32', 'NH': '33', 'NJ': '34',
-    'NM': '35', 'NY': '36', 'NC': '37', 'ND': '38', 'OH': '39',
-    'OK': '40', 'OR': '41', 'PA': '42', 'RI': '44', 'SC': '45',
-    'SD': '46', 'TN': '47', 'TX': '48', 'UT': '49', 'VT': '50',
-    'VA': '51', 'WA': '53', 'WV': '54', 'WI': '55', 'WY': '56',
-    'DC': '11', 'AS': '60', 'GU': '66', 'MP': '69', 'PR': '72', 'VI': '78'
-}
-
-fips_to_count = {
-    '01' : 0, '02' : 1, '04' : 2, '05' : 3, '06' : 4,
-    '08' : 5, '09' : 6, '10' : 7, '12' : 8, '13'  :9,
-    '15' : 10, '16' : 11, '17'  :12, '18' : 13, '19' : 14,
-    '20' : 15, '21' : 16, '22' : 17, '23' : 18, '24' : 19,
-    '25' : 20, '26' : 21, '27' : 22, '28' : 23, '29' : 24,
-    '30' : 25, '31' : 26, '32' : 27, '33' : 28, '34' : 29,
-    '35' : 30, '36' : 31, '37' : 32, '38' : 33, '39' : 34,
-    '40' : 35, '41' : 36, '42' : 37, '44' : 38, '45' : 39,
-    '46' : 40, '47' : 41, '48' : 42, '49' : 43, '50' : 44,
-    '51' : 45, '53' : 46, '54' : 47, '55' : 48, '56' : 49,
-    '11' : None, '60' : None, '66' : None, '69' : None, '72' : None, '78' : None
-}
-
-types = {
-            's' : 0,
-            'sres' : 1,
-            'sjres' : 2,
-            'sconres' : 3,
-            'hr' : 4,
-            'hres' : 5,
-            'hjres' : 6,
-            'hconres' : 7}
-
 ## connects to an API with given headers
 def connect(fullpath, headers):
     try:
@@ -206,6 +120,8 @@ def connect(fullpath, headers):
         print('Connected to ' + fullpath)
         return response    
 
+## connects to an API with given headers(in string format) asynchronously
+## must specify if response is to be jsonified or not
 async def connectASYNC(session, fullpath, header_str, jsonify = True):
     try:
         async with session.get(fullpath + header_str, timeout=40) as response:
@@ -224,6 +140,7 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
     except asyncio.TimeoutError:
         print('TIMEOUT ERROR')
 
+## returns a list of responses from a list of requests asynchronously
 async def run_concurrent_connect(session, requests, headers) : 
     tasks = []
     for request in requests: 
@@ -231,20 +148,18 @@ async def run_concurrent_connect(session, requests, headers) :
         tasks.append(ret)
     return await asyncio.gather(*tasks, return_exceptions=True)
 
-## mega function to add members for a given congress, to fully load a member we need to make an updateMember call, which costs one api call...
+## mega function to add members for a given congress
+## to fully load a member we need to make an updateMember call adding image and other info
 def addMembersCongressAPILazy(congress_num):
-    headers = {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}
-    headers['curerentMember'] = 'false'
-    headers['offset'] = '0'
-    headers['limit'] = '250'
-    
+    headers = {
+        'api_key' : settings.CONGRESS_KEY,
+        'format' : 'json',
+        'currentMember' : 'false',
+        'offset' : '0', 'limit' : '250'
+        }
     API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), headers).json()
-    
     start_date = API_cong['congress']['sessions'][0]['startDate']
-    end_date = None
-    if len(API_cong['congress']['sessions']) > 2 :
-        end_date = API_cong['congress']['sessions'][2]['endDate']
-    
+    end_date = None if len(API_cong['congress']['sessions']) <= 2 else API_cong['congress']['sessions'][2]['endDate']
     API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
     congress = Congress.objects.get_or_create(
         congress_num = congress_num,
@@ -255,21 +170,15 @@ def addMembersCongressAPILazy(congress_num):
     while (API_response != None):
         for member in API_response['members']:
             _id=member['bioguideId']
-            district = None
-            in_house = False  
-            if (member['district'] != None):
-                district = member['district']
-                in_house = True
-                
-            _set = congress.members.filter(id = _id)
-            if _set.exists() and Membership.objects.filter(congress = congress, member = _set[0]).exists():
+            in_house = member['district'] != None
+            district = None if not in_house else member['district']
+            member_set = Member.objects.filter(id = _id)
+            if member_set.exists() and Membership.objects.filter(congress = congress, member = member_set[0], house = in_house).exists():
                 continue    
-            #membership does not exist in congress so we search for member, if doesn't exist make new member
             name = getFirstAndLastName(member['name'])
             full_name = name[0] + " "  + name[1]
-            _set_member = Member.objects.filter(id = _id)
-            if (_set_member.exists()):
-                _member = _set_member[0]
+            if (member_set.exists()):
+                _member = member_set[0]
             else :
                 _member = Member.objects.get_or_create(
                     id = _id, 
@@ -277,8 +186,7 @@ def addMembersCongressAPILazy(congress_num):
                     first_name = name[0],
                     last_name = name[1],
                     image_link = "empty"
-                    )[0] 
-                    
+                    )[0]  
             state_code = reverse_state_dict[member['state']]
             Membership.objects.get_or_create(
                         congress = congress,
@@ -295,10 +203,11 @@ def addMembersCongressAPILazy(congress_num):
         if 'next' in API_response['pagination']:
             API_response = connect(API_response['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
         else : API_response = None
-    return
 
-def swapMembership(congress_num, leaving_id, l_house, leaving_date, arriving_id, arriving_date, party) :
-    in_house = (l_house == 1)
+## swap membership given bioguide_ids and dates of arrival and departure
+## if departing member has no succesor, arriving_id should be "!"
+def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party) :
+    in_house = (in_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_num)
     leaving_member = Member.objects.get(id = leaving_id)
     leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member, house = in_house)       
@@ -315,7 +224,6 @@ def swapMembership(congress_num, leaving_id, l_house, leaving_date, arriving_id,
                 last_name = API_response_member['member']['lastName'],
                 image_link = "empty"
                 )[0]
-    
         arriving_membership = Membership.objects.get_or_create(
             congress = _congress,
             member = arriving_member,
@@ -325,13 +233,13 @@ def swapMembership(congress_num, leaving_id, l_house, leaving_date, arriving_id,
             geoid = leaving_membership.geoid,
             party = party ,
             )[0]
-
         arriving_membership.start_date = arriving_date
         arriving_membership.end_date = leaving_membership.end_date
         arriving_membership.save()
     leaving_membership.end_date = leaving_date
     leaving_membership.save()
 
+3# updates the arrival date of a membership
 def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
     in_house = (in_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_id)
@@ -340,6 +248,9 @@ def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
     _membership.start_date = arriving_date
     _membership.save()
 
+## creates a new membership with all required parameters (beyond arrival date is optional)
+## DANGEROUS: will create a new membership even if one already exists if there is a slight
+## variation from extant membership (ex: mistyped party)
 def createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num) :
     in_house = (in_house == 1) 
     _congress = Congress.objects.get(congress_num__exact = congress_id)
@@ -350,17 +261,19 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
             district_num = district_num,
             house = in_house,
             state = state,
-            geoid = state + ('' if not in_house else intToFIPS(district_num)),
+            geoid = state_fips[state] + ('' if not in_house else intToFIPS(district_num)),
             party = party ,
             start_date = arrival_date,
             end_date = departure_date
             )[0]
+    _membership.start_date = arrival_date
+    _membership.end_date = departure_date
+    _membership.save()
     
-
 ## mega function that creates bills, and creates any votes for a given bill
 ## too many api calls will lead to being blocked by congress api
 async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
-    header_str_sp = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=' + str(limit) + '&offset=' + str(offset)
+    header_str_sp = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=' + str(limit) + '&offset=' + str(offset)
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
@@ -458,7 +371,7 @@ async def updateBill(congress_num, _type, _num) :
             API_response_actions = None
     await session.close()
     await vote_session.close()
-    return 1
+
 # meant to be used asynchronously to add batches of bills at one time
 async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = True):
     _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
@@ -548,6 +461,55 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
             API_response_actions = None
     return 1
     
+# runs through existing votes up to limit, and adds memberships that were missing
+async def fixHouseVotes(congress_num, year, nums, member_ids) : 
+    session = aiohttp.ClientSession()
+    congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
+    indx = 1
+    limit = 5
+    while (indx <= nums) : 
+        end = min (indx + limit, nums + 1)
+        async with asyncio.TaskGroup() as tg:
+            for i in range(indx, end):
+                tg.create_task(fixHouseVote(session, congress, congress_num, year, i, member_ids))
+        indx = end
+    print('Fixed ' + str(nums) + ' votes. Check your vote table to see if everything is correct.')
+    await session.close()
+
+async def fixHouseVote(session, congress, congress_num, year, num, member_ids) :
+    # CCC_H_S_XXXXX
+    sess = 1 if (year % 2 == 1) else 2
+    vote_id = congress_num * 10000000 + 1000000 + sess * 100000 + num
+    url = "http://clerk.house.gov/cgi-bin/vote.asp?year=" + str(year) + "&rollnumber=" + str(num)
+    _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
+    if await sync_to_async(_set_vote.exists)():
+        vote = await sync_to_async(Vote.objects.get)(id = vote_id)
+        try:
+            vote_xml = await connectASYNC(session, url, '', False)
+            vote_xml = ET.XML(vote_xml)
+        except aiohttp.ClientConnectionError as e:
+            print(f"Connection error: {e}")
+            return
+        vote_dict = etree_to_dict(vote_xml)
+        member_votes = {
+                        'Yea': vote.yeas,
+                        'Aye': vote.yeas,
+                        'Guilty': vote.yeas,
+                        'Nay': vote.nays,
+                        'No': vote.nays,
+                        'Not Guilty': vote.nays,
+                        'Not Voting': vote.novt,
+                        'Present': vote.pres
+                    }
+        members = vote_dict['rollcall-vote']['vote-data']['recorded-vote']
+        for m in members :
+            if m['legislator']['@name-id'] in member_ids :
+                _set = await sync_to_async(member_votes[m['vote']].filter)(congress=congress, member__id=m['legislator']['@name-id'], house = True)
+                if not await sync_to_async(_set.exists)() :
+                    member = await sync_to_async(Membership.objects.get)(congress=congress, member__id=m['legislator']['@name-id'], house = True)
+                    await sync_to_async(member_votes[m['vote']].add)(member)
+
+
 def getFirstAndLastName(reverseName):
     try:
         commaIndx = reverseName.index(',')
@@ -581,7 +543,8 @@ def updateMember(congress_num, member_id):
     _congress = Congress.objects.get(congress_num__exact = congress_num)    
     _member = Member.objects.get(id__exact = member_id)
     API_response_member = connect(_member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
-    if _member.image_link != "empty": return API_response_member
+    image_link = _member.image_link
+    if image_link != "empty": return API_response_member
     
     office_addr = None
     phone_num = None
@@ -604,13 +567,14 @@ def updateMember(congress_num, member_id):
                 _membership.party = hist['partyName']
                 _membership.save()
                 break
-                
+    if ('depiction' in API_response_member['member']) :
+        image_link = API_response_member['member']['depiction']['imageUrl']
 
     Member.objects.filter(id = member_id).update(
         full_name = API_response_member['member']['directOrderName'],
         first_name = API_response_member['member']['firstName'],
         last_name = API_response_member['member']['lastName'], 
-        image_link = API_response_member['member']['depiction']['imageUrl'],
+        image_link = image_link,
         office = office_addr,
         official_link = site,
         birth_year = API_response_member['member']['birthYear'],

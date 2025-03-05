@@ -89,3 +89,10 @@ def update_bill(request, congress, _type, _num):
     assert isinstance(request, HttpRequest)
     asyncio.run(utils.updateBill(congress, _type, _num))
     return HttpResponseRedirect("/bill-query/results/bill/" + str(congress) + "/" + _type + "/" + str(_num))
+
+@staff_member_required
+def fix_votes(request, congress_num, year, nums):
+    member_ids = request.GET['member_ids'].split(',')
+    assert isinstance(request, HttpRequest)
+    asyncio.run(utils.fixHouseVotes(congress_num, year, nums, member_ids))
+    return HttpResponseRedirect("/bill-query")

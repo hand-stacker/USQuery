@@ -108,15 +108,15 @@ def populate_congress(request, congress_id = 116):
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def swap_membership(request, congress_id, leaving_id, leaving_date, l_house, arriving_id = "!",arriving_date = "!", party = "!"):
+def swap_membership(request, congress_id, leaving_id, leaving_date, in_house, arriving_id = "!",arriving_date = "!", party = "!"):
     assert isinstance(request, HttpRequest)
-    utils.swapMembership(congress_id, leaving_id, l_house, leaving_date, arriving_id, arriving_date, party)
+    utils.swapMembership(congress_id, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party)
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def update_arrival(request, congress_id, arriving_id, arriving_date):
+def update_arrival(request, congress_id, arriving_id, arriving_date, in_house):
     assert isinstance(request, HttpRequest)
-    utils.updateArrival(congress_id, arriving_id, arriving_date)
+    utils.updateArrival(congress_id, arriving_id, arriving_date, in_house)
     return HttpResponseRedirect('/member-query/')
 
 @staff_member_required
