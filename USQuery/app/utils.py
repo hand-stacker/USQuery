@@ -269,7 +269,28 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
     _membership.start_date = arrival_date
     _membership.end_date = departure_date
     _membership.save()
+
+## updates database, adding new bills or updating bills and votes with actionDate GTE current_date_str
+async def updateRecentBills(congress_num, current_date_str, bill_type):
+    header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
+    session = aiohttp.ClientSession()
+    vote_session = aiohttp.ClientSession()
+    _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
+    current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
+    API_response = await connectASYNC(session, settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + bill_type + "?", header_str)
     
+    while API_response is not None:
+        for bill in API_response['bills']:
+            latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
+            if latest_action_date >= current_date:
+                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, _congress, header_str)
+        if 'next' in API_response['pagination']:
+            API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
+        else:
+            API_response = None
+    await session.close()
+    await vote_session.close()
+
 ## mega function that creates bills, and creates any votes for a given bill
 ## too many api calls will lead to being blocked by congress api
 async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
@@ -584,9 +605,11 @@ def updateMember(congress_num, member_id):
     # need to somehow store history of legislation and party history and leadership
     return API_response_member;
 
-def getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y):
-    start_date = datetime(int(s_y), int(s_m), int(s_d))
-    end_date = datetime(int(e_y), int(e_m), int(e_d))
+def getBillsInRange(s_d, e_d):
+    start = s_d.split('-')
+    end = e_d.split('-')
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
+    end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
     return Bill.objects.filter(origin_date__gte=start_date, origin_date__lte=end_date)
 
 def intToFIPS(num):
@@ -605,8 +628,6 @@ async def billHtml(congress_id, bill_type, num):
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
             'bill' : bill_type.upper() + "-" + num,
             }
-
-    ## can use status of bill object...
     if ('actionCode' in API_data[1]['actions'][0]) and (API_data[1]['actions'][0]['actionCode'] in ['E40000', '36000']) :
         context['bill_state_type'] = 'Became Public Law'
     else :
@@ -646,11 +667,11 @@ async def billHtml(congress_id, bill_type, num):
         for s in API_data[4]['subjects']['legislativeSubjects']:
             sub_list +=  '<li class="list-group-item">' + s['name'] + '</li>'
         context['subjects'] = sub_list
-        context['policy_area'] = API_data[4]['subjects']['policyArea']['name']
+        context['policy_area'] = 'Not Specified Yet.' if not ('policyArea' in API_data[4]['subjects']) else API_data[4]['subjects']['policyArea']['name']
             
     # currently jut gets first summary in list...
     if (API_data[5] != ''):
-        context['summary'] = API_data[5]['summaries'][0]['text']
+        context['summary'] = 'No Summary Provided Yet.' if (len(API_data[5]['summaries']) < 1) else API_data[5]['summaries'][0]['text']
         
     #if ('textVersions' in API_response['bill']):
      #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()

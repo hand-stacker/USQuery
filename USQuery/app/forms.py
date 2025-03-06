@@ -4,7 +4,7 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import gettext_lazy as _
 from SenateQuery import models as SQmodels
 
-YEAR_CHOICES = ["2019", "2020", '2021', '2022', '2023', '2024', '2025']
+YEAR_CHOICES = ["2025", "2024", '2023', '2022', '2021', '2020', '2019']
 
 CLORO_CHOICES = ((1, 'YEA'), (0, 'NAY'), (2, 'PRES'), (3, 'NOVT'))
 
@@ -106,11 +106,11 @@ class MemberForm(forms.Form):
                 state = self.data.get('state')
                 self.fields['member'].queryset = self.fields['member'].queryset.filter(membership__state = state)
    
-class DateForm(forms.Form):
-    start_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))
-    end_date = forms.DateField(input_formats='%Y,%m,%d',widget=forms.SelectDateWidget(years=YEAR_CHOICES))
-
 class CloroChoice(forms.Form): 
     cloro_choice = forms.ChoiceField(
         choices = CLORO_CHOICES
         )
+
+class CalendarDateForm(forms.Form):
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))

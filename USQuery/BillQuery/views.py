@@ -18,24 +18,16 @@ def home(request):
         {   
             'title':"Bill Query", 
             'content':"Make a bill Query",
-            "date_form": forms.DateForm(request.GET),
+            "calendar_form" : forms.CalendarDateForm(request.GET)
         }
     )
 
 def query(request):
-    date_form = forms.DateForm(request.GET)
-    return search(request,
-                    date_form.data["start_date_day"],
-                    date_form.data["start_date_month"],
-                    date_form.data["start_date_year"],
-                    date_form.data["end_date_day"],
-                    date_form.data["end_date_month"],
-                    date_form.data["end_date_year"])
-    # have to not make response\
-    #return HttpResponseRedirect('/bill-query/')
+    cal_form = forms.CalendarDateForm(request.GET)
+    return search(request, cal_form.data["start_date"], cal_form.data["end_date"])
 
-def search(request, s_d, s_m, s_y, e_d, e_m, e_y):
-    q_set = utils.getBillsInRange(s_d, s_m, s_y, e_d, e_m, e_y)
+def search(request, s_d, e_d):
+    q_set = utils.getBillsInRange(s_d, e_d)
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -95,4 +87,10 @@ def fix_votes(request, congress_num, year, nums):
     member_ids = request.GET['member_ids'].split(',')
     assert isinstance(request, HttpRequest)
     asyncio.run(utils.fixHouseVotes(congress_num, year, nums, member_ids))
+    return HttpResponseRedirect("/bill-query")
+
+@staff_member_required
+def update_votes(request, congress_num, date, t):
+    assert isinstance(request, HttpRequest)
+    asyncio.run(utils.updateRecentBills(congress_num, date, t))
     return HttpResponseRedirect("/bill-query")

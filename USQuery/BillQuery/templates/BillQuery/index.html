@@ -5,13 +5,13 @@
 <per> Selet a time range:</per>
 <div class="query-container">
     {% load static %}
-    <form name="DateForm" id="id_DateForm" action="results/" method="get">
-        {{ date_form.non_field_errors }}
+    <form name="CalForm" id="id_CalForm" action="results/" method="get">
+        {{ calendar_form.non_field_errors }}
         <h5>Start Date</h5>
-        {{date_form.start_date}}
+        {{calendar_form.start_date}}
         <br />
         <h5>End Date</h5>
-        {{date_form.end_date}}
+        {{calendar_form.end_date}}
         <input type="submit" value="Search" />
     </form>
 </div>
