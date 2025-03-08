@@ -90,7 +90,8 @@ def fix_votes(request, congress_num, year, nums):
     return HttpResponseRedirect("/bill-query")
 
 @staff_member_required
-def update_votes(request, congress_num, date, t):
+def update_votes(request, congress_num, date):
     assert isinstance(request, HttpRequest)
-    asyncio.run(utils.updateRecentBills(congress_num, date, t))
+    for t in utils.types :
+        asyncio.run(utils.updateRecentBills(congress_num, date, t))
     return HttpResponseRedirect("/bill-query")

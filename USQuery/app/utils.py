@@ -239,7 +239,7 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
     leaving_membership.end_date = leaving_date
     leaving_membership.save()
 
-3# updates the arrival date of a membership
+# updates the arrival date of a membership
 def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
     in_house = (in_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_id)
@@ -283,7 +283,7 @@ async def updateRecentBills(congress_num, current_date_str, bill_type):
         for bill in API_response['bills']:
             latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
             if latest_action_date >= current_date:
-                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, _congress, header_str)
+                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, _congress, header_str, False)
         if 'next' in API_response['pagination']:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
@@ -397,8 +397,8 @@ async def updateBill(congress_num, _type, _num) :
 async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = True):
     _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
     _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)    
-    if (ignore_exists and await sync_to_async(_set_bill.exists)()):
-        return
+    bill_exists = await sync_to_async(_set_bill.exists)()
+    if (bill_exists and ignore_exists): return
     API_response_bill = await connectASYNC(session, b['url'], header_str)
     if (API_response_bill['bill']['title'][:8] == 'Reserved'):
         return # reserved bills are trivial, so we ignore them if their title was a reservation
@@ -406,22 +406,31 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
     _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
     _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member)
     _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
-    _bill = await sync_to_async(Bill.objects.get_or_create)(
-        id = _id,
-        title = b['title'],
-        sponsor = _membership,
-        status = _status,
-        origin_date = API_response_bill['bill']['introducedDate'],
-        latest_action = API_response_bill['bill']['latestAction']['actionDate']
-        )
-    _bill = _bill[0]
+
+    if (bill_exists) : 
+        _bill = await sync_to_async(Bill.objects.get)(id = _id)
+        _bill.title = b['title']
+        _bill.status = _status
+        _bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
+        await sync_to_async(_bill.save)()
+    else :
+        _bill = await sync_to_async(Bill.objects.get_or_create)(
+            id = _id,
+            title = b['title'],
+            sponsor = _membership,
+            status = _status,
+            origin_date = API_response_bill['bill']['introducedDate'],
+            latest_action = API_response_bill['bill']['latestAction']['actionDate']
+            )
+        _bill = _bill[0]
+
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
                 _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
-                if (ignore_exists and await sync_to_async(_set_vote.exists)()):
+                if (await sync_to_async(_set_vote.exists)()):
                     return
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
@@ -610,7 +619,7 @@ def getBillsInRange(s_d, e_d):
     end = e_d.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
     end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
-    return Bill.objects.filter(origin_date__gte=start_date, origin_date__lte=end_date)
+    return Bill.objects.filter(latest_action__gte=start_date, latest_action__lte=end_date)
 
 def intToFIPS(num):
     if num < 10 : return '0' + str(num)

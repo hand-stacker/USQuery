@@ -65,7 +65,7 @@ class Bill(models.Model):
         return self.getType() + " " + self.getNumStr()
     
     class Meta():
-        ordering = ["-latest_action", "-origin_date", "-id"]
+        ordering = ["-latest_action", "origin_date", "-id"]
                 
         
         

@@ -57,7 +57,7 @@ urlpatterns = [
     path('bill-query/fix/<int:congress_num>/<int:year>/<int:nums>/', BQviews.fix_votes, name = 'billQueryFixVotes'),
     path('bill-query/populate-bills/<int:congress>/<str:_type>/<int:limit>/<int:offset>', BQviews.populate_bills, name = 'billQueryPopulateBills'),
     path('bill-query/update-bill/<int:congress>/<str:_type>/<int:_num>', BQviews.update_bill, name = 'billQueryUpdateBill'),
-    path('bill-query/update/<int:congress_num>/<str:date>/<str:t>', BQviews.update_votes, name = 'billQueryUpdateBill'),
+    path('bill-query/update/<int:congress_num>/<str:date>/', BQviews.update_votes, name = 'billQueryUpdateBill'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
