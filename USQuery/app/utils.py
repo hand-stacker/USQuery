@@ -713,7 +713,9 @@ def voteHtml(vote):
     j = 0
     if isHouseVote:
         mult = 435
-        geojson_source = 'geojsons/cb_us_cd' + str(congress_id) + '_5m.js'
+        temp = int(congress_id)
+        temp -= (temp % 2)
+        geojson_source = 'geojsons/cb_us_cd' + str(temp) + '_5m.js'
         geojson_load = 'scripts/loadCounty.js'
         values = [0] * mult
         text = [''] * mult
