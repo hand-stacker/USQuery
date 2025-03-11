@@ -19,9 +19,14 @@ function makeCloro() {
 
     var cloroLayout = {
         title: cloroTitle,
+        paper_bgcolor: "rgba(0,0,0,0)",
         map: {
+            style: "dark",
             center: { lon: -98, lat: 39 },
             zoom: 3.3
+        },
+        font: {
+            color: 'rgb(250,250,250)',
         },
         width: 1000,
         height: 650,

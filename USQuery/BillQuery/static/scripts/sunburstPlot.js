@@ -27,6 +27,7 @@ for (let i = 0; i < 4; i++) {
 
 var burstData = [{
     type: "sunburst",
+    theme: 'plotly_dark',
     ids : burst_ids,
     labels: burst_labels,
     parents: parents,
@@ -34,7 +35,7 @@ var burstData = [{
     outsidetextfont: { size: 20, color: "#377eb8" },
     leaf: { opacity: 1.0 },
     marker: {
-        line: { width: 2 },
+        line: { width: 1.5 ,color : 'rgb(200,200,200)'},
         colors: burst_colors
     },
     "branchvalues": 'total',
@@ -45,6 +46,10 @@ var burstData = [{
 var burstLayout = {
     title: {
         text: 'Grouped By Vote'
+    },
+    paper_bgcolor: "rgba(0,0,0,0)",
+    font: {
+        color: 'rgb(250,250,250)',
     },
     margin: { l: 50, r: 50, b: 50, t: 80 },
     grid: { rows: 1, columns: 1 },

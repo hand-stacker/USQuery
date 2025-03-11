@@ -96,6 +96,10 @@ class MemberForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["congress"].widget.attrs.update({"class": "dark-1"})
+        self.fields["chamber"].widget.attrs.update({"class": "dark-1"})
+        self.fields["state"].widget.attrs.update({"class": "dark-1"})
+        self.fields["member"].widget.attrs.update({"class": "dark-1"})
         self.fields['member'].queryset = SQmodels.Member.objects.none()
 
         if 'congress' in self.data:
@@ -110,7 +114,10 @@ class CloroChoice(forms.Form):
     cloro_choice = forms.ChoiceField(
         choices = CLORO_CHOICES
         )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["cloro_choice"].widget.attrs.update({"class": "dark-1"})
 
 class CalendarDateForm(forms.Form):
-    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))

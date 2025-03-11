@@ -57,12 +57,28 @@ parties.forEach(party => {
 let barLayout = {
     height: 500,
     width: 625,
+    paper_bgcolor: "rgba(0,0,0,0)",
+    plot_bgcolor: "rgba(0,0,0,0)",
+    font: {
+        color: 'rgb(250,250,250)',
+
+    },
     title: {
         text: 'Grouped By Party'
     },
     margin: {b: 50, t: 80 },
     showlegend : true,
     grid: { rows: 1, columns: cols, pattern: 'independent' },
+    yaxis: { fixedrange: true },
+    xaxis: { fixedrange: true },
+    yaxis2: { fixedrange: true },
+    xaxis2: { fixedrange: true },
+    yaxis3: { fixedrange: true },
+    xaxis3: { fixedrange: true },
+    yaxis4: { fixedrange: true },
+    xaxis4: { fixedrange: true },
+    yaxis5: { fixedrange: true },
+    xaxis5: { fixedrange: true },
 };
 
 Plotly.newPlot('bar', barData, barLayout, { displayModeBar: false });

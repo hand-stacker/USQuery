@@ -62,9 +62,11 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6 rounded border p-4">
-        <h2>Votes in this office</h2>
-        <p>{{vote_table | safe}}</p>
+    <div class="col-md-6">
+        <div class="border dark-0 align-items-center justify-content-center">
+            <h2>Votes in this office</h2>
+        </div>
+        {{vote_table | safe}}
         <div class="pagination">
             <span class="step-links">
                 {% if vote_list.has_previous %}

@@ -20,7 +20,7 @@
                     <summary>
                         See Cosponsors
                     </summary>
-                    <ul class="list-group p-0 list-group-flush">
+                    <ul class="list-group p-0 list-group-flush dark-1">
                         {{cosponsors | safe}}
                     </ul>
                 </details>
@@ -34,7 +34,7 @@
                     <summary>
                         See Subjects
                     </summary>
-                    <ul class="list-group p-0 list-group-flush">
+                    <ul class="list-group p-0 list-group-flush dark-1">
                         {{subjects | safe}}
                     </ul>
                 </details>
@@ -43,10 +43,14 @@
             <hr />
             <div class="mt-2">
                 <h5>Related Bills</h5>
-
-                <ul class="list-group p-0 list-group-flush">
-                    {{related_bills | safe}}
-                </ul>
+                <details>
+                    <summary>
+                        See Related Bills
+                    </summary>
+                    <ul class="list-group p-0 list-group-flush dark-1">
+                        {{related_bills | safe}}
+                    </ul>
+                </details>
             </div>
             
         </div>

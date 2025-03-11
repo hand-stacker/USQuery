@@ -13,6 +13,7 @@ let donutData = [{
     values: [nays, yeas, pres, novt],
     labels: ['Nays', 'Yeas', 'Present', 'No Vote'],
     marker: {
+        line: { width: 1.5, color: 'rgb(200,200,200)' },
         colors: literal_colors
     },
     domain: {
@@ -29,6 +30,10 @@ let donutData = [{
 let donutLayout = {
     height: 500,
     width: 500,
+    paper_bgcolor: "rgba(0,0,0,0)",
+    font: {
+        color: 'rgb(250,250,250)',
+    },
     title: {
         text: 'Vote Results'
     },
