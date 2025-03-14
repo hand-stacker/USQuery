@@ -3,18 +3,21 @@
 {% load static %}
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
-        <div class="p-4 bg-body-tertiary border rounded shadow-sm">
+        <div class="p-4 bg-body-tertiary border rounded shadow-sm mb-4">
             <h2>{{bill}} : {{bill_state_type}}</h2>
             <h5>{{summary | safe}}</h5>
-            <br />
-            <h4>Actions:</h4>
+        </div>
+        <div class="border dark-0 align-items-center d-flex justify-content-center p-3">
+            <h4>Action Timeline</h4>
+        </div>
+        <div>
             {{actions_table | safe}}
         </div>
     </div>
     <div class="col-md-3">
-        <div class="p-4 bg-body-tertiary border rounded position-relative shadow-sm" style="top: 0rem;">
+        <div class="p-4 bg-body-tertiary border rounded position-relative shadow-sm mb-4" style="top: 0rem;">
             <div class="mt-2">
-                <h5>Sponsor :</h5>
+                <h4>Sponsor :</h4>
                 {{sponsor | safe}}
                 <details>
                     <summary>
@@ -28,7 +31,7 @@
 
             <hr />
             <div class="mt-2">
-                <h5>Policy Area :</h5>
+                <h4>Policy Area :</h4>
                 {{policy_area}}
                 <details>
                     <summary>
@@ -42,7 +45,7 @@
 
             <hr />
             <div class="mt-2">
-                <h5>Related Bills</h5>
+                <h4>Related Bills</h4>
                 <details>
                     <summary>
                         See Related Bills
