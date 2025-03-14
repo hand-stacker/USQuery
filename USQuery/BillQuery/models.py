@@ -92,10 +92,13 @@ class Vote(models.Model):
     nays = models.ManyToManyField(SQmodels.Membership, related_name='nays', blank = True)
     pres = models.ManyToManyField(SQmodels.Membership, related_name='pres', blank = True)
     novt = models.ManyToManyField(SQmodels.Membership, related_name='novt', blank = True)
+    
+    def getDate(self):
+        return self.dateTime.strftime("%Y-%m-%d")
     def inHouse(self):
         return (self.id // 1000000) % 10 == 1
     def __str__(self):
-        return "congress " + self.congress.__str__() + " : Time "  + str(self.dateTime) + " : " + self.bill.__str__() + " " + self.question
+        return "congress " + self.congress.__str__() + " : Date "  + self.getDate() + " : " + self.bill.__str__() + " " + self.question
     class Meta():
         ordering = ["-dateTime"]
     

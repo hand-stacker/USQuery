@@ -34,10 +34,16 @@ def search(request, congress_num, member_id, in_house):
     congress = Congress.objects.get(congress_num = congress_num)
     member = Member.objects.get(id = member_id)
     membership = Membership.objects.get(congress = congress, member = member, house = in_house)
+    start = membership.start_date.split('-')
+    
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
+    
     if (membership.end_date == None):
-        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date)
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date)
     else:
-        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = membership.start_date, dateTime__lt = membership.end_date)
+        end = membership.end_date.split('-')
+        end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date, dateTime__lt = end_date)
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)

@@ -323,7 +323,7 @@ async def updateBill(congress_num, _type, _num) :
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
-    if (_num < 10000):
+    if (int(_num) < 10000):
         _id = congress_num * 100000 + types[_type] * 10000 + int(_num)
     else :
         _id = congress_num * 1000000 + types[_type] * 100000 + int(_num)
@@ -347,13 +347,13 @@ async def updateBill(congress_num, _type, _num) :
                     'id': vote_id,
                     'congress': _congress,
                     'house': in_house == 1,
+                    'bill' : _bill,
                     'dateTime': a['recordedVotes'][0]['date'],
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
                 _vote = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
-                _vote.bill = _bill;
                 _vote = _vote[0]
                 members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
                 member_votes = {
@@ -654,7 +654,7 @@ async def billHtml(congress_id, bill_type, num):
     context['actions_table'] = await actionTable(API_data[1], bill_type, num)
         
     # Handles sponsors and cosponsors
-    list_start = '<li class="list-group-item bg-trans"><a href="'
+    list_start = '<li class="list-group-item bg-trans darkmode"><a href="'
     member_link = '/member-query/results/?congress='
     bill_link = '/bill-query/results/bill/'
     q_2 = '&member='
@@ -683,7 +683,7 @@ async def billHtml(congress_id, bill_type, num):
     if (API_data[4] != ''):
         sub_list = ''
         for s in API_data[4]['subjects']['legislativeSubjects']:
-            sub_list +=  '<li class="list-group-item bg-trans">' + s['name'] + '</li>'
+            sub_list +=  '<li class="list-group-item bg-trans darkmode">' + s['name'] + '</li>'
         context['subjects'] = sub_list
         context['policy_area'] = 'Not Specified Yet.' if not ('policyArea' in API_data[4]['subjects']) else API_data[4]['subjects']['policyArea']['name']
             
@@ -754,7 +754,7 @@ def voteHtml(vote):
                 geoids[indx] = membership.geoid
                 values[i][indx] += 1
                 chamber = 'Senate'
-            html_lists[i] += '<li class="list-group-item' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
+            html_lists[i] += '<li class="list-group-item darkmode' + list_color[membership.party] + '"><a href="/member-query/results/?congress=' 
             html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.member.full_name + list_party[membership.party] + '</a></li>'
                 
         
@@ -762,7 +762,7 @@ def voteHtml(vote):
             'bill' : vote.bill.__str__(),
             'bill_title' : vote.bill.title,
             'bill_link' : '/bill-query/results/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
-            'vote_time' : str(vote.dateTime),
+            'vote_time' : vote.getDate(),
             'vote_title' : vote.title,
             'vote_question' : vote.question,
             'vote_result' : vote.result,
@@ -840,7 +840,7 @@ def voteTable(vote_list, bioguideID, congress_num):
             i = 1
         elif vote.pres.filter(congress = _congress, member = _member).exists():
             i = 2
-        tableHTML += '<tr class="' + colors[i] + '"><td>' + str(vote.dateTime) + '</td>';
+        tableHTML += '<tr class="' + colors[i] + '"><td>' + vote.getDate() + '</td>';
         tableHTML += '<td><a href="/bill-query/results/bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '" class="link-light">' + bill.__str__() + '</a></td>';
         tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" class="link-light">' + vote.question + '</a></td>';
         tableHTML += '<td>' + vote_type[i] + '</td></tr>';
@@ -850,7 +850,7 @@ def voteTable(vote_list, bioguideID, congress_num):
 def partyList(party_history):
     party_list = ''
     for history in party_history:
-        party_list += '<li class="list-group-item bg-trans">' + history['partyName'] + ' (' + str(history['startYear']) + '-'
+        party_list += '<li class="list-group-item bg-trans darkmode">' + history['partyName'] + ' (' + str(history['startYear']) + '-'
         if ('endYear' in history) : party_list += str(history['endYear'])
         else : party_list += 'Present'
         party_list += ')</li>'
@@ -859,7 +859,7 @@ def partyList(party_history):
 def leadershipList(leaderships):
     leadership_list = ''
     for leadership in leaderships:
-        leadership_list += '<li class="list-group-item bg-trans">' + str(leadership['congress']) + getNumSuffix(leadership['congress'])
+        leadership_list += '<li class="list-group-item bg-trans darkmode">' + str(leadership['congress']) + getNumSuffix(leadership['congress'])
         leadership_list += ' Congress : ' + leadership['type']+ '</li>'
     return leadership_list
   
@@ -874,7 +874,7 @@ def termList(terms, bioguideID, congress_num):
         if ('district' in term):
             district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District' 
             
-        term_list += '<li class="list-group-item'
+        term_list += '<li class="list-group-item darkmode'
         if (term['congress'] == congress_num): term_list += ' dark-2' 
         else : term_list += ' bg-trans'
         term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
