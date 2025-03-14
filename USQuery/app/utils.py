@@ -323,8 +323,10 @@ async def updateBill(congress_num, _type, _num) :
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
-
-    _id = congress_num * 100000 + types[_type] * 10000 + _num
+    if (_num < 10000):
+        _id = congress_num * 100000 + types[_type] * 10000 + int(_num)
+    else :
+        _id = congress_num * 1000000 + types[_type] * 100000 + int(_num)
     _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
     _bill = await sync_to_async(Bill.objects.get)(id__exact = _id)    
     
@@ -345,13 +347,13 @@ async def updateBill(congress_num, _type, _num) :
                     'id': vote_id,
                     'congress': _congress,
                     'house': in_house == 1,
-                    'bill': _bill,
                     'dateTime': a['recordedVotes'][0]['date'],
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
                 _vote = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
+                _vote.bill = _bill;
                 _vote = _vote[0]
                 members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
                 member_votes = {
@@ -396,7 +398,11 @@ async def updateBill(congress_num, _type, _num) :
 
 # meant to be used asynchronously to add batches of bills at one time
 async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = True):
-    _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
+    if (int(b['number']) < 10000):
+        _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
+    else :
+        _id = congress_num * 1000000 + types[_type] * 100000 + int(b['number'])
+        ignore_exists = False;
     _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)    
     bill_exists = await sync_to_async(_set_bill.exists)()
     if (bill_exists and ignore_exists): return
@@ -405,7 +411,8 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         return # reserved bills are trivial, so we ignore them if their title was a reservation
     API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
     _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
-    _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member)
+    date = API_response_bill['bill']['introducedDate'].split('-')
+    _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member, start_date__lte = datetime(int(date[0]), int(date[1]), int(date[2])))
     _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
 
     if (bill_exists) : 
@@ -431,7 +438,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
                 _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
-                if (await sync_to_async(_set_vote.exists)()):
+                if ignore_exists and (await sync_to_async(_set_vote.exists)()):
                     return
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
@@ -444,7 +451,6 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                     'id': vote_id,
                     'congress': _congress,
                     'house': in_house == 1,
-                    'bill': _bill,
                     'dateTime': a['recordedVotes'][0]['date'],
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
@@ -452,6 +458,8 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                 }
                 _vote, created = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
                 if created or not ignore_exists:
+                    _vote.bill = _bill
+                    await sync_to_async(_vote.save)()
                     members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
                     member_votes = {
                         'Yea': _vote.yeas,
@@ -491,7 +499,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         else:
             API_response_actions = None
     return 1
-    
+
 # runs through existing votes up to limit, and adds memberships that were missing
 async def fixHouseVotes(congress_num, year, nums, member_ids) : 
     session = aiohttp.ClientSession()
@@ -642,8 +650,8 @@ async def billHtml(congress_id, bill_type, num):
         context['bill_state_type'] = 'Became Public Law'
     else :
         context['bill_state_type'] = 'Still Just a Bill'
-            
-    context['actions_table'] = actionTable(API_data[1])
+      
+    context['actions_table'] = await actionTable(API_data[1], bill_type, num)
         
     # Handles sponsors and cosponsors
     list_start = '<li class="list-group-item bg-trans"><a href="'
@@ -685,7 +693,7 @@ async def billHtml(congress_id, bill_type, num):
         
     #if ('textVersions' in API_response['bill']):
      #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()
-    
+    await session.close()
     return context
 
 def voteHtml(vote):
@@ -785,7 +793,7 @@ def voteHtml(vote):
 ##  These functions return an html table of a given queryset, with links when appropriate
 ##  Not done on JS because we need to access django model data anyways
 ####
-def actionTable(act_list):
+async def actionTable(act_list, bill_type, bill_num):
     tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Action Date</th><th>Type</th><th>Text</th><th>Source</th></tr></thead><tbody>'
     for action in act_list['actions']:
         #check if action is ignorable
@@ -795,6 +803,10 @@ def actionTable(act_list):
         if ('recordedVotes' in action) :
             in_house = 0 if (action['recordedVotes'][0]['chamber'] != 'House') else 1
             vote_id = action['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(action['recordedVotes'][0]['sessionNumber']) * 100000 + int(action['recordedVotes'][0]['rollNumber'])
+            _set = Vote.objects.filter(id = vote_id)
+            if not await sync_to_async(_set.exists)() : 
+                print("MISSING VOTES")
+                await updateBill(action['recordedVotes'][0]['congress'], bill_type, bill_num)
             tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '">' + 'Vote' + '</a></td>';    
         else : 
             tableHTML += '<td>' + action['type'] + '</td>';
@@ -863,7 +875,7 @@ def termList(terms, bioguideID, congress_num):
             district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District' 
             
         term_list += '<li class="list-group-item'
-        if (term['congress'] == congress_num): term_list += ' list-group-item-primary' 
+        if (term['congress'] == congress_num): term_list += ' dark-2' 
         else : term_list += ' bg-trans'
         term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
         term_list += '<a href="' + link + link_dict[term['memberType']] + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'

@@ -16,15 +16,18 @@ class Bill(models.Model):
         return "Still Just A Bill"
     
     def getOrigin(self):
-        n = (self.id // 10000) % 10
+        if (self.id >= 100000000) : n = (self.id // 100000) % 10
+        else : n = (self.id // 10000) % 10
         return "Senate" if n <4 else "House" 
     
     def getOriginCode(self):  
-        n = (self.id // 10000) % 10
+        if (self.id >= 100000000) : n = (self.id // 100000) % 10
+        else : n = (self.id // 10000) % 10
         return "S" if (n < 4) else "H"    
     
     def getType(self):
-        n = (self.id // 10000) % 10
+        if (self.id >= 100000000) : n = (self.id // 100000) % 10
+        else : n = (self.id // 10000) % 10
         types = {
             0 : "S",
             1 : "S.RES",
@@ -37,7 +40,8 @@ class Bill(models.Model):
         return types[n]
     
     def getTypeURL(self):
-        n = (self.id // 10000) % 10
+        if (self.id >= 100000000) : n = (self.id // 100000) % 10
+        else : n = (self.id // 10000) % 10
         types = {
             0 : "s",
             1 : "sres",
@@ -50,12 +54,15 @@ class Bill(models.Model):
         return types[n]
     
     def getNum(self):
+        if (self.id >= 100000000) : return self.id % 100000
         return self.id % 10000
     
     def getNumStr(self):
+        if (self.id >= 100000000) : return str(self.id % 100000)
         return str(self.id % 10000)
     
     def getCongress(self):
+        if (self.id >= 100000000) : return self.id // 1000000
         return self.id // 100000
     
     def getURL(self):
@@ -75,7 +82,7 @@ class Vote(models.Model):
     id = models.IntegerField(primary_key=True)
     congress = models.ForeignKey(SQmodels.Congress, on_delete=models.CASCADE)
     house = models.BooleanField(default=True)
-    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, blank = True)
+    bill = models.ForeignKey(Bill, on_delete=models.CASCADE, blank = True, null = True)
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=100)
     title = models.CharField(max_length=500, blank=True, null=True)
