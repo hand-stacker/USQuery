@@ -37,7 +37,6 @@ const updateWidth = () => {
     makeBurst();
     makeBar()
     makeCloro();
-    console.log(site_width);
 }
 
 window.addEventListener('orientationchange', updateWidth, false);

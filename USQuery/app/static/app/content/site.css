@@ -150,10 +150,10 @@ input[type="checkbox"].input-validation-error {
     h4, summary, label {
         font-size: 20px !important;
     }
-    h5, li, th, td, p {
+    h5, li, p {
         font-size: 18px !important;
     }
-    h6 {
+    h6, th, td {
         font-size: 16px !important;
     }
     .half-plot {
@@ -178,11 +178,11 @@ input[type="checkbox"].input-validation-error {
         font-size: 14px !important;
     }
 
-    h5, li, th, td, p {
+    h5, li, p {
         font-size: 12px !important;
     }
 
-    h6 {
+    h6, th, td {
         font-size: 10px !important;
     }
     .half-plot {
@@ -207,11 +207,11 @@ input[type="checkbox"].input-validation-error {
         font-size: 10px !important;
     }
 
-    h5, li ,th, td, p {
+    h5, li, p {
         font-size: 8px !important;
     }
 
-    h6 {
+    h6, th, td{
         font-size: 6px !important;
     }
     .half-plot {
