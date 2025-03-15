@@ -18,22 +18,21 @@ function makeCloro() {
     ];
 
     var cloroLayout = {
-        title: cloroTitle,
         paper_bgcolor: "rgba(0,0,0,0)",
         map: {
             style: "dark",
             center: { lon: -98, lat: 39 },
-            zoom: 3.3
+            zoom: 3.6 * site_width / 1400
         },
         font: {
             color: 'rgb(250,250,250)',
         },
-        width: 1000,
-        height: 650,
+        width: site_width * 0.85,
+        height: site_width * 0.65 * 0.85,
         margin: { t: 25, b: 0, l: 0, r: 0 }
     };
 
     Plotly.newPlot('cloro', cloroData, cloroLayout, { displayModeBar: false });
 }
 
-makeCloro()
+updateWidth();

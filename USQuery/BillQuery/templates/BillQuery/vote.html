@@ -15,22 +15,24 @@
 
 <div class="row mb-2">
     <div class="col-md-12">
-        <div class="row g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative">
-            <div class="col-md-6 p-4 overflow-auto flex-column position-relative">
-                <h2 class="mb-1">{{vote_title}}</h2>
-                <h6 class="mb-2">{{vote_time}}</h6>
-                <h5>
-                    {{vote_question}}
-                    <br />
-                    Result : {{vote_result}}
-                </h5>
-                <hr />
-                <h3><a href="{{bill_link}}" class="link-offset-2">{{bill}} </a></h3>
-                <p>{{bill_title}}</p>
+        <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm position-relative">
+            <div class="col flex-column position-static">
+                <div class="p-4">
+                    <h2 class="mb-1">{{vote_title}}</h2>
+                    <h6 class="mb-2">{{vote_time}}</h6>
+                    <h5>
+                        {{vote_question}}
+                        <br />
+                        Result : {{vote_result}}
+                    </h5>
+                    <hr />
+                    <h3><a href="{{bill_link}}" class="link-offset-2">{{bill}} </a></h3>
+                    <p>{{bill_title}}</p>
+                </div>
             </div>
-            <div class="col p-2 d-flex flex-column position-static">
-                <div class="h-500 w-500">
-                    <div id="donut" style="width:500px;height:500px;"></div>
+            <div class="col p-2 d-flex flex-column position-static half-plot">
+                <div>
+                    <div id="donut"></div>
                 </div>
             </div>
         </div>
@@ -40,66 +42,87 @@
 <div class="row mb-2">
     <div class="col-md-12">
         <div class="row g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative">
-            <div class="col p-2 d-flex flex-column position-static">
-                <div class="h-500 w-500">
-                    <div id="sunburst" style="width:500px;height:500px;"></div>
-                </div>
+            <div class="col p-2 d-flex flex-column position-static half-plot">
+                <div id="sunburst"></div>
             </div>
-            <div class="col p-2 d-flex flex-column position-static">
-                <div class="h-500 w-500">
-                    <div id="bar" style="width:500px;height:500px;"></div>
-                </div>
+            <div class="col p-2 d-flex flex-column position-static half-plot">
+                <div id="bar"></div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row mb-2">
-    <div class="col-md-12">
-        <div class="g-0 row border rounded overflow-auto flex-md-row mb-4 shadow-sm p-4 position-relative" style="height:800px;">
-            <div class="col d-flex flex-column position-static h-750 w-1000">
-                <div id="cloro" style="width:1000px;height:750px;"></div>
-            </div>
-            <div class="col d-flex flex-column position-static" style="width:200px">
-                <form name="CloroChoice" id="id_CloroChoice">
-                    <div class="d-flex flex-column flex-md-row p-4">
-                        {{ cloro_form.non_field_errors }}
-                        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow" style="width:300px;height:120px">
-                            {{ cloro_form.cloro_choice.errors }}
-                            <label for="{{ cloro_form.cloro_choice.id_for_label }}"> Select Vote Type:</label>
-                            <div>{{cloro_form.cloro_choice}}</div>
-                        </div>
+    <div class="g-0 col border rounded overflow-auto flex-md-col mb-4 shadow-sm p-4 full-plot">
+        <div class="row d-flex flex-column position-">
+            <form name="CloroChoice" id="id_CloroChoice">
+                <div class="d-flex flex-row flex-md-row p-4">
+                    <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow" style="width:100%;height:100px">
+                        <label for="{{ cloro_form.cloro_choice.id_for_label }}"> Select Vote Type:</label>
+                        <div>{{cloro_form.cloro_choice}}</div>
                     </div>
-                </form>
-            </div>
+                </div>
+            </form>
+        </div>
+        <div class="col d-flex flex-row overflow-hidden justify-content-center">
+            <div id="cloro"></div>
         </div>
     </div>
 </div>
 
-<div class="col-md-12 g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm">
-    <table class="table table-bordered table-small dark-1">
+<div class="row g-0 border rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative">
+    <table class="table table-bordered table-small dark-1 d-flex flex-column position-static" style="width:25%">
         <thead>
             <tr>
-                <th>Yeas</th>
-                <th>Nays</th>
-                <th>Present</th>
-                <th>No Vote</th>
+                <th class="border-0">
+                    Yeas
+                </th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <td>{{yeas_list | safe}}</td>
-                <td>{{nays_list | safe}}</td>
-                <td>{{pres_list | safe}}</td>
-                <td>{{novt_list | safe}}</td>
-            </tr>
+            {{yeas_list | safe }}
         </tbody>
     </table>
-
+    <table class="table table-bordered table-small dark-1 d-flex flex-column position-static" style="width:25%">
+        <thead>
+            <tr>
+                <th class="border-0">
+                    Nays
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {{nays_list | safe }}
+        </tbody>
+    </table>
+    <table class="table table-bordered table-small dark-1 d-flex flex-column position-static" style="width:25%">
+        <thead>
+            <tr>
+                <th class="border-0">
+                    Present
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {{pres_list | safe }}
+        </tbody>
+    </table>
+    <table class="table table-bordered table-small dark-1 d-flex flex-column position-static" style="width:25%">
+        <thead>
+            <tr>
+                <th class="border-0">
+                    No Vote
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {{novt_list | safe }}
+        </tbody>
+    </table>
 </div>
 
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
-<script src="{% static 'scripts/'%}"></script>
+<script src="{% static 'scripts/loadSize.js' %}"></script>
 <script src="{% static 'scripts/barPlot.js' %}"></script>
 <script src="{% static 'scripts/donutPlot.js' %}"></script>
 <script src="{% static 'scripts/sunburstPlot.js' %}"></script>

@@ -53,8 +53,12 @@ var burstLayout = {
     },
     margin: { l: 50, r: 50, b: 50, t: 80 },
     grid: { rows: 1, columns: 1 },
-    width: 500,
-    height: 500
+    width: 0,
+    height: 0
 };
 
-Plotly.newPlot('sunburst', burstData, burstLayout, { displayModeBar: false });
+function makeBurst() {
+    burstLayout['height'] = half_image_width * 0.9 ;
+    burstLayout['width'] = half_image_width * 0.9 ;
+    Plotly.newPlot('sunburst', burstData, burstLayout, { displayModeBar: false });
+}

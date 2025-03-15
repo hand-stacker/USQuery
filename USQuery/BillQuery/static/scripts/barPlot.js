@@ -12,6 +12,12 @@ const colors = {
     'Green': 'rgb(162,215,41)'
 };
 
+const vote_label_code = {
+    'Yeas': 'Y',
+    'Nays': 'N',
+    'Present': 'P',
+    'No Vote': 'nv',
+}
 
 let barData = []
 let cols = 0
@@ -55,8 +61,8 @@ parties.forEach(party => {
 });
 
 let barLayout = {
-    height: 500,
-    width: 625,
+    height: 0,
+    width: 0,
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     font: {
@@ -81,4 +87,8 @@ let barLayout = {
     xaxis5: { fixedrange: true },
 };
 
-Plotly.newPlot('bar', barData, barLayout, { displayModeBar: false });
+function makeBar() {
+    barLayout['height'] = Math.max(half_image_width * 0.9 * 0.8, 250);
+    barLayout['width'] = half_image_width * 0.9;
+    Plotly.newPlot('bar', barData, barLayout, { displayModeBar: false });
+}
