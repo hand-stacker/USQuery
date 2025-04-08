@@ -137,6 +137,14 @@ input[type="checkbox"].input-validation-error {
     width: 100%;
 }
 
+.table-responsive {
+    max-height: 350px;
+}
+
+.table-responsive-sm {
+    max-height: 200px;
+}
+
 @media only screen and (max-width: 1400px) {
     h1 {
         font-size: 36px !important;

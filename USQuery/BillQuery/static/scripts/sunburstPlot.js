@@ -61,4 +61,5 @@ function makeBurst() {
     burstLayout['height'] = half_image_width * 0.9 ;
     burstLayout['width'] = half_image_width * 0.9 ;
     Plotly.newPlot('sunburst', burstData, burstLayout, { displayModeBar: false });
+    document.getElementById("sunburst").getElementsByClassName("plot-container")[0].style["width"] = String(half_image_width * 0.9) + "px";
 }

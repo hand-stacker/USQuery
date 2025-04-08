@@ -33,6 +33,7 @@ function makeCloro() {
     };
 
     Plotly.newPlot('cloro', cloroData, cloroLayout, { displayModeBar: false });
+    document.getElementById("cloro").getElementsByClassName("plot-container")[0].style["width"] = String(site_width * 0.85) + "px";
 }
 
 updateWidth();

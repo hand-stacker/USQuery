@@ -55,5 +55,6 @@ let donutLayout = {
 function makeDonut() {
     donutLayout['height'] = half_image_width * 0.9 ;
     donutLayout['width'] = half_image_width * 0.9 ;
-    Plotly.newPlot('donut', donutData, donutLayout, {displayModeBar: false });
+    Plotly.newPlot('donut', donutData, donutLayout, { displayModeBar: false });
+    document.getElementById("donut").getElementsByClassName("plot-container")[0].style["width"] = String(half_image_width * 0.9) + "px";
 }

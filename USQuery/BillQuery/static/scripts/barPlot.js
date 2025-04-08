@@ -91,4 +91,5 @@ function makeBar() {
     barLayout['height'] = Math.max(half_image_width * 0.9 * 0.8, 250);
     barLayout['width'] = half_image_width * 0.9;
     Plotly.newPlot('bar', barData, barLayout, { displayModeBar: false });
+    document.getElementById("bar").getElementsByClassName("plot-container")[0].style["width"] = String(half_image_width * 0.9) + "px";
 }

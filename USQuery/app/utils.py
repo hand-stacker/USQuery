@@ -703,10 +703,10 @@ def voteHtml(vote):
        
     votes_list = [vote.nays, vote.yeas, vote.pres, vote.novt]
     list_color = {
-        'Democratic': ' dem',
-        'Republican': ' rep',
-        'Independent': ' ind',
-        'Libertarian': ' lib',
+        'Democratic': 'dem',
+        'Republican': 'rep',
+        'Independent': 'ind',
+        'Libertarian': 'lib',
         'Green': ' grn'
         }
     list_party = {
@@ -754,7 +754,7 @@ def voteHtml(vote):
                 geoids[indx] = membership.geoid
                 values[i][indx] += 1
                 chamber = 'Senate'
-            html_lists[i] += '<tr class="' + list_color[membership.party]  + '"><td><a href="/member-query/results/?congress=' 
+            html_lists[i] += '<tr class="' + list_color[membership.party]  + ' border"><td class="border-0"><a href="/member-query/results/?congress=' 
             html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.member.full_name + list_party[membership.party] + '</a></td></tr>'
                 
         
