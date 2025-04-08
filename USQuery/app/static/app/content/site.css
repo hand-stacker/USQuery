@@ -137,11 +137,11 @@ input[type="checkbox"].input-validation-error {
     width: 100%;
 }
 
-.table-responsive {
+.t-responsive {
     max-height: 350px !important;
 }
 
-.table-responsive-sm {
+.t-responsive-sm {
     max-height: 200px !important;
 }
 

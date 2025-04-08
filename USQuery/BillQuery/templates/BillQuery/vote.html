@@ -72,11 +72,11 @@
 </div>
 
 <div class="row g-0 border rounded overflow-auto flex-md-row mb-4 position-relative">
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static table-responsive" style="width:25%; table-layout: fixed;">
+   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
        <thead class="border">
            <tr class="border-0">
                <th class="border-0">
-                   Yeas
+                   Yeas ({{yeas_cnt}})
                </th>
            </tr>
        </thead>
@@ -84,11 +84,11 @@
            {{yeas_list | safe }}
        </tbody>
    </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static table-responsive" style="width:25%; table-layout: fixed;">
+   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
        <thead class="border">
            <tr class="border-0">
                <th class="border-0">
-                   Nays
+                   Nays ({{nays_cnt}})
                </th>
            </tr>
        </thead>
@@ -96,11 +96,11 @@
            {{nays_list | safe }}
        </tbody>
    </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static table-responsive" style="width:25%; table-layout: fixed;">
+   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
        <thead class="border">
            <tr class="border-0">
                <th class="border-0">
-                   Present
+                   Present ({{pres_cnt}})
                </th>
            </tr>
        </thead>
@@ -108,11 +108,11 @@
            {{pres_list | safe }}
        </tbody>
    </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static table-responsive" style="width:25%; table-layout: fixed;">
+   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
        <thead class="border">
            <tr class="border-0">
                <th class="border-0">
-                   No Vote
+                   No Vote ({{novt_cnt}})
                </th>
            </tr>
        </thead>
