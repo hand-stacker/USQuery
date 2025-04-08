@@ -138,11 +138,11 @@ input[type="checkbox"].input-validation-error {
 }
 
 .table-responsive {
-    max-height: 350px;
+    max-height: 350px !important;
 }
 
 .table-responsive-sm {
-    max-height: 200px;
+    max-height: 200px !important;
 }
 
 @media only screen and (max-width: 1400px) {
