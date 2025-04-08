@@ -26,8 +26,10 @@ class Congress(models.Model):
     members = models.ManyToManyField(Member, through="Membership", related_name="members_set")
     start_year = models.IntegerField(null=True)
     end_year = models.IntegerField(null=True)
+    def getRange(self):
+        return  "(" + str(self.start_year)  + "-" + ("Present" if self.end_year == None else str(self.end_year)) + ")"
     def __str__(self):
-        return str(self.congress_num)
+        return str(self.congress_num) + " " + self.getRange()
     class Meta():
         ordering = ["-congress_num"]
     

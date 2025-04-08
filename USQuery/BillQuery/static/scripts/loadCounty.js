@@ -1,4 +1,6 @@
 let values = JSON.parse(document.getElementById('values').textContent);
+document.getElementById("id_CloroChoice").remove()
+
 const cloroColorscale = [
 
     [0, literal_colors[0]],

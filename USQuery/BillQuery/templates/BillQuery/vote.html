@@ -55,18 +55,22 @@
 <div class="row mb-2">
     <div class="col-mb-12 mb-4 full-plot">
         <div class="g-0 row border rounded d-flex flex-column justify-content-center">
-            <div class="text-center pt-4">Vote Map</div>
-            <div class="g-0 overflow-hidden">
-                <div id="cloro" class="d-flex flex-row justify-content-center"></div>
+            <div class="text-center pt-4">
+                <h5>
+                    Vote Map
+                </h5>
             </div>
             <form name="CloroChoice" id="id_CloroChoice">
-                <div class="d-flex flex-row flex-md-row p-4">
-                    <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow" style="width:100%;height:100px">
+                <div class="d-flex justify-content-center">
+                    <div class="dropdown-menu position-static text-center bg-trans border-0 d-grid gap-2 p-2" style="width:100%;height:100px">
                         <label for="{{ cloro_form.cloro_choice.id_for_label }}"> Select Vote Type:</label>
                         <div>{{cloro_form.cloro_choice}}</div>
                     </div>
                 </div>
             </form>
+            <div class="g-0 overflow-hidden mb-4">
+                <div id="cloro" class="d-flex flex-row justify-content-center"></div>
+            </div>
         </div>
     </div>
 </div>

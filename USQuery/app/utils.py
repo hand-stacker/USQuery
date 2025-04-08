@@ -697,7 +697,7 @@ async def billHtml(congress_id, bill_type, num):
     return context
 
 def voteHtml(vote):
-    congress_id = vote.congress.__str__()
+    congress_id = str(vote.congress.congress_num)
     q_2 = '&member='
     q_3 = '&chamber='
        
