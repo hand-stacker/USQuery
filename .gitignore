@@ -365,3 +365,5 @@ FodyWeavers.xsd
 /USQuery/db.sqlite3
 /USQuery/USQuery/secrets.py
 /Bottlenecks.txt
+/USQuery/.env
+/USQuery/USQuery/dev_settings.py

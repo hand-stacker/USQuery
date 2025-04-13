@@ -3,10 +3,12 @@ import requests, asyncio, json, aiohttp
 from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Bill, Vote
+from BillQuery.models import Bill, Vote, BillSummary
 from asgiref.sync import sync_to_async
 from collections import defaultdict
 from xml.etree import cElementTree as ET
+from google import genai
+from bs4 import BeautifulSoup
 
 ## helpful objects that map state related data
 state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
@@ -689,12 +691,78 @@ async def billHtml(congress_id, bill_type, num):
             
     # currently jut gets first summary in list...
     if (API_data[5] != ''):
-        context['summary'] = 'No Summary Provided Yet.' if (len(API_data[5]['summaries']) < 1) else API_data[5]['summaries'][0]['text']
+        if (len(API_data[5]['summaries']) < 1):
+            context['AI_Warning'] = "T"
+            context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, int(congress_id), bill_type, int(num))
+        else :
+            context['AI_Warning'] = "F"
+            context['summary'] = API_data[5]['summaries'][0]['text']
         
     #if ('textVersions' in API_response['bill']):
      #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()
     await session.close()
     return context
+
+## Gets the latest text file from api and summarizes it using gemini api. Memorize summaries in 
+async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_num):
+    new_session = aiohttp.ClientSession()
+    if (bill_num < 10000):
+        _id = congress_num * 100000 + types[bill_type] * 10000 + bill_num
+    else :
+        _id = congress_num * 1000000 + types[bill_type] * 100000 + bill_num
+    ## get latest text index:
+    latest_datetime = datetime(1, 1, 1, 1, 1, 1)
+    latest_indx = -1
+    API_response_text = await connectASYNC(session, url, header_str)
+
+    for i in range(len(API_response_text['textVersions'])):
+        date_str = API_response_text['textVersions'][i]['date']
+        if date_str == None : continue
+        curr_datetime = datetime(
+            int(date_str[0:4]),
+            int(date_str[5:7]),
+            int(date_str[8:10]),
+            int(date_str[11:13]),
+            int(date_str[14:16]),
+            int(date_str[17:19])
+            )
+        if curr_datetime > latest_datetime:
+            latest_datetime = curr_datetime
+            latest_indx = i
+
+    latest_date = latest_datetime.date()
+
+    bill_summary = (await sync_to_async(BillSummary.objects.get_or_create)(id=_id))[0]
+    if latest_date == bill_summary.source_date:
+        return bill_summary.summary
+
+    text_url = API_response_text['textVersions'][latest_indx]['formats'][0]['url']
+    html = await connectASYNC(new_session, text_url, '', False)
+    soup = BeautifulSoup(html)
+    text = soup.get_text()
+    ## generate summary from text:
+    try: 
+        client = genai.Client(api_key=settings.GEMINI_KEY)
+    except KeyError:
+        print("Error: GOOGLE_API_KEY environment variable not set.")
+        exit()
+    prompt = """You are the interface for a web app that summarizes US legislation.
+        Your raw response will be inserted into a html document,
+        so the response should be raw html inside a <p> div using lists when appropriate.
+        Write a summary for this US legislation.
+        The tone should be formal, concise, and easy to understand for the average voter.
+        Refer to the legislation by its title or the bill type and number if there is no title."""
+    response = client.models.generate_content(
+        model="gemini-2.5-pro-exp-03-25",
+        contents=[text, prompt]
+        )
+    summary = response.text
+    summary = summary.removeprefix("```html").removesuffix("```")
+    bill_summary.source_date = latest_date
+    bill_summary.summary = summary
+    await sync_to_async(bill_summary.save)()
+    await new_session.close()
+    return bill_summary.summary
 
 def voteHtml(vote):
     congress_id = str(vote.congress.congress_num)

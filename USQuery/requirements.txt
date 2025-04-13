@@ -8,3 +8,5 @@ dj-database-url
 asyncio
 aiohttp
 gunicorn
+google-genai
+beautifulsoup4

@@ -26,11 +26,12 @@ CONGRESS_DIR = 'https://api.congress.gov/v3/'
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY')
 CONGRESS_KEY = os.environ.get('CONGRESS_KEY')
+GEMINI_KEY = os.environ.get('GEMINI_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
-
+ 
 # Application references
 # https://docs.djangoproject.com/en/2.1/ref/settings/#std:setting-INSTALLED_APPS
 INSTALLED_APPS = [
@@ -48,6 +49,8 @@ INSTALLED_APPS = [
     'bootstrap5',
     'aiohttp',
     'dj_database_url',
+    'google',
+    'bs4',
 ]
 
 # Middleware framework
@@ -91,7 +94,7 @@ DATABASES = {
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
-
+ 
 database_url = os.environ.get('DATABASE_URL')
 DATABASES['default'] = dj_database_url.parse(database_url)
 

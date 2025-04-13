@@ -1,6 +1,6 @@
 from django.db import models
 from SenateQuery import models as SQmodels
-
+from datetime import date
 # Create your models here.
 
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
@@ -122,4 +122,11 @@ class Choice(models.Model) :
    supporters = models.ManyToManyField(SQmodels.Membership)
    def __str__(self):
         return self.choice + "->" + self.choice_vote.__str__()
-   
+
+## same key as Bill object, should hold AI generated summary
+class BillSummary(models.Model): 
+    id = models.IntegerField(primary_key=True)
+    source_date = models.DateField(default=date(1,1,1))
+    summary = models.TextField(default="We cannot provide a summary at this time.")
+    def __str__(self):
+        return str(self.id)
