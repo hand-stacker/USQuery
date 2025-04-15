@@ -692,10 +692,10 @@ async def billHtml(congress_id, bill_type, num):
     # currently jut gets first summary in list...
     if (API_data[5] != ''):
         if (len(API_data[5]['summaries']) < 1):
-            context['AI_Warning'] = "T"
+            context['AI_generated_content'] = "T"
             context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, int(congress_id), bill_type, int(num))
         else :
-            context['AI_Warning'] = "F"
+            context['AI_generated_content'] = "F"
             context['summary'] = API_data[5]['summaries'][0]['text']
         
     #if ('textVersions' in API_response['bill']):
@@ -734,6 +734,7 @@ async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_n
 
     bill_summary = (await sync_to_async(BillSummary.objects.get_or_create)(id=_id))[0]
     if latest_date == bill_summary.source_date:
+        await new_session.close()
         return bill_summary.summary
 
     text_url = API_response_text['textVersions'][latest_indx]['formats'][0]['url']

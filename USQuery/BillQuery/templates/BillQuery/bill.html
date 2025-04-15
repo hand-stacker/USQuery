@@ -1,10 +1,12 @@
 {% extends "app/layout.html" %}
 {% block content %}
 {% load static %}
+{{ AI_generated_content | json_script:"AI_generated_content" }}
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
         <div class="p-4 bg-body-tertiary border rounded shadow-sm mb-4">
             <h2>{{bill}} : {{bill_state_type}}</h2>
+            <div id="AI_warning" role="alert" class="alert alert-warning">Warning: The content below was generated with AI.</div>
             <h5>{{summary | safe}}</h5>
         </div>
         <div class="border dark-0 align-items-center d-flex justify-content-center p-3">
@@ -55,8 +57,9 @@
                     </ul>
                 </details>
             </div>
-            
+
         </div>
     </div>
 </div>
+<script src="{% static 'scripts/AI_warning.js' %}"></script>
 {% endblock %}
