@@ -280,13 +280,15 @@ async def updateRecentBills(congress_num, current_date_str, bill_type):
     _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
     current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
     API_response = await connectASYNC(session, settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + bill_type + "?", header_str)
-    
+    end_operation = False
     while API_response is not None:
         for bill in API_response['bills']:
             latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
             if latest_action_date >= current_date:
                 await addBillASYNC(session, vote_session, congress_num, bill_type, bill, _congress, header_str, False)
-        if 'next' in API_response['pagination']:
+            else :
+                end_operation = True
+        if 'next' in API_response['pagination'] and not end_operation:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
