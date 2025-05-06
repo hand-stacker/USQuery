@@ -82,9 +82,9 @@ def vote_search(request, s_d, e_d, bill_type):
 
 def bill(request, congress_num, bill_type, bill_num):
     assert isinstance(request, HttpRequest)
-    mult = 10 if bill_num > 9999 else 1
+    mult = 10 if int(bill_num) > 9999 else 1
     # CCC_T_XXXX(X)
-    bill_id = (congress_num * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + bill_num
+    bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
     try:
         bill = Bill.objects.get(id = bill_id)
     except Bill.DoesNotExist:
