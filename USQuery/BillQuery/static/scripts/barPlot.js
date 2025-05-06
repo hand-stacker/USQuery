@@ -47,7 +47,7 @@ parties.forEach(party => {
             x: x,
             y: y,
             type: 'bar',
-            name: party,
+            name: party[0],
             hoverinfo: 'label+values',
             marker: {
                 color: colors[party]

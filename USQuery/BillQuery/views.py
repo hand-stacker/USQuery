@@ -3,31 +3,40 @@ from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponseRedirect
-from datetime import datetime
 from app import utils, forms
-from BillQuery.models import Vote, Choice, ChoiceVote
-from USQuery import settings
-from django.http import JsonResponse
+from BillQuery.models import Vote, Bill
 
 def home(request):
-    """Renders the home page."""
     assert isinstance(request, HttpRequest)
     return render(
         request,
         'BillQuery/index.html',
         {   
             'title':"Bill Query", 
-            'content':"Make a bill Query",
-            "calendar_form" : forms.CalendarDateForm(request.GET)
+            "calendar_form" : forms.CalendarDateForm(request.GET),
+            "bill_form" : forms.BillForm(request.GET),
+            "vote_form" : forms.VoteForm(request.GET)
         }
     )
 
 def query(request):
+    assert isinstance(request, HttpRequest)
     cal_form = forms.CalendarDateForm(request.GET)
-    return search(request, cal_form.data["start_date"], cal_form.data["end_date"])
+    return search(request, cal_form.data["start_date"], cal_form.data["end_date"], cal_form.data["bill_type"])
 
-def search(request, s_d, e_d):
-    q_set = utils.getBillsInRange(s_d, e_d)
+def vote_query(request):
+    assert isinstance(request, HttpRequest)
+    vote_form = forms.VoteForm(request.GET)
+    return vote_search(request, vote_form.data["start_date"], vote_form.data["end_date"], vote_form.data["bill_type"])
+
+def bill_search(request):
+    assert isinstance(request, HttpRequest)
+    bill_form = forms.BillForm(request.GET)
+    return bill(request, bill_form.data["congress"], bill_form.data["bill_type"], bill_form.data["bill_num"])
+
+def search(request, s_d, e_d, bill_type):
+    assert isinstance(request, HttpRequest)
+    q_set = utils.getBillsInRange(s_d, e_d, bill_type)
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -48,9 +57,39 @@ def search(request, s_d, e_d):
         }
     )
 
-def bill(request, congress_id, type, num):
+def vote_search(request, s_d, e_d, bill_type):
     assert isinstance(request, HttpRequest)
-    context = asyncio.run(utils.billHtml(str(congress_id), type, str(num)))
+    q_set = utils.getVotesInRange(s_d, e_d, bill_type)
+    urlPath = ""
+    past_context = request.GET.dict()
+    for key in past_context:
+        urlPath += key + "=" + past_context[key] + "&"
+        
+    paginator = Paginator(q_set, 25)
+    page_number = request.GET.get("page")
+    vote_list = paginator.get_page(page_number)
+    content = utils.voteTablePage(vote_list)
+    return render(
+        request,
+        'BillQuery/bill_list.html',
+        {
+            "content": content,
+            "bill_list" : vote_list,
+            "urlPath" : urlPath,
+            'title':"Results",
+        }
+    )
+
+def bill(request, congress_num, bill_type, bill_num):
+    assert isinstance(request, HttpRequest)
+    mult = 10 if bill_num > 9999 else 1
+    # CCC_T_XXXX(X)
+    bill_id = (congress_num * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + bill_num
+    try:
+        bill = Bill.objects.get(id = bill_id)
+    except Bill.DoesNotExist:
+        return HttpResponseRedirect('/bill-query')
+    context = asyncio.run(utils.billHtml(str(congress_num), bill_type, str(bill_num)))
     return render(
         request,
         'BillQuery/bill.html',
@@ -58,6 +97,7 @@ def bill(request, congress_id, type, num):
     )
 
 def vote(request, vote_id):
+    assert isinstance(request, HttpRequest)
     try:
         vote = Vote.objects.get(id = vote_id)
     except Vote.DoesNotExist:
@@ -71,16 +111,16 @@ def vote(request, vote_id):
     )
 
 @staff_member_required
-def populate_bills(request, congress = 116, _type = 's', limit = 100, offset = 0):
+def populate_bills(request, congress_num, bill_type, limit, offset):
     assert isinstance(request, HttpRequest)
-    asyncio.run(utils.addBills(congress, _type, limit, offset))
+    asyncio.run(utils.addBills(congress_num, bill_type, limit, offset))
     return HttpResponseRedirect("/bill-query")
 
 @staff_member_required
-def update_bill(request, congress, _type, _num):
+def update_bill(request, congress_num, bill_type, bill_num):
     assert isinstance(request, HttpRequest)
-    asyncio.run(utils.updateBill(congress, _type, _num))
-    return HttpResponseRedirect("/bill-query/results/bill/" + str(congress) + "/" + _type + "/" + str(_num))
+    asyncio.run(utils.updateBill(congress_num, bill_type, bill_num))
+    return HttpResponseRedirect("/bill-query/bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num))
 
 @staff_member_required
 def fix_votes(request, congress_num, year, nums):

@@ -5,8 +5,7 @@ from django.core.paginator import Paginator
 from datetime import datetime
 from app import utils, forms
 from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Vote, Bill
-from USQuery import settings
+from BillQuery.models import Vote
 from django.http import JsonResponse
 
 # Create your views here.
@@ -21,10 +20,9 @@ def home(request):
         }
     )
 
-def search(request, congress_num, member_id, in_house):
+def search(request, congress_num, bioguide_id, in_house):
     assert isinstance(request, HttpRequest)
-    
-    API_response = utils.updateMember(congress_num, member_id)
+    API_response = utils.updateMember(congress_num, bioguide_id)
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -32,7 +30,7 @@ def search(request, congress_num, member_id, in_house):
         
     # find senator given member id and congress num
     congress = Congress.objects.get(congress_num = congress_num)
-    member = Member.objects.get(id = member_id)
+    member = Member.objects.get(id = bioguide_id)
     membership = Membership.objects.get(congress = congress, member = member, house = in_house)
     start = membership.start_date.split('-')
     
@@ -47,7 +45,7 @@ def search(request, congress_num, member_id, in_house):
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
-    vote_table = utils.voteTable(vote_list, member_id, congress_num)
+    vote_table = utils.voteTable(vote_list, bioguide_id, congress_num)
     context = {
             'title': member.full_name,
             'rep_name'  : member.full_name,
@@ -78,7 +76,7 @@ def search(request, congress_num, member_id, in_house):
         context['leadership_list'] = utils.leadershipList(API_response['member']['leadership'])
     else : context['leadership_list'] = 'None'
     if ('terms' in API_response['member']):
-        context['term_list'] = utils.termList(API_response['member']['terms'], member_id, congress_num)
+        context['term_list'] = utils.termList(API_response['member']['terms'], bioguide_id, congress_num)
             
     return render(
         request,
@@ -87,6 +85,7 @@ def search(request, congress_num, member_id, in_house):
     )
     
 def query(request):
+    assert isinstance(request, HttpRequest)
     member_form = forms.MemberForm(request.GET)
     try:
         congress_num = int(member_form.data["congress"])
@@ -97,9 +96,10 @@ def query(request):
     return search(request, congress_num, member_form.data["member"], in_house)
     
 
-def update_members(request, congress_id, chamber, state):
+def update_members(request, congress_num, chamber, state):
+    assert isinstance(request, HttpRequest)
     is_house = chamber != 'Senate'
-    _congress = Congress.objects.get(congress_num__exact=congress_id)
+    _congress = Congress.objects.get(congress_num__exact=congress_num)
     if (state == 'All'):
         mems =Member.objects.filter(membership__congress = _congress, membership__house = is_house)
     else :
@@ -108,25 +108,25 @@ def update_members(request, congress_id, chamber, state):
     return JsonResponse({'members': list(mems)})
 
 @staff_member_required
-def populate_congress(request, congress_id = 116):
+def populate_congress(request, congress_num):
     assert isinstance(request, HttpRequest) 
-    utils.addMembersCongressAPILazy(congress_id)
+    utils.addMembersCongressAPILazy(congress_num)
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def swap_membership(request, congress_id, leaving_id, leaving_date, in_house, arriving_id = "!",arriving_date = "!", party = "!"):
+def swap_membership(request, congress_num, leaving_id, leaving_date, in_house, arriving_id = "!",arriving_date = "!", party = "!"):
     assert isinstance(request, HttpRequest)
-    utils.swapMembership(congress_id, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party)
+    utils.swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party)
     return HttpResponseRedirect('/member-query/')   
 
 @staff_member_required
-def update_arrival(request, congress_id, arriving_id, arriving_date, in_house):
+def update_arrival(request, congress_num, arriving_id, arriving_date, in_house):
     assert isinstance(request, HttpRequest)
-    utils.updateArrival(congress_id, arriving_id, arriving_date, in_house)
+    utils.updateArrival(congress_num, arriving_id, arriving_date, in_house)
     return HttpResponseRedirect('/member-query/')
 
 @staff_member_required
-def create_membership(request, congress_id, member_id, state, in_house, party, arrival_date = None, departure_date = None, district_num = None):
+def create_membership(request, congress_num, bioguide_id, state, in_house, party, arrival_date = None, departure_date = None, district_num = None):
     assert isinstance(request, HttpRequest)
-    utils.createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num )
+    utils.createMembership(congress_num, bioguide_id, state, in_house, party, arrival_date, departure_date, district_num )
     return HttpResponseRedirect('/member-query/')

@@ -1,7 +1,56 @@
 from django.db import models
 from SenateQuery import models as SQmodels
 from datetime import date
-# Create your models here.
+from django.db.models import Q
+
+types = {
+            's' : 0,
+            'sres' : 1,
+            'sjres' : 2,
+            'sconres' : 3,
+            'hr' : 4,
+            'hres' : 5,
+            'hjres' : 6,
+            'hconres' : 7,
+            '!S' : (0,3),
+            '!H' : (4,7)}
+
+class TypeManager(models.Manager):
+    def get_from_type(self, _type, start_date, end_date):
+        if _type == '!':
+            return super(TypeManager, self).get_queryset().filter(latest_action__gte=start_date, latest_action__lte=end_date) 
+        if _type == '!S' or _type == '!H':
+            _addr_bgn = 10000 * types[_type][0]
+            _addr_end = 10000 * types[_type][1]
+        else:
+            _addr_bgn = 10000 * types[_type]
+            _addr_end = 10000 * types[_type]
+        query = Q(id__gte = 118_0_00001 + (_addr_bgn * 10),id__lte = 118_0_99999 + (_addr_end * 10))
+        _start = 110_0_0001
+        _end = 110_0_9999
+        query.add(Q(id__gte = _start + _addr_bgn,id__lte = _end + _addr_end), Q.OR)
+        for i in range(1,11):
+            _start += 1_0_0000
+            _end += 1_0_0000
+            query.add(Q(id__gte = _start + _addr_bgn,id__lte = _end + _addr_end), Q.OR)
+        query.add(Q(latest_action__gte=start_date, latest_action__lte=end_date), Q.AND)
+        return super(TypeManager, self).get_queryset().filter(query)
+
+# CCC_H_S_XXXXX
+class TypeManagerVote(models.Manager):
+    def get_from_type(self, _type, start_date, end_date):
+        if _type == '!':
+            return super(TypeManager, self).get_queryset().filter(dateTime__gte=start_date, dateTime__lte=end_date) 
+        _addr = 1_0_00000 if _type == 'h' else 0
+        _start = 110_0_1_00001
+        _end = 110_0_2_99999
+        query = Q(id__gte = _start + _addr,id__lte = _end + _addr)
+        for i in range(1,11):
+            _start += 1_0_0_00000
+            _end += 1_0_0_00000
+            query.add(Q(id__gte = _start + _addr,id__lte = _end + _addr), Q.OR)
+        query.add(Q(dateTime__gte=start_date, dateTime__lte=end_date), Q.AND)
+        return super(TypeManagerVote, self).get_queryset().filter(query)
 
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):
@@ -11,6 +60,10 @@ class Bill(models.Model):
     title = models.CharField(max_length=2000)
     origin_date = models.DateField()
     latest_action  = models.DateField()
+
+    objects = models.Manager()
+    type_objects =TypeManager()
+
     def getStatus(self):
         if self.status : return "Became Public Law"
         return "Still Just A Bill"
@@ -66,17 +119,15 @@ class Bill(models.Model):
         return self.id // 100000
     
     def getURL(self):
-        return str(self.getCongress()) + "/" + self.getTypeURL()
+        return str(self.getCongress()) + "/" + self.getTypeURL() + "/" + self.getNumStr()
     
     def __str__(self):
         return self.getType() + " " + self.getNumStr()
     
+
     class Meta():
         ordering = ["-latest_action", "origin_date", "-id"]
                 
-        
-        
-
 # id : CCC_H_S_XXXXX , CCC is congress, H is 0 if senate, else house, S is session 1 or 2, XXXXX is vote num
 class Vote(models.Model):
     id = models.IntegerField(primary_key=True)
@@ -92,6 +143,9 @@ class Vote(models.Model):
     nays = models.ManyToManyField(SQmodels.Membership, related_name='nays', blank = True)
     pres = models.ManyToManyField(SQmodels.Membership, related_name='pres', blank = True)
     novt = models.ManyToManyField(SQmodels.Membership, related_name='novt', blank = True)
+
+    objects = models.Manager()
+    type_objects =TypeManagerVote()
     
     def getDate(self):
         return self.dateTime.strftime("%Y-%m-%d")

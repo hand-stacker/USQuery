@@ -86,6 +86,20 @@ types = {
             'hjres' : 6,
             'hconres' : 7}
 
+month_to_num = {'Jan' : '01',
+                'Feb' : '02',
+                'Mar' : '03',
+                'Apr' : '04',
+                'May' : '05',
+                'Jun' : '06',
+                'Jul' : '07',
+                'Aug' : '08',
+                'Sep' : '09',
+                'Sept' : '09',
+                'Oct' : '10',
+                'Nov' : '11',
+                'Dec' : '12'}
+
 ## Helpful function for making a xml tree into a dictionary. Source : https://stackoverflow.com/a/10077069
 def etree_to_dict(t):
     d = {t.tag: {} if t.attrib else None}
@@ -171,10 +185,10 @@ def addMembersCongressAPILazy(congress_num):
     
     while (API_response != None):
         for member in API_response['members']:
-            _id=member['bioguideId']
+            bioguide_id=member['bioguideId']
             in_house = member['district'] != None
             district = None if not in_house else member['district']
-            member_set = Member.objects.filter(id = _id)
+            member_set = Member.objects.filter(id = bioguide_id)
             if member_set.exists() and Membership.objects.filter(congress = congress, member = member_set[0], house = in_house).exists():
                 continue    
             name = getFirstAndLastName(member['name'])
@@ -183,7 +197,7 @@ def addMembersCongressAPILazy(congress_num):
                 _member = member_set[0]
             else :
                 _member = Member.objects.get_or_create(
-                    id = _id, 
+                    id = bioguide_id, 
                     full_name = full_name,
                     first_name = name[0],
                     last_name = name[1],
@@ -201,7 +215,7 @@ def addMembersCongressAPILazy(congress_num):
                         start_date = start_date,
                         end_date = end_date,
                         )
-            print("added member " + _id)
+            print("added member " + bioguide_id)
         if 'next' in API_response['pagination']:
             API_response = connect(API_response['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
         else : API_response = None
@@ -406,7 +420,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
         _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
     else :
         _id = congress_num * 1000000 + types[_type] * 100000 + int(b['number'])
-        ignore_exists = False;
+        ignore_exists = False
     _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)    
     bill_exists = await sync_to_async(_set_bill.exists)()
     if (bill_exists and ignore_exists): return
@@ -450,17 +464,27 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                 except aiohttp.ClientConnectionError as e:
                     print(f"Connection error: {e}")
                     return
-                vote_dict = etree_to_dict(vote_xml)    
+                vote_dict = etree_to_dict(vote_xml)
+                if (in_house) :
+                    date_blob = vote_dict['rollcall-vote']['vote-metadata']['action-date'].split('-')
+                    dt = date_blob[2] + '-' + month_to_num[date_blob[1]] + '-' + date_blob[0] + 'T' + vote_dict['rollcall-vote']['vote-metadata']['action-time']['@time-etz'] + ':00Z'
+                else:
+                    dt = vote_dict['roll_call_vote']['vote_date'].strip()
+                    dt = dt.split(',')
+                    dt = dt[1][1:] + '-' + month_to_num[dt[0].split(' ')[0][0:3]] + '-' + dt[0].split(' ')[1] + getTime(dt[2].strip())
                 vote_data = {
                     'id': vote_id,
                     'congress': _congress,
                     'house': in_house == 1,
-                    'dateTime': a['recordedVotes'][0]['date'],
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
+                if not (await sync_to_async(_set_vote.exists)()):
+                    vote_data['dateTime'] = dt
                 _vote, created = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
+                _vote.dateTime = dt
+                await sync_to_async(_vote.save)()
                 if created or not ignore_exists:
                     _vote.bill = _bill
                     await sync_to_async(_vote.save)()
@@ -576,6 +600,16 @@ def getNumSuffix(num):
     elif (num % 10 == 3 and num // 10 != 1) : return 'rd'
     return 'th'
 
+def getTime(time_str):
+                    blob = time_str.split(' ')
+                    blob2 = blob[0].split(':')
+                    if blob2[0] == '12' : 
+                        if blob[1] == 'AM':
+                            blob2[0] = '00'
+                    elif blob[1] == 'PM':
+                        blob2[0] = str(int(blob2[0]) + 12)
+                    return 'T' + blob2[0] + ':' + blob2[1] + ':00Z'
+
 def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
     for i in range(len(roles)):
         if (roles[i]['congress'] == str(congress_num)) & (roles[i]['chamber'] == chamber): 
@@ -625,14 +659,25 @@ def updateMember(congress_num, member_id):
         phone = phone_num
         )
     # need to somehow store history of legislation and party history and leadership
-    return API_response_member;
+    return API_response_member
 
-def getBillsInRange(s_d, e_d):
+def getBillsInRange(s_d, e_d, bill_type):
     start = s_d.split('-')
     end = e_d.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
     end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
+    if bill_type != '!':
+        return Bill.type_objects.get_from_type(bill_type, start_date, end_date)
     return Bill.objects.filter(latest_action__gte=start_date, latest_action__lte=end_date)
+
+def getVotesInRange(s_d, e_d, bill_type):
+    start = s_d.split('-')
+    end = e_d.split('-')
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]),0,0,1)
+    end_date = datetime(int(end[0]), int(end[1]), int(end[2]),23,59,59)
+    if bill_type != '!':
+        return Vote.type_objects.get_from_type(bill_type, start_date, end_date)
+    return Vote.objects.filter(dateTime__gte=start_date, dateTime__lte=end_date)
 
 def intToFIPS(num):
     if num < 10 : return '0' + str(num)
@@ -660,7 +705,7 @@ async def billHtml(congress_id, bill_type, num):
     # Handles sponsors and cosponsors
     list_start = '<li class="list-group-item bg-trans darkmode"><a href="'
     member_link = '/member-query/results/?congress='
-    bill_link = '/bill-query/results/bill/'
+    bill_link = '/bill-query/bill/'
     q_2 = '&member='
     q_3 = '&chamber='
 
@@ -832,7 +877,7 @@ def voteHtml(vote):
     context = {'title': str(vote.id),
             'bill' : vote.bill.__str__(),
             'bill_title' : vote.bill.title,
-            'bill_link' : '/bill-query/results/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
+            'bill_link' : '/bill-query/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
             'vote_time' : vote.getDate(),
             'vote_title' : vote.title,
             'vote_question' : vote.question,
@@ -870,7 +915,7 @@ async def actionTable(act_list, bill_type, bill_num):
         #check if action is ignorable
         if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000', 'E30000', 'E40000']):
             continue
-        tableHTML += '<tr><td>' + action['actionDate'] + '</td>';
+        tableHTML += '<tr><td>' + action['actionDate'] + '</td>'
         if ('recordedVotes' in action) :
             in_house = 0 if (action['recordedVotes'][0]['chamber'] != 'House') else 1
             vote_id = action['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(action['recordedVotes'][0]['sessionNumber']) * 100000 + int(action['recordedVotes'][0]['rollNumber'])
@@ -878,22 +923,33 @@ async def actionTable(act_list, bill_type, bill_num):
             if not await sync_to_async(_set.exists)() : 
                 print("MISSING VOTES")
                 await updateBill(action['recordedVotes'][0]['congress'], bill_type, bill_num)
-            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '">' + 'Vote' + '</a></td>';    
+            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '">' + 'Vote' + '</a></td>'
         else : 
-            tableHTML += '<td>' + action['type'] + '</td>';
-        tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>';
-    tableHTML += '</tbody></table>';
+            tableHTML += '<td>' + action['type'] + '</td>'
+        tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>'
+    tableHTML += '</tbody></table>'
     return tableHTML
 
 def billTable(bill_list):
     tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Origin Date</th><th>Latest Action</th><th>Bill ID</th><th>Title</th><th>Source</th></tr></thead><tbody>'
     for bill in bill_list:
-        tableHTML += '<tr><td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>';
-        tableHTML += '<td>' + str(bill.latest_action.month) + "/" + str(bill.latest_action.day) + "/" + str(bill.latest_action.year) + '</td>';
-        tableHTML += '<td><a href="bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '">' + bill.__str__() + '</a></td>';
-        tableHTML += '<td>' + bill.title + '</td>';
-        tableHTML += '<td>' + bill.getOrigin() + '</td></tr>';
-    tableHTML += '</tbody></table>';
+        tableHTML += '<tr><td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>'
+        tableHTML += '<td>' + str(bill.latest_action.month) + "/" + str(bill.latest_action.day) + "/" + str(bill.latest_action.year) + '</td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '">' + bill.__str__() + '</a></td>'
+        tableHTML += '<td>' + bill.title + '</td>'
+        tableHTML += '<td>' + bill.getOrigin() + '</td></tr>'
+    tableHTML += '</tbody></table>'
+    return tableHTML
+
+def voteTablePage(vote_list):
+    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Question</th><th>Result</th></tr></thead><tbody>'
+    for vote in vote_list:
+        tableHTML += '<tr><td>' + vote.getDate() + '</td>'
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '">' + vote.question + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + vote.bill.getURL() + '">' + vote.bill.__str__() + '</a></td>'
+        tableHTML += '<td>' + vote.question + '</td>'
+        tableHTML += '<td>' + vote.result + '</td></tr>'
+    tableHTML += '</tbody></table>'
     return tableHTML
 
 def voteTable(vote_list, bioguideID, congress_num):
@@ -911,11 +967,11 @@ def voteTable(vote_list, bioguideID, congress_num):
             i = 1
         elif vote.pres.filter(congress = _congress, member = _member).exists():
             i = 2
-        tableHTML += '<tr class="' + colors[i] + '"><td>' + vote.getDate() + '</td>';
-        tableHTML += '<td><a href="/bill-query/results/bill/' + str(bill.getCongress()) + '/' + bill.getTypeURL() + '/' + str(bill.getNum()) + '" class="link-light">' + bill.__str__() + '</a></td>';
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" class="link-light">' + vote.question + '</a></td>';
-        tableHTML += '<td>' + vote_type[i] + '</td></tr>';
-    tableHTML += '</tbody></table>';
+        tableHTML += '<tr class="' + colors[i] + '"><td>' + vote.getDate() + '</td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '" class="link-light">' + bill.__str__() + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" class="link-light">' + vote.question + '</a></td>'
+        tableHTML += '<td>' + vote_type[i] + '</td></tr>'
+    tableHTML += '</tbody></table>'
     return tableHTML
     
 def partyList(party_history):

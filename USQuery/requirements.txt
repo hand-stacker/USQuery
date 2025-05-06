@@ -10,3 +10,6 @@ aiohttp
 gunicorn
 google-genai
 beautifulsoup4
+pandas
+tensorflow
+scikit-learn

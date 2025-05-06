@@ -1,10 +1,7 @@
 from django import forms
-from django_select2 import forms as s2forms
 from django.contrib.auth.forms import AuthenticationForm
 from django.utils.translation import gettext_lazy as _
 from SenateQuery import models as SQmodels
-
-YEAR_CHOICES = ["2025", "2024", '2023', '2022', '2021', '2020', '2019']
 
 CLORO_CHOICES = ((1, 'YEA'), (0, 'NAY'), (2, 'PRES'), (3, 'NOVT'))
 
@@ -64,6 +61,11 @@ state_list = (
     ("WY", "Wyoming"))
  
 chamber_list = (('Senate', 'Senate'),('House of Representatives', 'House'))
+chamber_list2 = (('!','All'),('Senate', 'Senate'),('House of Representatives', 'House'))
+type_list = (('!','All'),('!H','All House'),('!S','All Senate'),('hr', 'H. R.'),('hres', 'H. Res.'),('hjres', 'H. J. Res.'),('hconres','H. Con. Res.'),
+             ('s','S.'),('sres','S. Res.'),('sjres', 'S. J. Res.'), ('sconres', 'S. Con. Res.'))
+type_list2 = (('hr', 'H. R.'),('hres', 'H. Res.'),('hjres', 'H. J. Res.'),('hconres','H. Con. Res.'),
+             ('s','S.'),('sres','S. Res.'),('sjres', 'S. J. Res.'), ('sconres', 'S. Con. Res.'))
 class BootstrapAuthenticationForm(AuthenticationForm):
     """Authentication form which uses boostrap CSS."""
     username = forms.CharField(max_length=254,
@@ -119,5 +121,31 @@ class CloroChoice(forms.Form):
         self.fields["cloro_choice"].widget.attrs.update({"class": "dark-1"})
 
 class CalendarDateForm(forms.Form):
+    bill_type = forms.ChoiceField(
+        choices = type_list
+        )
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+
+class BillForm(forms.Form):
+    congress = forms.ModelChoiceField(
+        queryset=SQmodels.Congress.objects.all(),
+        empty_label="Select a Congress"
+        )
+
+    bill_type = forms.ChoiceField(
+        choices = type_list2
+        )
+
+    bill_num = forms.IntegerField(
+        min_value=1,
+        max_value=99999
+        )
+
+class VoteForm(forms.Form):
+    bill_type = forms.ChoiceField(
+        choices = (('!', 'All'),('h', 'House'),('s', 'Senate')),
+        )
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+    
