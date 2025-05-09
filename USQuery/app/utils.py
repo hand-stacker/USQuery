@@ -871,7 +871,7 @@ def voteHtml(vote):
                 values[i][indx] += 1
                 chamber = 'Senate'
             html_lists[i] += '<tr class="' + list_color[membership.party]  + ' border"><td class="border-0"><a href="/member-query/results/?congress=' 
-            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.member.full_name + list_party[membership.party] + '</a></td></tr>'
+            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.getStr() + '</a></td></tr>'
                 
         
     context = {'title': str(vote.id),

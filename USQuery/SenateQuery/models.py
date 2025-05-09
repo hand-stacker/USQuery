@@ -47,6 +47,9 @@ class Membership(models.Model):
     def getChamber(self):
         if self.house: return "House of Representatives"
         return "Senate"
+
+    def getStr(self):
+        return self.member.full_name + ' [' + self.party[0] + ']' + ' (' + self.state + ('' if not self.house else ('-' + str(self.district_num))) + ')'
     def __str__(self):
         if self.house:
             return "Congress :"  + self.congress.__str__() + " State: " + self.state + " Representative: " + self.member.__str__()
