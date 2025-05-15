@@ -223,6 +223,12 @@ def addMembersCongressAPILazy(congress_num):
 ## swap membership given bioguide_ids and dates of arrival and departure
 ## if departing member has no succesor, arriving_id should be "!"
 def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party) :
+    headers = {
+        'api_key' : settings.CONGRESS_KEY,
+        'format' : 'json',
+        'currentMember' : 'false',
+        'offset' : '0', 'limit' : '250'
+        }
     in_house = (in_house == 1)
     _congress = Congress.objects.get(congress_num__exact = congress_num)
     leaving_member = Member.objects.get(id = leaving_id)
@@ -232,7 +238,7 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
         if (_set_member.exists()):
             arriving_member = _set_member[0]
         else :
-            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + arriving_id).json()
+            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + arriving_id, headers).json()
             arriving_member = Member.objects.get_or_create(
                 id = arriving_id, 
                 full_name = API_response_member['member']['directOrderName'],
@@ -633,8 +639,17 @@ def updateMember(congress_num, member_id):
         
     if (API_response_member['member']['currentMember']) :
         site = API_response_member['member']['officialWebsiteUrl']
-        office_addr = API_response_member['member']['addressInformation']['officeAddress']
-        phone_num = API_response_member['member']['addressInformation']['phoneNumber']
+        if 'officeAddress' not in API_response_member['member']['addressInformation']:
+            print("WARNING: API CANNOT PROVIDE ADDRESS, MANUALLY ADD ADDRESS")
+            office_addr = "pippy"
+        else:
+            office_addr = API_response_member['member']['addressInformation']['officeAddress']
+            
+        if 'phoneNumber' not in API_response_member['member']['addressInformation']:
+            print("WARNING: API CANNOT PROVIDE PHONE, MANUALLY ADD PHONE")
+            phone_num = "pippy"
+        else:
+            phone_num = API_response_member['member']['addressInformation']['phoneNumber']
 
     ## find this term's party
     if (len(API_response_member['member']['partyHistory']) > 1):
