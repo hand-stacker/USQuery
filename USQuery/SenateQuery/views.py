@@ -55,7 +55,7 @@ def search(request, congress_num, bioguide_id, in_house):
             'rep_district' : membership.district_num,
             'rep_state' : utils.state_dict[membership.state],
             'rep_start' : membership.start_date,
-            'rep_end'   : membership.end_date,
+            'rep_end'   : "Present" if membership.end_date == None else membership.end_date,
             'rep_img'   : member.image_link,
             'rep_twt'   : member.twitter,
             'rep_fac'   : member.facebook,

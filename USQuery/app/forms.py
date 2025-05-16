@@ -126,6 +126,9 @@ class CalendarDateForm(forms.Form):
         )
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bill_type"].widget.attrs.update({"class": "dark-1"})
 
 class BillForm(forms.Form):
     congress = forms.ModelChoiceField(
@@ -141,6 +144,11 @@ class BillForm(forms.Form):
         min_value=1,
         max_value=99999
         )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["congress"].widget.attrs.update({"class": "dark-1"})
+        self.fields["bill_type"].widget.attrs.update({"class": "dark-1"})
+        self.fields["bill_num"].widget.attrs.update({"class": "dark-1"})
 
 class VoteForm(forms.Form):
     bill_type = forms.ChoiceField(
@@ -148,4 +156,7 @@ class VoteForm(forms.Form):
         )
     start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
     end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-1"}))
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bill_type"].widget.attrs.update({"class": "dark-1"})
     

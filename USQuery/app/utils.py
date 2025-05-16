@@ -938,7 +938,7 @@ async def actionTable(act_list, bill_type, bill_num):
             if not await sync_to_async(_set.exists)() : 
                 print("MISSING VOTES")
                 await updateBill(action['recordedVotes'][0]['congress'], bill_type, bill_num)
-            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '">' + 'Vote' + '</a></td>'
+            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '"  >' + 'Vote' + '</a></td>'
         else : 
             tableHTML += '<td>' + action['type'] + '</td>'
         tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>'
@@ -950,7 +950,7 @@ def billTable(bill_list):
     for bill in bill_list:
         tableHTML += '<tr><td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>'
         tableHTML += '<td>' + str(bill.latest_action.month) + "/" + str(bill.latest_action.day) + "/" + str(bill.latest_action.year) + '</td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '">' + bill.__str__() + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '"  >' + bill.__str__() + '</a></td>'
         tableHTML += '<td>' + bill.title + '</td>'
         tableHTML += '<td>' + bill.getOrigin() + '</td></tr>'
     tableHTML += '</tbody></table>'
@@ -960,8 +960,8 @@ def voteTablePage(vote_list):
     tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Question</th><th>Result</th></tr></thead><tbody>'
     for vote in vote_list:
         tableHTML += '<tr><td>' + vote.getDate() + '</td>'
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '">' + vote.question + '</a></td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + vote.bill.getURL() + '">' + vote.bill.__str__() + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + vote.bill.getURL() + '" >' + vote.bill.__str__() + '</a></td>'
         tableHTML += '<td>' + vote.question + '</td>'
         tableHTML += '<td>' + vote.result + '</td></tr>'
     tableHTML += '</tbody></table>'
@@ -982,10 +982,10 @@ def voteTable(vote_list, bioguideID, congress_num):
             i = 1
         elif vote.pres.filter(congress = _congress, member = _member).exists():
             i = 2
-        tableHTML += '<tr class="' + colors[i] + '"><td>' + vote.getDate() + '</td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '" class="link-light">' + bill.__str__() + '</a></td>'
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" class="link-light">' + vote.question + '</a></td>'
-        tableHTML += '<td>' + vote_type[i] + '</td></tr>'
+        tableHTML += '<tr><td>' + vote.getDate() + '</td>'
+        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '" >' + bill.__str__() + '</a></td>'
+        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
+        tableHTML += '<td class="' + colors[i] + '">' + vote_type[i] + '</td></tr>'
     tableHTML += '</tbody></table>'
     return tableHTML
     
@@ -1020,8 +1020,8 @@ def termList(terms, bioguideID, congress_num):
         if (term['congress'] == congress_num): term_list += ' dark-2' 
         else : term_list += ' bg-trans'
         term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
-        term_list += '<a href="' + link + link_dict[term['memberType']] + '">' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
-        term_list += '(' + str(term['startYear']) + '-'
+        term_list += '<a href="' + link + link_dict[term['memberType']] + '" >' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
+        term_list += ' (' + str(term['startYear']) + '-'
         if ('endYear' in term) : term_list += str(term['endYear'])
         else : term_list += 'Present'
         term_list += ')</a></li>'
