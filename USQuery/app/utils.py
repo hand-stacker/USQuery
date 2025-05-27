@@ -601,7 +601,7 @@ def getFirstAndLastName(reverseName):
 
 def getNumSuffix(num):
     num = num % 100
-    if (num % 10 == 1 and num // 10 != 1) : return 'rst'
+    if (num % 10 == 1 and num // 10 != 1) : return 'st'
     elif (num % 10 == 2 and num // 10 != 1) : return 'nd'
     elif (num % 10 == 3 and num // 10 != 1) : return 'rd'
     return 'th'

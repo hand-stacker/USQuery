@@ -4,12 +4,16 @@ body {
     -moz-background-size: cover;
     -o-background-size: cover;
     background-size: cover;
-    color: rgb(250,250,250);
+    color: rgb(250,250,250)!important;
 }
 
 .bg-trans {
-    background-color: rgba(0,0,0,0);
-    color: rgb(250,250,250);
+    background-color: rgba(0,0,0,0) !important;
+    color: rgb(250,250,250) !important;
+}
+
+.t-responsive-lg {
+    max-height: 500px !important;
 }
 
 .t-responsive {
@@ -20,119 +24,128 @@ body {
     max-height: 200px !important;
 }
 
-thead, .dark-0 {
-    background: rgba(0, 0, 0, 0.91) !important;
+.dark-0 {
+    background: rgba(0, 0, 0, 0.85) !important;
     color: rgb(250,250,250) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(6.6px);
-    -webkit-backdrop-filter: blur(6.6px);
-    border: 1px solid rgba(0, 0, 0, 0.09);
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.09) !important;
+}
+
+thead {
+    background: rgba(0, 0, 0, 0.85) !important;
+    color: rgb(250,250,250) !important;
+    border: 1px solid rgba(150,150,150, 0.9) !important;
 }
 
 .dark-1 {
     background: rgba(73, 73, 73, 0.51) !important;
     color: rgb(250,250,250) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(6.6px);
-    -webkit-backdrop-filter: blur(6.6px);
-    border: 1px solid rgba(73, 73, 73, 0.09);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
 }
 
 .dark-2 {
-    background: rgba(73, 73, 73, 0.2) !important;
+    background: rgba(73, 63, 63, 0.3) !important;
     color: rgb(250,250,250) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(6.6px);
-    -webkit-backdrop-filter: blur(6.6px);
-    border: 1px solid rgba(73, 73, 73, 0.09);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
+}
+
+table.dark-1 {
+    border: 1px solid rgba(173,173,173,.4) !important;
 }
 
 .glass-0 {
     background: rgba(0, 0, 0, 0.21) !important;
     color: rgb(250,250,250) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
-    border: 1px solid rgb(150, 150, 150);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
+    border: 1px solid rgb(150, 150, 150) !important;
 }
 
 .special-0 {
-    background-color: rgb(120,161,187);
+    background-color: rgb(120,161,187) !important;
 }
 
 .special-1 {
-    background-color: rgb(235,245,238);
+    background-color: rgb(235,245,238) !important;
 }
 
 td.yeas {
-    background-color: rgba(11,114,14,.15);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(11,114,14,.15) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 td.nays {
-    background-color: rgba(171,27,27,.15);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(171,27,27,.15) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 td.pres {
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 td.novt {
-    background-color: rgba(201,154,35,.15);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(201,154,35,.15) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 tr.dem {
-    background-color: rgba(34,76,201,.4);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(34,76,201,.4) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 tr.rep {
-    background-color: rgba(171,27,27,.4);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(171,27,27,.4) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 tr.ind {
-    background-color: rgba(200,200,200,.4);
-    color: rgb(50,50,50);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(200,200,200,.4) !important;
+    color: rgb(50,50,50) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 tr.lib {
-    background-color: rgba(224,201,11,.4);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(224,201,11,.4) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 ts.grn {
-    background-color: rgba(11,137,11,.4);
-    color: rgb(250,250,250);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(9.4px);
-    -webkit-backdrop-filter: blur(9.4px);
+    background-color: rgba(11,137,11,.4) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
 
@@ -147,7 +160,6 @@ input,
 select,
 textarea {
     max-width: 280px;
-    
 }
 
 /* styles for validation helpers */
@@ -182,25 +194,32 @@ input[type="checkbox"].input-validation-error {
 .full-plot {
     width: 100%;
 }
+
 @media only screen and (max-width: 1400px) {
     h1 {
         font-size: 36px !important;
     }
+
     h2 {
         font-size: 30px !important;
     }
+
     h3 {
         font-size: 24px !important;
     }
+
     h4, summary, label {
         font-size: 20px !important;
     }
+
     h5, li, p {
         font-size: 18px !important;
     }
+
     h6, th, td {
         font-size: 16px !important;
     }
+
     .half-plot {
         width: 40% !important;
     }
@@ -230,6 +249,7 @@ input[type="checkbox"].input-validation-error {
     h6, th, td {
         font-size: 10px !important;
     }
+
     .half-plot {
         width: 100% !important;
     }
@@ -248,7 +268,7 @@ input[type="checkbox"].input-validation-error {
         font-size: 12px !important;
     }
 
-    h4, summary ,label {
+    h4, summary, label {
         font-size: 10px !important;
     }
 
@@ -256,9 +276,10 @@ input[type="checkbox"].input-validation-error {
         font-size: 8px !important;
     }
 
-    h6, th, td{
+    h6, th, td {
         font-size: 6px !important;
     }
+
     .half-plot {
         width: 100% !important;
     }

@@ -4,13 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }} - USQuery</title>
-    {% load bootstrap5 %}
-    {% bootstrap_css %}
-    {% bootstrap_javascript %}
     {% load static %}
     <script src="{% static 'app/scripts/modernizr-2.6.2.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'app/content/site.css' %}">
     <link rel="shortcut icon" type="image/png" href="{% static 'images/favicon.png' %}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 </head>
 <body>
     <nav class="navbar navbar-expand-md navbar-dark dark-0 sticky-top mb-4" aria-label="USQuery nav bar">
@@ -49,9 +47,7 @@
     </div>
 
     <script src="{% static 'app/scripts/jquery-1.10.2.js' %}"></script>
-    <script src="{% static 'app/scripts/bootstrap.js' %}"></script>
     <script src="{% static 'app/scripts/respond.js' %}"></script>
-    {% block scripts %}{% endblock %}
-
+   {% block scripts %}{% endblock %}
 </body>
 </html>

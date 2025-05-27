@@ -184,3 +184,17 @@ class BillSummary(models.Model):
     summary = models.TextField(default="We cannot provide a summary at this time.")
     def __str__(self):
         return str(self.id)
+
+class BillPrediction(models.Model):
+    id = models.IntegerField(primary_key=True)
+    creation_date = models.DateField()
+
+class BinaryProbability(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    bill_pred = models.ForeignKey(BillPrediction, on_delete=models.CASCADE)
+    state = models.CharField(max_length=2)
+    in_house = models.BooleanField(default=True)
+    party = models.CharField(max_length=30)
+    counts = models.IntegerField()
+    p = models.DecimalField(max_digits=5, decimal_places=5)
+

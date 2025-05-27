@@ -5,14 +5,14 @@
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
-            <h2>{{bill}} : {{bill_state_type}}</h2>
+            <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
             <div id="AI_warning" role="alert" class="alert alert-warning">Warning: The content below was generated with AI.</div>
-            <h5>{{summary | safe}}</h5>
+            <h5 id="bill_summary" class="t-responsive-lg overflow-scroll">{{summary | safe}}</h5>
         </div>
         <div class="border glass-0 align-items-center d-flex justify-content-center p-3">
             <h4>Action Timeline</h4>
         </div>
-        <div>
+        <div id="action_table" class="overflow-scroll t-responsive mb-4">
             {{actions_table | safe}}
         </div>
     </div>
@@ -25,7 +25,7 @@
                     <summary>
                         See Cosponsors
                     </summary>
-                    <ul class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
+                    <ul id="bill_cosponsors" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
                         {{cosponsors | safe}}
                     </ul>
                 </details>
@@ -39,7 +39,7 @@
                     <summary>
                         See Subjects
                     </summary>
-                    <ul class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
+                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
                         {{subjects | safe}}
                     </ul>
                 </details>
@@ -52,7 +52,7 @@
                     <summary>
                         See Related Bills
                     </summary>
-                    <ul class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
+                    <ul id="related_bills" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
                         {{related_bills | safe}}
                     </ul>
                 </details>
