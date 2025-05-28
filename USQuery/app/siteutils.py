@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 from google.genai import types
 from google import genai
 from django.db.models import Q
-from USQuery import settings, secretss
+from USQuery import settings
+import secretss
 from app import utils
 from SenateQuery.models import Membership
 from BillQuery.models import BillPrediction, BinaryProbability, Bill
