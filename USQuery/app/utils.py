@@ -816,7 +816,7 @@ async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_n
         The tone should be formal, concise, and easy to understand for the average voter.
         Refer to the legislation by its title or the bill type and number if there is no title."""
     response = client.models.generate_content(
-        model="gemini-2.5-pro-exp-03-25",
+        model="gemini-2.0-flash",
         contents=[text, prompt]
         )
     summary = response.text

@@ -2,6 +2,11 @@
 {% block content %}
 {% load static %}
 {{ AI_generated_content | json_script:"AI_generated_content" }}
+{% if show_prediction == True %}
+{{ house_pred | json_script:"house_pred" }}
+{{ senate_pred | json_script:"senate_pred" }}
+{% endif %}
+
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
@@ -14,6 +19,26 @@
         </div>
         <div id="action_table" class="overflow-scroll t-responsive mb-4">
             {{actions_table | safe}}
+        </div>
+        <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
+            <div class="p-2 align-items-center d-flex justify-content-center pb-3">
+                <h2>
+                    Vote Predictions
+                </h2>
+            </div>
+            <hr>
+            {% if show_prediction == True %}
+            <div id="hist" class="d-flex flex-row justify-content-center"></div>
+            <div id="hist2" class="d-flex flex-row justify-content-center"></div>
+            {% elif show_error == True %}
+            An error occured, we cannot provide a prediction at this time.
+            {% elif show_request_button == True %}
+            <form action={{request_link}} method="get">
+                <button type="submit" name='submitRequest' value="Submit">Request A Prediction</button>
+            </form>
+            {% else %}
+            Log in to request a vote prediction.
+            {% endif %}
         </div>
     </div>
     <div class="col-md-3">
@@ -62,4 +87,10 @@
     </div>
 </div>
 <script src="{% static 'scripts/AI_warning.js' %}"></script>
+{% if show_prediction == True %}
+<script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
+<script src="{% static 'scripts/loadSize_bill.js' %}"></script>
+<script src="{% static 'scripts/predictionHist.js' %}"></script>
+<script src="{% static 'scripts/predictionHist2.js' %}"></script>
+{% endif %}
 {% endblock %}

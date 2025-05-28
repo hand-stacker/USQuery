@@ -1,10 +1,11 @@
 import asyncio
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponseRedirect
-from app import utils, forms
-from BillQuery.models import Vote, Bill
+from app import utils, forms, siteutils
+from BillQuery.models import Vote, Bill, BillPrediction
 
 def home(request):
     assert isinstance(request, HttpRequest)
@@ -90,11 +91,38 @@ def bill(request, congress_num, bill_type, bill_num):
     except Bill.DoesNotExist:
         return HttpResponseRedirect('/bill-query')
     context = asyncio.run(utils.billHtml(str(congress_num), bill_type, str(bill_num)))
+    context['bill_id'] = bill_id
+    context['bill_type'] = bill_type
+    context['show_prediction'] = False
+    context['show_request_button'] = False
+    context['show_error'] = False
+    ## if logged in, get simulated votes
+    logged_in = (request.user.is_authenticated) and (not bill.status) and (congress_num >=119)
+    pred_exists = BillPrediction.objects.filter(id = bill_id).exists()
+    if pred_exists:
+        batch_size = 100
+        context['house_pred'] = siteutils.getPredictionBatch(bill_id, True, batch_size)
+        context['senate_pred'] = siteutils.getPredictionBatch(bill_id, False, batch_size)
+        if context['house_pred'] == -1 or context['senate_pred'] == -1:
+            context['show_error'] = True
+        else: 
+             context['show_prediction'] = True
+    elif logged_in:
+        context['show_request_button'] = True
+        context['request_link'] = "/bill-query/prediction-request/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num)
     return render(
         request,
         'BillQuery/bill.html',
         context
     )
+
+@login_required
+def requestPrediction(request, congress_num, bill_type, bill_num):
+    assert isinstance(request, HttpRequest)
+    mult = 10 if int(bill_num) > 9999 else 1
+    bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
+    siteutils.createPredictions(bill_id)
+    return HttpResponseRedirect("/bill-query/bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num))
 
 def vote(request, vote_id):
     assert isinstance(request, HttpRequest)
