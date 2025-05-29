@@ -29,9 +29,12 @@ def search(request, congress_num, bioguide_id, in_house):
         urlPath += key + "=" + past_context[key] + "&"
         
     # find senator given member id and congress num
-    congress = Congress.objects.get(congress_num = congress_num)
-    member = Member.objects.get(id = bioguide_id)
-    membership = Membership.objects.get(congress = congress, member = member, house = in_house)
+    try:
+        congress = Congress.objects.get(congress_num = congress_num)
+        member = Member.objects.get(id = bioguide_id)
+        membership = Membership.objects.get(congress = congress, member = member, house = in_house)
+    except:
+        return HttpResponseRedirect('/member-query')
     start = membership.start_date.split('-')
     
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
@@ -91,7 +94,7 @@ def query(request):
         congress_num = int(member_form.data["congress"])
         in_house = member_form.data["chamber"] != 'Senate'
     except:
-        print("FATAL ER_R0R")
+        print("FATAL ERR0R")
         return HttpResponseRedirect('/member-query/')        
     return search(request, congress_num, member_form.data["member"], in_house)
     

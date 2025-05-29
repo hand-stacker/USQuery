@@ -37,7 +37,10 @@ def bill_search(request):
 
 def search(request, s_d, e_d, bill_type):
     assert isinstance(request, HttpRequest)
-    q_set = utils.getBillsInRange(s_d, e_d, bill_type)
+    try: 
+        q_set = utils.getBillsInRange(s_d, e_d, bill_type)
+    except:
+        return HttpResponseRedirect('/bill-query')
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -60,7 +63,10 @@ def search(request, s_d, e_d, bill_type):
 
 def vote_search(request, s_d, e_d, bill_type):
     assert isinstance(request, HttpRequest)
-    q_set = utils.getVotesInRange(s_d, e_d, bill_type)
+    try:
+        q_set = utils.getVotesInRange(s_d, e_d, bill_type)
+    except:
+        return HttpResponseRedirect('/bill-query')
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -119,9 +125,14 @@ def bill(request, congress_num, bill_type, bill_num):
 @login_required
 def requestPrediction(request, congress_num, bill_type, bill_num):
     assert isinstance(request, HttpRequest)
-    mult = 10 if int(bill_num) > 9999 else 1
-    bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
-    siteutils.createPredictions(bill_id)
+    if congress_num > 119:
+        mult = 10 if int(bill_num) > 9999 else 1
+        bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
+        try:
+            bill = Bill.objects.get(id = bill_id)
+        except Bill.DoesNotExist:
+            return HttpResponseRedirect('/bill-query')
+        siteutils.createPredictions(bill_id)
     return HttpResponseRedirect("/bill-query/bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num))
 
 def vote(request, vote_id):
