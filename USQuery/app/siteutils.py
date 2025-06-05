@@ -139,9 +139,9 @@ async def gatherFeatures(bill_id):
     bill_num = bill_id % (10000 * mult)
     fullpath = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + bill_type + '/' + str(bill_num)
     texts = await utils.connectASYNC(session, fullpath + '/text?', header_str)
-    if len(texts['textVersions']) == 0 : return None
-    subj_litr = '['
     subjects = await utils.connectASYNC(session, fullpath + '/subjects?', header_str)
+    if len(texts['textVersions']) == 0 or len(subjects['subjects']['legislativeSubjects']) == 0: return None
+    subj_litr = '['
     for subject in subjects['subjects']['legislativeSubjects']:
         subj_litr += '"' + subject['name'] + '",'
     subj_litr += ']'
@@ -208,28 +208,29 @@ def createPredictions(bill_id):
     mem_df = pd.DataFrame({'state' : state_list, 'party': party_list, 'house' : house_list})
     mem_df = mem_df.groupby(by=['state','party','house'],as_index=False).size()
 
-    feat_df = pd.DataFrame(0, index=np.arange(1), columns=column_list, dtype='int8')
+    feat_df = pd.DataFrame(0, index=np.arange(mem_df.shape[0]), columns=column_list, dtype='int8')
     d = asyncio.run(gatherFeatures(bill_id))
     if d == None : return -1
     for key in list(d.keys()):
         feat_df[key] = d[key]
     feat_df['question_On Passage'] = 1
     for index, row in mem_df.iterrows():
-        feat_df.at[0, 'house'] = 0 if row['house'] else 1
-        feat_df.at[0, 'party_' + row['party']] = 1
-        feat_df.at[0, 'state_' + row['state']] = 1
-        fit = model.predict(feat_df)
-        BinaryProbability.objects.get_or_create(
+        feat_df.at[index, 'house'] = 0 if row['house'] else 1
+        feat_df.at[index, 'party_' + row['party']] = 1
+        feat_df.at[index, 'state_' + row['state']] = 1
+    fit = model.predict(feat_df)
+    fit = np.round(fit,5)
+    objs = [None] * mem_df.shape[0]
+    for index, row in mem_df.iterrows():
+        objs[index] = BinaryProbability(
             bill_pred = bill_pred,
-            state=row['state'],
+            state= row['state'],
             in_house = row['house'],
             party = row['party'],
             counts = row['size'],
-            p = np.round(fit,5)[0][0].item()
+            p = fit[index][0].item()
             )
-        # after processing remove 'shifty' values from column, as these are One Hot Encoded
-        feat_df.at[0, 'party_' + row['party']] = 0
-        feat_df.at[0, 'state_' + row['state']] = 0
+    BinaryProbability.objects.bulk_create(objs)
 
 def getPredictionBatch(bill_id, in_house, sample_size):
     bill = Bill.objects.get(id = bill_id)

@@ -31,7 +31,8 @@
             <div id="hist" class="d-flex flex-row justify-content-center"></div>
             <div id="hist2" class="d-flex flex-row justify-content-center"></div>
             {% elif show_error == True %}
-            An error occured, we cannot provide a prediction at this time.
+            An error occured and we cannot provide a prediction at this time. Either Congress API has not 
+            provided a text file or subject list for this bill, or the bill text is too large to make a prediction.
             {% elif show_request_button == True %}
             <form action={{request_link}} method="get">
                 <button type="submit" name='submitRequest' value="Submit">Request A Prediction</button>
