@@ -4,7 +4,6 @@ from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Bill, Vote, BillSummary
-from asgiref.sync import sync_to_async
 from collections import defaultdict
 from xml.etree import cElementTree as ET
 from google import genai
@@ -230,9 +229,9 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
         'offset' : '0', 'limit' : '250'
         }
     in_house = (in_house == 1)
-    _congress = Congress.objects.get(congress_num__exact = congress_num)
+    congress = Congress.objects.get(congress_num__exact = congress_num)
     leaving_member = Member.objects.get(id = leaving_id)
-    leaving_membership = Membership.objects.get(congress = _congress, member = leaving_member, house = in_house)       
+    leaving_membership = Membership.objects.get(congress = congress, member = leaving_member, house = in_house)       
     if (arriving_id != "!") :
         _set_member = Member.objects.filter(id = arriving_id)
         if (_set_member.exists()):
@@ -247,7 +246,7 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
                 image_link = "empty"
                 )[0]
         arriving_membership = Membership.objects.get_or_create(
-            congress = _congress,
+            congress = congress,
             member = arriving_member,
             district_num = leaving_membership.district_num,
             house = in_house,
@@ -264,22 +263,22 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
 # updates the arrival date of a membership
 def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
     in_house = (in_house == 1)
-    _congress = Congress.objects.get(congress_num__exact = congress_id)
-    _member = Member.objects.get(id = arriving_id)
-    _membership = Membership.objects.get(congress = _congress, member = _member, house = in_house)       
-    _membership.start_date = arriving_date
-    _membership.save()
+    congress = Congress.objects.get(congress_num__exact = congress_id)
+    member = Member.objects.get(id = arriving_id)
+    membership = Membership.objects.get(congress = congress, member = member, house = in_house)       
+    membership.start_date = arriving_date
+    membership.save()
 
 ## creates a new membership with all required parameters (beyond arrival date is optional)
 ## DANGEROUS: will create a new membership even if one already exists if there is a slight
 ## variation from extant membership (ex: mistyped party)
 def createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num) :
     in_house = (in_house == 1) 
-    _congress = Congress.objects.get(congress_num__exact = congress_id)
-    _member = Member.objects.get(id = member_id)
-    _membership = Membership.objects.get_or_create(
-            congress = _congress,
-            member = _member,
+    congress = Congress.objects.get(congress_num__exact = congress_id)
+    member = Member.objects.get(id = member_id)
+    membership = Membership.objects.get_or_create(
+            congress = congress,
+            member = member,
             district_num = district_num,
             house = in_house,
             state = state,
@@ -288,32 +287,40 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
             start_date = arrival_date,
             end_date = departure_date
             )[0]
-    _membership.start_date = arrival_date
-    _membership.end_date = departure_date
-    _membership.save()
+    membership.start_date = arrival_date
+    membership.end_date = departure_date
+    membership.save()
 
 ## updates database, adding new bills or updating bills and votes with actionDate GTE current_date_str
 async def updateRecentBills(congress_num, current_date_str, bill_type):
+    current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
     header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
-    _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
-    current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
-    API_response = await connectASYNC(session, settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + bill_type + "?", header_str)
+    async with asyncio.TaskGroup() as tg:
+        congress = tg.create_task(Congress.objects.aget(congress_num__exact = congress_num))
+        API_response = tg.create_task(connectASYNC(
+            session,
+            settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + bill_type + "?",
+            header_str
+            ))
+    congress = congress.result()
+    API_response = API_response.result()
     end_operation = False
     while API_response is not None:
         for bill in API_response['bills']:
             latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
             if latest_action_date >= current_date:
-                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, _congress, header_str, False)
+                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
             else :
                 end_operation = True
         if 'next' in API_response['pagination'] and not end_operation:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
-    await session.close()
-    await vote_session.close()
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(session.close())
+        tg.create_task(vote_session.close())
 
 ## mega function that creates bills, and creates any votes for a given bill
 ## too many api calls will lead to being blocked by congress api
@@ -322,147 +329,172 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
-    API_response = await connectASYNC(session, settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "?", header_str_sp)
-    _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
-    
+    async with asyncio.TaskGroup() as tg:
+        congress = tg.create_task(Congress.objects.aget(congress_num__exact = congress_num))
+        API_response = tg.create_task(connectASYNC(
+            session,
+            settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + _type + "?",
+            header_str_sp
+            ))
+    congress = congress.result()
+    API_response = API_response.result()
     indx = 0
     limit = 5
     n = len(API_response['bills'])
-    
     while (indx < n) : 
         end = min (indx + limit, n)
         sets = API_response['bills'][indx:end]
         async with asyncio.TaskGroup() as tg:
             for bill in sets:
-                tg.create_task(addBillASYNC(session, vote_session, congress_num, _type, bill, _congress, header_str))
+                tg.create_task(addBillASYNC(session, vote_session, congress_num, _type, bill, congress, header_str))
         indx = end
     print('added up to ' + str(offset + indx))
     if 'next' in API_response['pagination']:
         print(', need to get to ' + str(API_response['pagination']['count']))
-    await session.close()
-    await vote_session.close()
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(session.close())
+        tg.create_task(vote_session.close())
 
-async def updateBill(congress_num, _type, _num) :
-    url = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(_num) + '/actions?'
+async def updateBill(congress_num, _type, num) :
+    url = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(num) + '/actions?'
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
-    if (int(_num) < 10000):
-        _id = congress_num * 100000 + types[_type] * 10000 + int(_num)
+    if (int(num) < 10000):
+        _id = congress_num * 100000 + types[_type] * 10000 + int(num)
     else :
-        _id = congress_num * 1000000 + types[_type] * 100000 + int(_num)
-    _congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
-    _bill = await sync_to_async(Bill.objects.get)(id__exact = _id)    
-    
-    API_response_actions = await connectASYNC(session, url, header_str)
+        _id = congress_num * 1000000 + types[_type] * 100000 + int(num)
+    async with asyncio.TaskGroup() as tg:
+        congress = tg.create_task(Congress.objects.aget(congress_num__exact = congress_num))
+        bill= tg.create_task(Bill.objects.aget(id__exact = _id))
+        API_response_actions = tg.create_task(connectASYNC(session, url, header_str))
+    congress = congress.result()
+    bill = bill.result()
+    API_response_actions = API_response_actions.result()
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
+                set_vote = Vote.objects.filter(id = vote_id)
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
                     vote_xml = ET.XML(vote_xml)
                 except aiohttp.ClientConnectionError as e:
                     print(f"Connection error: {e}")
                     return
-                vote_dict = etree_to_dict(vote_xml)    
+                vote_dict = etree_to_dict(vote_xml)  
+                if (in_house) :
+                    date_blob = vote_dict['rollcall-vote']['vote-metadata']['action-date'].split('-')
+                    dt = date_blob[2] + '-' + month_to_num[date_blob[1]] + '-' + date_blob[0] + 'T' + vote_dict['rollcall-vote']['vote-metadata']['action-time']['@time-etz'] + ':00Z'
+                else:
+                    dt = vote_dict['roll_call_vote']['vote_date'].strip()
+                    dt = dt.split(',')
+                    dt = dt[1][1:] + '-' + month_to_num[dt[0].split(' ')[0][0:3]] + '-' + dt[0].split(' ')[1] + getTime(dt[2].strip())
                 vote_data = {
                     'id': vote_id,
-                    'congress': _congress,
+                    'congress': congress,
                     'house': in_house == 1,
-                    'bill' : _bill,
-                    'dateTime': a['recordedVotes'][0]['date'],
+                    'bill' : bill,
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
-                _vote = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
-                _vote = _vote[0]
+                if not (await set_vote.aexists()):
+                    vote_data['dateTime'] = dt
+                vote = await Vote.objects.aget_or_create(**vote_data)
+                vote = vote[0]
                 members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
                 member_votes = {
-                    'Yea': _vote.yeas,
-                    'Nay': _vote.nays,
-                    'Not Voting': _vote.novt,
-                    'Present': _vote.pres
+                    'Yea': vote.yeas,
+                    'Nay': vote.nays,
+                    'Not Voting': vote.novt,
+                    'Present': vote.pres
                 }
+                yeas = Membership.objects.none()
+                nays = Membership.objects.none()
+                pres = Membership.objects.none()
+                novt = Membership.objects.none()
                 q_sets = {
-                    'Yea': await sync_to_async(Membership.objects.none)(),
-                    'Aye': await sync_to_async(Membership.objects.none)(),
-                    'Guilty' : await sync_to_async(Membership.objects.none)(),
-                    'Nay': await sync_to_async(Membership.objects.none)(),
-                    'No': await sync_to_async(Membership.objects.none)(),
-                    'Not Guilty' : await sync_to_async(Membership.objects.none)(),
-                    'Not Voting': await sync_to_async(Membership.objects.none)(),
-                    'Present': await sync_to_async(Membership.objects.none)()
+                    'Yea': yeas,
+                    'Aye':yeas,
+                    'Guilty' : yeas,
+                    'Nay': nays,
+                    'No': nays,
+                    'Not Guilty' : nays,
+                    'Not Voting': novt,
+                    'Present': pres
                 }
                 keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                 for m in members:
                     if (in_house == 1):
-                        member = await sync_to_async(Membership.objects.filter)(congress=_congress, member__id=m['legislator']['@name-id'], house = True)
+                        mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
                     else :
-                        member = await sync_to_async(Membership.objects.filter)(
-                            congress=_congress,
-                            house = False,
-                            member__last_name__iexact=m['last_name'],
-                            state=m['state']
-                            )
+                        member = {
+                            'congress' : congress,
+                            'house' : False,
+                            'member__last_name__iexact' : m['last_name'],
+                            'state' : m['state']
+                        }
+                    member = Membership.objects.filter(**mem_data)
                     q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
-                q_sets['Yea'] |= q_sets['Aye'] | q_sets['Guilty']
-                q_sets['Nay'] |= q_sets['No'] | q_sets['Not Guilty']
                 for key in keys:
-                    await sync_to_async(member_votes[key].set)(q_sets[key])
+                    await member_votes[key].aset(q_sets[key])
                 print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
-    await session.close()
-    await vote_session.close()
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(session.close())
+        tg.create_task(vote_session.close())
 
 # meant to be used asynchronously to add batches of bills at one time
-async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress, header_str, ignore_exists = True):
+async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, header_str, ignore_exists = True):
     if (int(b['number']) < 10000):
         _id = congress_num * 100000 + types[_type] * 10000 + int(b['number'])
     else :
         _id = congress_num * 1000000 + types[_type] * 100000 + int(b['number'])
         ignore_exists = False
-    _set_bill = await sync_to_async(Bill.objects.filter)(id = _id)    
-    bill_exists = await sync_to_async(_set_bill.exists)()
-    if (bill_exists and ignore_exists): return
-    API_response_bill = await connectASYNC(session, b['url'], header_str)
-    if (API_response_bill['bill']['title'][:8] == 'Reserved'):
-        return # reserved bills are trivial, so we ignore them if their title was a reservation
-    API_response_actions = await connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str)
-    _member = await sync_to_async(Member.objects.get)(id=API_response_bill['bill']['sponsors'][0]['bioguideId'])
+    set_bill = Bill.objects.filter(id = _id)
+    async with asyncio.TaskGroup() as tg:
+        bill_exists = tg.create_task(set_bill.aexists())
+        API_response_bill = tg.create_task(connectASYNC(session, b['url'], header_str))
+    API_response_bill = API_response_bill.result()
+    bill_exists = bill_exists.result()
+    if (bill_exists and ignore_exists) or (API_response_bill['bill']['title'][:8] == 'Reserved') : return
+    async with asyncio.TaskGroup() as tg:
+        API_response_actions = tg.create_task(connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str))
+        member = tg.create_task(Member.objects.aget(id=API_response_bill['bill']['sponsors'][0]['bioguideId']))
+    API_response_actions = API_response_actions.result()
+    member = member.result()
     date = API_response_bill['bill']['introducedDate'].split('-')
-    _membership = await sync_to_async(Membership.objects.get)(congress=_congress, member=_member, start_date__lte = datetime(int(date[0]), int(date[1]), int(date[2])))
-    _status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
-
+    membership = await Membership.objects.aget(congress=congress, member=member, start_date__lte = datetime(int(date[0]), int(date[1]), int(date[2])))
+    status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
     if (bill_exists) : 
-        _bill = await sync_to_async(Bill.objects.get)(id = _id)
-        _bill.title = b['title']
-        _bill.status = _status
-        _bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
-        await sync_to_async(_bill.save)()
+        bill = await Bill.objects.aget(id = _id)
+        bill.title = b['title']
+        bill.status = status
+        bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
+        await bill.asave()
     else :
-        _bill = await sync_to_async(Bill.objects.get_or_create)(
+        bill = await Bill.objects.aget_or_create(
             id = _id,
             title = b['title'],
-            sponsor = _membership,
-            status = _status,
+            sponsor = membership,
+            status = status,
             origin_date = API_response_bill['bill']['introducedDate'],
             latest_action = API_response_bill['bill']['latestAction']['actionDate']
             )
-        _bill = _bill[0]
+        bill = bill[0]
 
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
-                _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
-                if ignore_exists and (await sync_to_async(_set_vote.exists)()):
+                set_vote = Vote.objects.filter(id = vote_id)
+                if ignore_exists and (await set_vote.aexists()):
                     return
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
@@ -480,53 +512,56 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
                     dt = dt[1][1:] + '-' + month_to_num[dt[0].split(' ')[0][0:3]] + '-' + dt[0].split(' ')[1] + getTime(dt[2].strip())
                 vote_data = {
                     'id': vote_id,
-                    'congress': _congress,
+                    'congress': congress,
                     'house': in_house == 1,
                     'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
-                if not (await sync_to_async(_set_vote.exists)()):
+                if not (await set_vote.aexists()):
                     vote_data['dateTime'] = dt
-                _vote, created = await sync_to_async(Vote.objects.get_or_create)(**vote_data)
-                _vote.dateTime = dt
-                await sync_to_async(_vote.save)()
+                vote, created = await Vote.objects.aget_or_create(**vote_data)
+                vote.dateTime = dt
+                await vote.asave()
                 if created or not ignore_exists:
-                    _vote.bill = _bill
-                    await sync_to_async(_vote.save)()
+                    vote.bill = bill
+                    await vote.asave()
                     members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
                     member_votes = {
-                        'Yea': _vote.yeas,
-                        'Nay': _vote.nays,
-                        'Not Voting': _vote.novt,
-                        'Present': _vote.pres
+                        'Yea': vote.yeas,
+                        'Nay': vote.nays,
+                        'Not Voting': vote.novt,
+                        'Present': vote.pres
                     }
+                    yeas = Membership.objects.none()
+                    nays = Membership.objects.none()
+                    pres = Membership.objects.none()
+                    novt = Membership.objects.none()
                     q_sets = {
-                        'Yea': await sync_to_async(Membership.objects.none)(),
-                        'Aye': await sync_to_async(Membership.objects.none)(),
-                        'Guilty' : await sync_to_async(Membership.objects.none)(),
-                        'Nay': await sync_to_async(Membership.objects.none)(),
-                        'No': await sync_to_async(Membership.objects.none)(),
-                        'Not Guilty' : await sync_to_async(Membership.objects.none)(),
-                        'Not Voting': await sync_to_async(Membership.objects.none)(),
-                        'Present': await sync_to_async(Membership.objects.none)()
+                        'Yea': yeas,
+                        'Aye':yeas,
+                        'Guilty' : yeas,
+                        'Nay': nays,
+                        'No': nays,
+                        'Not Guilty' : nays,
+                        'Not Voting': novt,
+                        'Present': pres
                     }
                     keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                     for m in members:
                         if (in_house == 1):
-                            member = await sync_to_async(Membership.objects.filter)(congress=_congress, member__id=m['legislator']['@name-id'], house = True)
+                            mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
                         else :
-                            member = await sync_to_async(Membership.objects.filter)(
-                                congress=_congress,
-                                house = False,
-                                member__last_name__iexact=m['last_name'],
-                                state=m['state']
-                                )
+                            member = {
+                                'congress' : congress,
+                                'house' : False,
+                                'member__last_name__iexact' : m['last_name'],
+                                'state' : m['state']
+                            }
+                        member = Membership.objects.filter(**mem_data)
                         q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
-                    q_sets['Yea'] |= q_sets['Aye'] | q_sets['Guilty']
-                    q_sets['Nay'] |= q_sets['No'] | q_sets['Not Guilty']
                     for key in keys:
-                        await sync_to_async(member_votes[key].set)(q_sets[key])
+                        await member_votes[key].aset(q_sets[key])
                     print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
@@ -537,7 +572,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, _congress,
 # runs through existing votes up to limit, and adds memberships that were missing
 async def fixHouseVotes(congress_num, year, nums, member_ids) : 
     session = aiohttp.ClientSession()
-    congress = await sync_to_async(Congress.objects.get)(congress_num__exact = congress_num)
+    congress = await Congress.objects.aget(congress_num__exact = congress_num)
     indx = 1
     limit = 5
     while (indx <= nums) : 
@@ -554,9 +589,9 @@ async def fixHouseVote(session, congress, congress_num, year, num, member_ids) :
     sess = 1 if (year % 2 == 1) else 2
     vote_id = congress_num * 10000000 + 1000000 + sess * 100000 + num
     url = "http://clerk.house.gov/cgi-bin/vote.asp?year=" + str(year) + "&rollnumber=" + str(num)
-    _set_vote = await sync_to_async(Vote.objects.filter)(id = vote_id)
-    if await sync_to_async(_set_vote.exists)():
-        vote = await sync_to_async(Vote.objects.get)(id = vote_id)
+    set_vote = Vote.objects.filter(id = vote_id)
+    if await set_vote.aexists():
+        vote = await Vote.objects.aget(id = vote_id)
         try:
             vote_xml = await connectASYNC(session, url, '', False)
             vote_xml = ET.XML(vote_xml)
@@ -577,10 +612,10 @@ async def fixHouseVote(session, congress, congress_num, year, num, member_ids) :
         members = vote_dict['rollcall-vote']['vote-data']['recorded-vote']
         for m in members :
             if m['legislator']['@name-id'] in member_ids :
-                _set = await sync_to_async(member_votes[m['vote']].filter)(congress=congress, member__id=m['legislator']['@name-id'], house = True)
-                if not await sync_to_async(_set.exists)() :
-                    member = await sync_to_async(Membership.objects.get)(congress=congress, member__id=m['legislator']['@name-id'], house = True)
-                    await sync_to_async(member_votes[m['vote']].add)(member)
+                _set = member_votes[m['vote']].filter(congress=congress, member__id=m['legislator']['@name-id'], house = True)
+                if not await _set.aexists() :
+                    member = await Membership.objects.aget(congress=congress, member__id=m['legislator']['@name-id'], house = True)
+                    await member_votes[m['vote']].aadd(member)
 
 
 def getFirstAndLastName(reverseName):
@@ -765,7 +800,7 @@ async def billHtml(congress_id, bill_type, num):
     await session.close()
     return context
 
-## Gets the latest text file from api and summarizes it using gemini api. Memorize summaries in 
+## Gets the latest text file from api and summarizes it using gemini api. Memorize summaries in db
 async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_num):
     new_session = aiohttp.ClientSession()
     if (bill_num < 10000):
@@ -794,7 +829,7 @@ async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_n
 
     latest_date = latest_datetime.date()
 
-    bill_summary = (await sync_to_async(BillSummary.objects.get_or_create)(id=_id))[0]
+    bill_summary = (await BillSummary.objects.aget_or_create(id=_id))[0]
     if latest_date == bill_summary.source_date:
         await new_session.close()
         return bill_summary.summary
@@ -823,8 +858,9 @@ async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_n
     summary = summary.removeprefix("```html").removesuffix("```")
     bill_summary.source_date = latest_date
     bill_summary.summary = summary
-    await sync_to_async(bill_summary.save)()
-    await new_session.close()
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(bill_summary.asave())
+        tg.create_task(new_session.close())
     return bill_summary.summary
 
 def voteHtml(vote):
@@ -839,13 +875,6 @@ def voteHtml(vote):
         'Independent': 'ind',
         'Libertarian': 'lib',
         'Green': ' grn'
-        }
-    list_party = {
-        'Democratic': ' [D]',
-        'Republican': ' [R]',
-        'Independent': ' [I]',
-        'Libertarian': ' [L]',
-        'Green': ' [G]'
         }
     html_lists = ['', '', '', '']
     partyCountsbyVote = [{}, {}, {}, {}]
@@ -935,7 +964,7 @@ async def actionTable(act_list, bill_type, bill_num):
             in_house = 0 if (action['recordedVotes'][0]['chamber'] != 'House') else 1
             vote_id = action['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(action['recordedVotes'][0]['sessionNumber']) * 100000 + int(action['recordedVotes'][0]['rollNumber'])
             _set = Vote.objects.filter(id = vote_id)
-            if not await sync_to_async(_set.exists)() : 
+            if not await _set.aexists() : 
                 print("MISSING VOTES")
                 await updateBill(action['recordedVotes'][0]['congress'], bill_type, bill_num)
             tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '"  >' + 'Vote' + '</a></td>'

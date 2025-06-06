@@ -41,105 +41,21 @@ def modify(read_url, write_url):
         with open(write_url, 'w') as write_file:
             json.dump(data, write_file, indent=1)
 
-async def predictVote(bill_id, membership, question):
-    header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
-    session = aiohttp.ClientSession()
-    v_session = aiohttp.ClientSession()
-    pattern = re.compile(r'\s{2,}')
-    model = "gemini-2.0-flash"
-    client = genai.Client(api_key = settings.GEMINI_KEY)
-    generate_content_config = types.GenerateContentConfig(response_mime_type="text/plain")
-
-    # gets text versions of 
-    mult = 1 if bill_id < 99999999 else 10
-    congress_num = bill_id //(100000 * mult)
-    type_enum = bill_id // (10000 * mult) % 10
-    _type = utils.types[type_enum]
-    bill_num = bill_id % (10000 * mult)
-    full_path = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(bill_num)
-    texts = await utils.connectASYNC(session, full_path + '/text?', header_str)
-    subjects = await utils.connectASYNC(session, full_path + '/subjects?', header_str)
-    if not subjects:
-        print('SUBJECT LIST EMPTY')
-        return
-    subject_literal = '['
-    for subject in subjects['subjects']['legislativeSubjects']:
-        subject_literal += '"' + subject['name'] + '",'
-    subject += ']'
-    indx = -1
-    latest_date = datetime.datetime(1,1,1,1,1,1)
-    for j in range(len(texts['textVersions'])):
-        date_str = texts['textVersions'][j]['date']
-        if date_str == None: continue
-        curr_date = datetime.datetime(
-            int(date_str[0:4]),
-            int(date_str[5:7]),
-            int(date_str[8:10]),
-            int(date_str[11:13]),
-            int(date_str[14:16]),
-            int(date_str[17:19]),
-            )
-        if (curr_date > latest_date):
-            latest_date = curr_date
-            indx = j
-    if indx == -1:
-        print('NO TEXT DATA AVAILABLE')
-        return 
-    txt_html = await utils.connectASYNC(v_session, texts['textVersions'][indx]['formats'][0]['url'],'',False)
-    if txt_html == None:
-        print('MISSING TEXT ERROR')
-        return
-    soup = BeautifulSoup(txt_html)
-    version_text = soup.get_text()
-    version_text = version_text.replace('\n','').replace('_','')
-    version_text = re.sup(pattern,'').replace('_','')
-    ctns = [version_text, subject_literal, prompt]
-    token_count = client.models.count_tokens(model = model, contents = ctns)
-    if token_count.total_tokens > 1000000:
-        print("INPUT TOO BIG")
-        return
-    response = await client.aio.models.generate_content(
-        model = model,
-        contents = ctns,
-        config = generate_content_config)
-    response = response.text
-    response = response.removeprefix("```python")
-    response = response.removesuffix("```")
-    response = response.removesuffix("```\n")
-    try:
-        d = ast.literal_eval(response)
-    except:
-        print("ERROR MAKING LITERAL", response)
-    model = tf.keras.models.load_model('models/model.keras')
-    df =pd.DataFrame({c: pd.Series(dtype='int64') for c in column_list})
-    df.loc[0] = 0
-	# add member data
-    df.loc[0, 'house'] = 1 if membership.house else 0
-    df.loc[0, 'party_' + membership.party] = 1
-	# add bill features
-    for key in list(d.keys()):
-        if key in column_dict:
-            df.loc[0, key] = d[key]
-
-	# add question point
-    df.loc[0, 'question_' + question] = 1
-    fit = model.predict(df)
-
 # returns features dict, or None if possible token count exceeds limit
 async def gatherFeatures(bill_id):
     header_str = 'api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
     session = aiohttp.ClientSession()
     client = genai.Client(api_key= settings.GEMINI_KEY)
     generate_content_config = types.GenerateContentConfig(response_mime_type='text/plain')
-
     mult = 1 if bill_id < 99_999_999 else 10
     congress_num = bill_id // (100000 * mult)
     type_enum = (bill_id // (10000 * mult)) % 10
     bill_type = types_list[type_enum]
     bill_num = bill_id % (10000 * mult)
     fullpath = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + bill_type + '/' + str(bill_num)
-    texts = await utils.connectASYNC(session, fullpath + '/text?', header_str)
-    subjects = await utils.connectASYNC(session, fullpath + '/subjects?', header_str)
+    blob = await utils.run_concurrent_connect(session, [fullpath + '/text?', fullpath + '/subjects?'], header_str)
+    subjects = blob[1]
+    texts = blob[0]
     if len(texts['textVersions']) == 0 or len(subjects['subjects']['legislativeSubjects']) == 0: return None
     subj_litr = '['
     for subject in subjects['subjects']['legislativeSubjects']:
@@ -193,11 +109,9 @@ def createPredictions(bill_id):
     model = tf.keras.models.load_model('models/model_with_state_welltrained.keras')
     today = datetime.date.today().strftime('%Y-%m-%d')
     bill_pred = BillPrediction.objects.get_or_create(id = bill_id,creation_date = today)[0]
-
     query = Q(end_date = None)
     query.add(Q(end_date__gte = today), Q.OR)
     memberships = Membership.objects.filter(query)
-
     state_list = []
     party_list = []
     house_list = []
