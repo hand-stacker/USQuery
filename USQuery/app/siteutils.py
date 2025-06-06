@@ -146,7 +146,7 @@ def createPredictions(bill_id):
             )
     BinaryProbability.objects.bulk_create(objs)
 
-def getPredictionBatch(bill_id, in_house, sample_size):
+def getPredictionBatch(bill_id, in_house, sample_size, run_sample = True):
     bill = Bill.objects.get(id = bill_id)
     _set = BillPrediction.objects.filter(id= bill_id)
     if not _set.exists() and createPredictions(bill_id) == -1: return None
@@ -155,6 +155,7 @@ def getPredictionBatch(bill_id, in_house, sample_size):
         bill_pred.delete()
         createPredictions(bill_id)
         bill_pred = BillPrediction.objects.get(id=bill_id)
+    if not run_sample: return
     p_funcs = BinaryProbability.objects.filter(bill_pred = bill_pred, in_house = in_house)
     if not p_funcs.exists():
         return -1

@@ -132,7 +132,7 @@ def requestPrediction(request, congress_num, bill_type, bill_num):
             Bill.objects.get(id = bill_id)
         except Bill.DoesNotExist:
             return HttpResponseRedirect('/bill-query')
-        siteutils.createPredictions(bill_id)
+        siteutils.getPredictionBatch(bill_id, True, 0, False)
     return HttpResponseRedirect("/bill-query/bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num))
 
 def vote(request, vote_id):
