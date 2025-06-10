@@ -137,7 +137,7 @@ class Vote(models.Model):
     dateTime = models.DateTimeField()
     question = models.CharField(max_length=100)
     title = models.CharField(max_length=500, blank=True, null=True)
-    result = models.CharField(max_length=42)
+    result = models.CharField(max_length=50)
     
     yeas = models.ManyToManyField(SQmodels.Membership, related_name='yeas', blank = True)
     nays = models.ManyToManyField(SQmodels.Membership, related_name='nays', blank = True)
