@@ -430,7 +430,7 @@ async def updateBill(congress_num, _type, num) :
                     if (in_house == 1):
                         mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
                     else :
-                        member = {
+                        mem_data = {
                             'congress' : congress,
                             'house' : False,
                             'member__last_name__iexact' : m['last_name'],
@@ -469,7 +469,13 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
     API_response_actions = API_response_actions.result()
     member = member.result()
     date = API_response_bill['bill']['introducedDate'].split('-')
-    membership = await Membership.objects.aget(congress=congress, member=member, start_date__lte = datetime(int(date[0]), int(date[1]), int(date[2])))
+    dtime = datetime(int(date[0]), int(date[1]), int(date[2]))
+    in_house = API_response_bill['bill']['sponsors'][0]['fullName'][0] == 'R'
+    try:
+        membership = await Membership.objects.aget(congress=congress, member=member, start_date__lte = dtime, house= in_house )
+    except:
+        print('Membership not Found')
+        return
     status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
     if (bill_exists) : 
         bill = await Bill.objects.aget(id = _id)
@@ -552,7 +558,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                         if (in_house == 1):
                             mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
                         else :
-                            member = {
+                            mem_data = {
                                 'congress' : congress,
                                 'house' : False,
                                 'member__last_name__iexact' : m['last_name'],

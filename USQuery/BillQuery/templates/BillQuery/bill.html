@@ -20,6 +20,7 @@
         <div id="action_table" class="overflow-scroll t-responsive mb-4">
             {{actions_table | safe}}
         </div>
+        {% if eligible_for_prediction == True %}
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
             <div class="p-2 align-items-center d-flex justify-content-center pb-3">
                 <h2>
@@ -31,7 +32,7 @@
             <div id="hist" class="d-flex flex-row justify-content-center"></div>
             <div id="hist2" class="d-flex flex-row justify-content-center"></div>
             {% elif show_error == True %}
-            An error occured and we cannot provide a prediction at this time. Either Congress API has not 
+            An error occured and we cannot provide a prediction at this time. Either Congress API has not
             provided a text file or subject list for this bill, or the bill text is too large to make a prediction.
             {% elif show_request_button == True %}
             <form action={{request_link}} method="get">
@@ -41,6 +42,8 @@
             Log in to request a vote prediction.
             {% endif %}
         </div>
+        {% endif %}
+        
     </div>
     <div class="col-md-3">
         <div class="p-4 bg-body-tertiary rounded position-relative shadow-sm mb-4 glass-0" style="top: 0rem;">
