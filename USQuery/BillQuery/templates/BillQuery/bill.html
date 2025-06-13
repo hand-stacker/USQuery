@@ -35,7 +35,7 @@
             An error occured and we cannot provide a prediction at this time. Either Congress API has not
             provided a text file or subject list for this bill, or the bill text is too large to make a prediction.
             {% elif show_request_button == True %}
-            <form action={{request_link}} method="get">
+            <form class="align-items-center d-flex justify-content-center" action={{request_link}} method="get">
                 <button type="submit" name='submitRequest' value="Submit">Request A Prediction</button>
             </form>
             {% else %}

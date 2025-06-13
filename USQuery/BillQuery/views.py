@@ -104,7 +104,6 @@ def bill(request, congress_num, bill_type, bill_num):
     context['show_error'] = False
     ## if logged in + bill eligible for prediction get simulated votes
     context['eligible_for_prediction'] = (not bill.status) and (congress_num >= 119)
-    logged_in = (request.user.is_authenticated)
     pred_exists = BillPrediction.objects.filter(id = bill_id).exists()
     if pred_exists:
         batch_size = 100
@@ -114,7 +113,7 @@ def bill(request, congress_num, bill_type, bill_num):
             context['show_error'] = True
         else: 
              context['show_prediction'] = True
-    elif logged_in:
+    else:
         context['show_request_button'] = True
         context['request_link'] = "/bill-query/prediction-request/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num)
     return render(
@@ -123,7 +122,6 @@ def bill(request, congress_num, bill_type, bill_num):
         context
     )
 
-@login_required
 def requestPrediction(request, congress_num, bill_type, bill_num):
     assert isinstance(request, HttpRequest)
     if congress_num >= 119:
