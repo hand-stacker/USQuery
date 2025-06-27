@@ -106,7 +106,7 @@ def bill(request, congress_num, bill_type, bill_num):
     context['eligible_for_prediction'] = (not bill.status) and (congress_num >= 119)
     pred_exists = BillPrediction.objects.filter(id = bill_id).exists()
     if pred_exists:
-        batch_size = 100
+        batch_size = 1000
         context['house_pred'] = siteutils.getPredictionBatch(bill_id, True, batch_size)
         context['senate_pred'] = siteutils.getPredictionBatch(bill_id, False, batch_size)
         if context['house_pred'] == -1 or context['senate_pred'] == -1:

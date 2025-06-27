@@ -65,6 +65,7 @@ async def gatherFeatures(bill_id):
     date_max = datetime.datetime(1,1,1,1,1,1)
     for j in range(len(texts['textVersions'])):
         date_str = texts['textVersions'][j]['date']
+        if date_str == None: continue
         curr_date = datetime.datetime(
             int(date_str[0:4]),
             int(date_str[5:7]),
@@ -121,7 +122,6 @@ def createPredictions(bill_id):
         house_list.append(m.house)
     mem_df = pd.DataFrame({'state' : state_list, 'party': party_list, 'house' : house_list})
     mem_df = mem_df.groupby(by=['state','party','house'],as_index=False).size()
-
     feat_df = pd.DataFrame(0, index=np.arange(mem_df.shape[0]), columns=column_list, dtype='int8')
     d = asyncio.run(gatherFeatures(bill_id))
     if d == None : return -1
