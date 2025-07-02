@@ -1,23 +1,36 @@
 {% extends "app/layout.html" %}
-
 {% block content %}
-<div class="row md-4">
-    <div class="p-4 rounded shadow-sm position-relative text-center glass-0 mb-4">
-        <h1 class="text-body-emphasis">Representative Search</h1>
-        <p class="col-lg-6 mx-auto mb-4">
-            Get information on what your representative has done in a specific Congress Session. Information includes contacts, term history, vote history, committee positions, and more.
-        </p>
-        <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
-    </div>
-</div>
+{% load static %}
+<div class="row align-items-md-stretch">
+    <div class="col-md-6" id="left-column">
+        <div class="row">
+            <div class="p-4 rounded shadow-sm position-relative text-center glass-0 mb-4">
+                <h1 class="text-body-emphasis">Representative Search</h1>
+                <p class="col-lg-6 mx-auto mb-4">
+                    Get information on what your representative has done in a specific Congress Session. Information includes contacts, term history, vote history, committee positions, and more.
+                </p>
+                <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
+            </div>
+        </div>
 
-<div class="row md-4">
-    <div class="p-4 rounded shadow-sm position-relative text-center glass-0 mb-4">
-        <h1 class="text-body-emphasis">Bill Search</h1>
-        <p class="col-lg-6 mx-auto mb-4">
-            Get information on bills introduced to Congress. Information includes a history of actions Congress has made on the bill, list of sponsors and cosponsors, topics the bill is related to, and more.
-        </p>
-        <a href="{% url 'billQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
+        <div class="row">
+            <div class="p-4 rounded shadow-sm position-relative text-center glass-0">
+                <h1 class="text-body-emphasis">Bill Search</h1>
+                <p class="col-lg-6 mx-auto mb-4">
+                    Get information on bills introduced to Congress. Information includes a history of actions Congress has made on the bill, list of sponsors and cosponsors, topics the bill is related to, and more.
+                </p>
+                <a href="{% url 'billQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6" id="right-column">
+        <div class="border glass-0 align-items-center d-flex justify-content-center p-3" id="right-title-space">
+            <h3>Recent Votes</h3>
+        </div>
+        <div id="action_table" class="overflow-scroll mb-4">
+            {{vote_table | safe}}
+        </div>
     </div>
 </div>
+<script src="{% static 'app/scripts/resize.js' %}"></script>
 {% endblock %}

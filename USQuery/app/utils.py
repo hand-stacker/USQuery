@@ -992,12 +992,11 @@ def billTable(bill_list):
     return tableHTML
 
 def voteTablePage(vote_list):
-    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Question</th><th>Result</th></tr></thead><tbody>'
+    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Result</th></tr></thead><tbody>'
     for vote in vote_list:
         tableHTML += '<tr><td>' + vote.getDate() + '</td>'
         tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
         tableHTML += '<td><a href="/bill-query/bill/' + vote.bill.getURL() + '" >' + vote.bill.__str__() + '</a></td>'
-        tableHTML += '<td>' + vote.question + '</td>'
         tableHTML += '<td>' + vote.result + '</td></tr>'
     tableHTML += '</tbody></table>'
     return tableHTML
