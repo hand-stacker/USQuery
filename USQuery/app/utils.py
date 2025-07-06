@@ -415,20 +415,10 @@ async def updateBill(congress_num, _type, num) :
                 nays = Membership.objects.none()
                 pres = Membership.objects.none()
                 novt = Membership.objects.none()
-                q_sets = {
-                    'Yea': yeas,
-                    'Aye':yeas,
-                    'Guilty' : yeas,
-                    'Nay': nays,
-                    'No': nays,
-                    'Not Guilty' : nays,
-                    'Not Voting': novt,
-                    'Present': pres
-                }
-                keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                 for m in members:
                     if (in_house == 1):
                         mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
+                        mem_vote = m['vote']
                     else :
                         mem_data = {
                             'congress' : congress,
@@ -436,10 +426,21 @@ async def updateBill(congress_num, _type, num) :
                             'member__last_name__iexact' : m['last_name'],
                             'state' : m['state']
                         }
+                        mem_vote = m['vote_cast']
                     member = Membership.objects.filter(**mem_data)
-                    q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
-                for key in keys:
-                    await member_votes[key].aset(q_sets[key])
+                    if mem_vote in ['Yea', 'Aye', 'Guilty']:
+                        yeas |= member
+                    elif mem_vote in ['Nay', 'No', 'Not Guilty']:
+                        nays |= member
+                    elif mem_vote == 'Present':
+                        pres |= member
+                    else:
+                        novt |= member
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(vote.yeas.aset(yeas))
+                    tg.create_task(vote.nays.aset(nays))
+                    tg.create_task(vote.pres.aset(pres))
+                    tg.create_task(vote.novt.aset(novt))
                 print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
@@ -543,20 +544,10 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                     nays = Membership.objects.none()
                     pres = Membership.objects.none()
                     novt = Membership.objects.none()
-                    q_sets = {
-                        'Yea': yeas,
-                        'Aye':yeas,
-                        'Guilty' : yeas,
-                        'Nay': nays,
-                        'No': nays,
-                        'Not Guilty' : nays,
-                        'Not Voting': novt,
-                        'Present': pres
-                    }
-                    keys = ['Yea', 'Nay', 'Not Voting', 'Present']
                     for m in members:
                         if (in_house == 1):
                             mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
+                            mem_vote = m['vote']
                         else :
                             mem_data = {
                                 'congress' : congress,
@@ -564,10 +555,21 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                                 'member__last_name__iexact' : m['last_name'],
                                 'state' : m['state']
                             }
+                            mem_vote = m['vote_cast']
                         member = Membership.objects.filter(**mem_data)
-                        q_sets[m['vote'] if in_house == 1 else m['vote_cast']] |= member
-                    for key in keys:
-                        await member_votes[key].aset(q_sets[key])
+                        if mem_vote in ['Yea', 'Aye', 'Guilty']:
+                            yeas |= member
+                        elif mem_vote in ['Nay', 'No', 'Not Guilty']:
+                            nays |= member
+                        elif mem_vote == 'Present':
+                            pres |= member
+                        else:
+                            novt |= member
+                    async with asyncio.TaskGroup() as tg:
+                        tg.create_task(vote.yeas.aset(yeas))
+                        tg.create_task(vote.nays.aset(nays))
+                        tg.create_task(vote.pres.aset(pres))
+                        tg.create_task(vote.novt.aset(novt))
                     print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
