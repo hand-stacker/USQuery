@@ -3,6 +3,7 @@ let house_pred = JSON.parse(document.getElementById('house_pred').textContent);
 var house_trace = {
     x: house_pred,
     type: 'histogram',
+    histnorm : 'probability',
     marker: {
         color: 'rgb(102,128,155)',
     }

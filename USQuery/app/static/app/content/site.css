@@ -1,10 +1,10 @@
 body {
-    background: linear-gradient( rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6) ), url("https://planetary.s3.amazonaws.com/web/assets/pictures/20170207_Capitol_at_Dusk.jpg") no-repeat center center fixed;
+    background: url("images/20170207_Capitol_at_Dusk.jpg") no-repeat center center fixed;
     -webkit-background-size: cover;
     -moz-background-size: cover;
     -o-background-size: cover;
     background-size: cover;
-    color: rgb(250,250,250)!important;
+    color: rgb(250,250,250) !important;
 }
 
 .bg-trans {
