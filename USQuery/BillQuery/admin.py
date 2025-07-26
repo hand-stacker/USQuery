@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Bill, Vote, ChoiceVote, Choice, BillSummary, BillPrediction, BinaryProbability
+from .models import Bill, Vote, ChoiceVote, Choice, BillSummary, BillPrediction, BinaryProbability, Subject
 
 # Register your models here.
 admin.site.register(Vote)
@@ -9,3 +9,4 @@ admin.site.register(Bill)
 admin.site.register(BillSummary)
 admin.site.register(BillPrediction)
 admin.site.register(BinaryProbability)
+admin.site.register(Subject)

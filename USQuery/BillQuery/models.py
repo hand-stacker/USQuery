@@ -52,14 +52,22 @@ class TypeManagerVote(models.Manager):
         query.add(Q(dateTime__gte=start_date, dateTime__lte=end_date), Q.AND)
         return super(TypeManagerVote, self).get_queryset().filter(query)
 
+class Subject(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):
     id = models.IntegerField(primary_key=True)
     sponsor = models.ForeignKey(SQmodels.Membership, on_delete=models.CASCADE)
+    cosponsors = models.ManyToManyField(SQmodels.Membership, related_name='cosponsor_set')
+    policy_area = models.CharField(max_length=50, null=True, blank=True)
+    subjects = models.ManyToManyField(Subject)
+    related_bills = models.ManyToManyField('self', symmetrical=False)
     status = models.BooleanField(default=False)
     title = models.CharField(max_length=2000)
     origin_date = models.DateField()
-    latest_action  = models.DateField()
+    latest_action = models.DateField()
 
     objects = models.Manager()
     type_objects =TypeManager()

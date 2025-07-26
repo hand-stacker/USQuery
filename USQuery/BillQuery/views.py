@@ -96,13 +96,12 @@ def bill(request, congress_num, bill_type, bill_num):
         bill = Bill.objects.get(id = bill_id)
     except Bill.DoesNotExist:
         return HttpResponseRedirect('/bill-query')
-    context = asyncio.run(utils.billHtml(str(congress_num), bill_type, str(bill_num)))
+    context = asyncio.run(utils.billHtml(bill, str(congress_num), bill_type, str(bill_num)))
     context['bill_id'] = bill_id
     context['bill_type'] = bill_type
     context['show_prediction'] = False
     context['show_request_button'] = False
     context['show_error'] = False
-    ## if logged in + bill eligible for prediction get simulated votes
     context['eligible_for_prediction'] = (not bill.status) and (congress_num >= 119)
     pred_exists = BillPrediction.objects.filter(id = bill_id).exists()
     if pred_exists:

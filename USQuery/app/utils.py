@@ -3,13 +3,14 @@ import requests, asyncio, json, aiohttp
 from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Bill, Vote, BillSummary
+from BillQuery.models import Bill, Vote, BillSummary, Subject
 from collections import defaultdict
 from xml.etree import cElementTree as ET
 from google import genai
 from bs4 import BeautifulSoup
 
 ## helpful objects that map state related data
+current_congress = 119
 state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
               'HI','ID','IN','IL','IA','KS','KY','LA','ME','MD',
               'MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ',
@@ -743,11 +744,48 @@ def intToFIPS(num):
 #### 
 ##  return a context for http request to fill html page with content
 ####
-async def billHtml(congress_id, bill_type, num):
+async def billHtml(bill, congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
-    requests = [apiURL, apiURL + '/actions', apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects', apiURL + '/summaries']
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
+    cosponsors_exist = await bill.cosponsors.aexists()
+    related_exist = await bill.related_bills.aexists()
+    subjects_exist = await bill.subjects.aexists()
+    if not (cosponsors_exist and related_exist and subjects_exist):
+        requests = [apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects']
+        API_data = await run_concurrent_connect(session, requests, header_str)
+
+        if (API_data[0] != ''):
+            cosponsors_exist = True
+            cosponsors = Membership.objects.none()
+            for c in API_data[0]['cosponsors']:
+                house = 'district' in c
+                cosponsors |= Membership.objects.filter(congress=int(congress_id), member__id=c['bioguideId'], house=house)
+            await bill.cosponsors.aset(cosponsors)
+        
+        if (API_data[1] != ''):
+            related_exist = True
+            related_bills = Bill.objects.none()
+            for b in API_data[1]['relatedBills'] : 
+                # CCC_T_XXXX(X)
+                mult = 100000
+                if (int(b['number']) < 10000):
+                    mult *= 10
+                _id = int(b['congress']) * 100000 + types[b['type'].lower()] * 10000 + int(b['number'])
+                related_bills |= Bill.objects.filter(id=_id)
+            await bill.related_bills.aset(related_bills)
+
+        if (API_data[2] != ''):
+            subjects_exist = True
+            subjects = Subject.objects.none()
+            for s in API_data[2]['subjects']['legislativeSubjects']:
+                await Subject.objects.aget_or_create(name=s['name'])
+                subjects |= Subject.objects.filter(name=s['name'])
+            await bill.subjects.aset(subjects)
+            bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in API_data[2]['subjects']) else API_data[2]['subjects']['policyArea']['name'])
+            await bill.asave()
+        
+    requests = [apiURL, apiURL + '/actions', apiURL + '/summaries']
     API_data = await run_concurrent_connect(session, requests, header_str)
     
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
@@ -773,35 +811,36 @@ async def billHtml(congress_id, bill_type, num):
         chamber = 'Senate' 
     context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId'] + q_3 + chamber + '" >' + sponsor['fullName'] + '</a>'
 
-    if (API_data[2] != ''):
+    if (cosponsors_exist):
         co_list = ''
-        for c in API_data[2]['cosponsors']:
-            if ('district' in c) :  chanber = 'House+of+Representatives'
+        async for c in bill.cosponsors.all():
+            if (c.house) :  chamber = 'House+of+Representatives'
             else: chamber = 'Senate' 
-            co_list += list_start + member_link + congress_id + q_2 + c['bioguideId'] + q_3 + chamber + '" >' + c['fullName'] + '</a></li>'
+            co_list += list_start + member_link + congress_id + q_2 + c.member_id + q_3 + chamber + '" >' 
+            co_list += (await Member.objects.aget(id=c.member_id)).full_name + ' [' + c.party[0] + ']' + ' (' + c.state + ('' if not c.house else ('-' + str(c.district_num))) + ')' + '</a></li>'
         context['cosponsors'] = co_list
         
-    if (API_data[3] != ''):
+    if (related_exist):
         related_bills = ''
-        for b in API_data[3]['relatedBills'] : 
-            related_bills += list_start + bill_link + str(b['congress']) + '/' + b['type'].lower() + '/' + str(b['number']) + '" >' + b['type'] + '-' + str(b['number']) + '</a></li>'
+        async for b in bill.related_bills.all(): 
+            related_bills += list_start + bill_link + b.getURL() + '" >' + str(b) + '</a></li>'
         context['related_bills'] = related_bills
                   
-    if (API_data[4] != ''):
+    if (subjects_exist):
         sub_list = ''
-        for s in API_data[4]['subjects']['legislativeSubjects']:
-            sub_list +=  '<li class="list-group-item bg-trans darkmode">' + s['name'] + '</li>'
+        async for s in bill.subjects.all():
+            sub_list +=  '<li class="list-group-item bg-trans darkmode">' + s.name + '</li>'
         context['subjects'] = sub_list
-        context['policy_area'] = 'Not Specified Yet.' if not ('policyArea' in API_data[4]['subjects']) else API_data[4]['subjects']['policyArea']['name']
-            
+        context['policy_area'] = bill.policy_area
+      
     # currently jut gets first summary in list...
-    if (API_data[5] != ''):
-        if (len(API_data[5]['summaries']) < 1):
+    if (API_data[2] != ''):
+        if (len(API_data[2]['summaries']) < 1):
             context['AI_generated_content'] = "T"
             context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, int(congress_id), bill_type, int(num))
         else :
             context['AI_generated_content'] = "F"
-            context['summary'] = API_data[5]['summaries'][0]['text']
+            context['summary'] = API_data[2]['summaries'][0]['text']
         
     #if ('textVersions' in API_response['bill']):
      #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()
