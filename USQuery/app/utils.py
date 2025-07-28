@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 import requests, asyncio, json, aiohttp
 from requests.exceptions import HTTPError
 from USQuery import settings
@@ -406,12 +406,6 @@ async def updateBill(congress_num, _type, num) :
                 vote = await Vote.objects.aget_or_create(**vote_data)
                 vote = vote[0]
                 members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                member_votes = {
-                    'Yea': vote.yeas,
-                    'Nay': vote.nays,
-                    'Not Voting': vote.novt,
-                    'Present': vote.pres
-                }
                 yeas = Membership.objects.none()
                 nays = Membership.objects.none()
                 pres = Membership.objects.none()
@@ -535,12 +529,6 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                     vote.bill = bill
                     await vote.asave()
                     members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                    member_votes = {
-                        'Yea': vote.yeas,
-                        'Nay': vote.nays,
-                        'Not Voting': vote.novt,
-                        'Present': vote.pres
-                    }
                     yeas = Membership.objects.none()
                     nays = Membership.objects.none()
                     pres = Membership.objects.none()
@@ -748,25 +736,31 @@ async def billHtml(bill, congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
-    cosponsors_exist = await bill.cosponsors.aexists()
-    related_exist = await bill.related_bills.aexists()
-    subjects_exist = await bill.subjects.aexists()
-    if not (cosponsors_exist and related_exist and subjects_exist):
+    requests = [apiURL, apiURL + '/actions', apiURL + '/summaries']
+    API_data = await run_concurrent_connect(session, requests, header_str)
+    date_str = API_data[0]['bill']['updateDate']
+    update_date = date(
+        int(date_str[0:4]),
+        int(date_str[5:7]),
+        int(date_str[8:10])
+        )
+    current_date = date.today()
+    valid_update = (bill.latest_db_update == None) or (int(congress_id) == current_congress and update_date > bill.latest_db_update)
+    if valid_update:
         requests = [apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects']
-        API_data = await run_concurrent_connect(session, requests, header_str)
+        API_data_2 = await run_concurrent_connect(session, requests, header_str)
 
-        if (API_data[0] != ''):
+        if (API_data_2[0] != ''):
             cosponsors_exist = True
             cosponsors = Membership.objects.none()
-            for c in API_data[0]['cosponsors']:
-                house = 'district' in c
-                cosponsors |= Membership.objects.filter(congress=int(congress_id), member__id=c['bioguideId'], house=house)
+            for c in API_data_2[0]['cosponsors']:
+                cosponsors |= Membership.objects.filter(congress=int(congress_id), member__id=c['bioguideId'], house=('district' in c))
             await bill.cosponsors.aset(cosponsors)
         
-        if (API_data[1] != ''):
+        if (API_data_2[1] != ''):
             related_exist = True
             related_bills = Bill.objects.none()
-            for b in API_data[1]['relatedBills'] : 
+            for b in API_data_2[1]['relatedBills'] : 
                 # CCC_T_XXXX(X)
                 mult = 100000
                 if (int(b['number']) < 10000):
@@ -775,19 +769,17 @@ async def billHtml(bill, congress_id, bill_type, num):
                 related_bills |= Bill.objects.filter(id=_id)
             await bill.related_bills.aset(related_bills)
 
-        if (API_data[2] != ''):
+        if (API_data_2[2] != ''):
             subjects_exist = True
             subjects = Subject.objects.none()
-            for s in API_data[2]['subjects']['legislativeSubjects']:
-                await Subject.objects.aget_or_create(name=s['name'])
+            for s in API_data_2[2]['subjects']['legislativeSubjects']:
                 subjects |= Subject.objects.filter(name=s['name'])
             await bill.subjects.aset(subjects)
-            bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in API_data[2]['subjects']) else API_data[2]['subjects']['policyArea']['name'])
+            bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in API_data_2[2]['subjects']) else API_data_2[2]['subjects']['policyArea']['name'])
             await bill.asave()
-        
-    requests = [apiURL, apiURL + '/actions', apiURL + '/summaries']
-    API_data = await run_concurrent_connect(session, requests, header_str)
-    
+
+        bill.latest_db_update = current_date
+        await bill.asave()
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
             'bill' : bill_type.upper() + "-" + num,
             }
@@ -795,29 +787,30 @@ async def billHtml(bill, congress_id, bill_type, num):
         context['bill_state_type'] = 'Became Public Law'
     else :
         context['bill_state_type'] = 'Still Just a Bill'
-      
     context['actions_table'] = await actionTable(API_data[1], bill_type, num)
-        
-    # Handles sponsors and cosponsors
     list_start = '<li class="list-group-item bg-trans darkmode"><a href="'
     member_link = '/member-query/results/?congress='
     bill_link = '/bill-query/bill/'
     q_2 = '&member='
     q_3 = '&chamber='
 
-    sponsor = API_data[0]['bill']['sponsors'][0]
-    if ('district' in sponsor) :  chamber = 'House+of+Representatives'
-    else: 
-        chamber = 'Senate' 
-    context['sponsor'] = '<a href="' + member_link  + congress_id + q_2 + sponsor['bioguideId'] + q_3 + chamber + '" >' + sponsor['fullName'] + '</a>'
-
+    async def memberURL(mem, in_list = True):
+        if (mem.house) :  chamber = 'House+of+Representatives'
+        else: chamber = 'Senate' 
+        ret = ((list_start if in_list else '<a href="') + member_link + congress_id + q_2 + mem.member_id + q_3 + chamber + '" >' + 
+              (await Member.objects.aget(id=mem.member_id)).full_name + ' [' + mem.party[0] + ']' +
+              ' (' + mem.state + ('' if not mem.house else ('-' + str(mem.district_num))) + ')' + '</a>' + ('</li>' if in_list else ''))
+        return ret
+    context['sponsor'] = await memberURL(await Membership.objects.aget(id=bill.sponsor_id), False)
+    cosponsors_exist, related_exist, subjects_exist = await asyncio.gather(
+        bill.cosponsors.aexists(),
+        bill.related_bills.aexists(),
+        bill.subjects.aexists()
+        )
     if (cosponsors_exist):
         co_list = ''
         async for c in bill.cosponsors.all():
-            if (c.house) :  chamber = 'House+of+Representatives'
-            else: chamber = 'Senate' 
-            co_list += list_start + member_link + congress_id + q_2 + c.member_id + q_3 + chamber + '" >' 
-            co_list += (await Member.objects.aget(id=c.member_id)).full_name + ' [' + c.party[0] + ']' + ' (' + c.state + ('' if not c.house else ('-' + str(c.district_num))) + ')' + '</a></li>'
+            co_list += await memberURL(c)
         context['cosponsors'] = co_list
         
     if (related_exist):
@@ -841,9 +834,6 @@ async def billHtml(bill, congress_id, bill_type, num):
         else :
             context['AI_generated_content'] = "F"
             context['summary'] = API_data[2]['summaries'][0]['text']
-        
-    #if ('textVersions' in API_response['bill']):
-     #   API_committees= connect(API_response['bill']['textVersions']['url'], headers).json()
     await session.close()
     return context
 

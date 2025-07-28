@@ -55,6 +55,10 @@ class TypeManagerVote(models.Manager):
 class Subject(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
+    subtype = models.IntegerField(default=0)
+    def getSubtype(self):
+        subtypes = ["Subject", "Geographic Entity", "Organization"]
+        return subtypes[self.subtype]
 
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):
@@ -68,7 +72,7 @@ class Bill(models.Model):
     title = models.CharField(max_length=2000)
     origin_date = models.DateField()
     latest_action = models.DateField()
-
+    latest_db_update = models.DateField(null=True, blank = True)
     objects = models.Manager()
     type_objects =TypeManager()
 
@@ -132,7 +136,6 @@ class Bill(models.Model):
     def __str__(self):
         return self.getType() + " " + self.getNumStr()
     
-
     class Meta():
         ordering = ["-latest_action", "origin_date", "-id"]
                 
