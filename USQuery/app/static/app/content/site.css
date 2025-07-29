@@ -148,6 +148,9 @@ ts.grn {
     -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
+summary {
+    font-weight: bold;
+}
 
 /* Set padding to keep content from hitting the edges */
 .body-content {

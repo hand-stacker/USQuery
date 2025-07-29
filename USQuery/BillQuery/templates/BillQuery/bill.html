@@ -11,6 +11,7 @@
     <div class="col-md-9">
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
             <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
+            <hr />
             <div id="AI_warning" role="alert" class="alert alert-warning">Warning: The content below was generated with AI.</div>
             <h5 id="bill_summary" class="t-responsive-lg overflow-scroll">{{summary | safe}}</h5>
         </div>
@@ -66,10 +67,26 @@
                 {{policy_area}}
                 <details>
                     <summary>
-                        See Subjects
+                        Related Subjects
                     </summary>
                     <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
                         {{subjects | safe}}
+                    </ul>
+                </details>
+                <details>
+                    <summary>
+                        Related Geographic Entities
+                    </summary>
+                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
+                        {{subjects_1 | safe}}
+                    </ul>
+                </details>
+                <details>
+                    <summary>
+                        Related Organizations
+                    </summary>
+                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
+                        {{subjects_2 | safe}}
                     </ul>
                 </details>
             </div>

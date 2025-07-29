@@ -821,9 +821,17 @@ async def billHtml(bill, congress_id, bill_type, num):
                   
     if (subjects_exist):
         sub_list = ''
-        async for s in bill.subjects.all():
+        async for s in bill.subjects.filter(subtype=0).all():
             sub_list +=  '<li class="list-group-item bg-trans darkmode">' + s.name + '</li>'
         context['subjects'] = sub_list
+        sub_list_1 = ''
+        async for s in bill.subjects.filter(subtype=1).all():
+            sub_list_1 +=  '<li class="list-group-item bg-trans darkmode">' + s.name + '</li>'
+        context['subjects_1'] = sub_list_1
+        sub_list_2 = ''
+        async for s in bill.subjects.filter(subtype=2).all():
+            sub_list_2 +=  '<li class="list-group-item bg-trans darkmode">' + s.name + '</li>'
+        context['subjects_2'] = sub_list_2
         context['policy_area'] = bill.policy_area
       
     # currently jut gets first summary in list...
