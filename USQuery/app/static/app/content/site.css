@@ -38,6 +38,15 @@ thead {
     border: 1px solid rgba(150,150,150, 0.9) !important;
 }
 
+.dark-01 {
+    background: rgba(30, 30, 30, 0.9) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
+}
+
 .dark-1 {
     background: rgba(73, 73, 73, 0.51) !important;
     color: rgb(250,250,250) !important;
@@ -215,7 +224,7 @@ input[type="checkbox"].input-validation-error {
         font-size: 20px !important;
     }
 
-    h5, li, p {
+    h5, li, p , option {
         font-size: 18px !important;
     }
 
@@ -245,7 +254,7 @@ input[type="checkbox"].input-validation-error {
         font-size: 14px !important;
     }
 
-    h5, li, p {
+    h5, li, p, option {
         font-size: 12px !important;
     }
 
@@ -275,7 +284,7 @@ input[type="checkbox"].input-validation-error {
         font-size: 10px !important;
     }
 
-    h5, li, p {
+    h5, li, p, option {
         font-size: 10px !important;
     }
 

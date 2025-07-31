@@ -1,0 +1,27 @@
+{% load static %}
+<form name="BillForm" id="id_BillForm" action="bill-search/" method="get">
+    <div class="g-0 row align-items-md-stretch">
+        <div class="g-0 col">
+            {{bill_form.non_field_errors }}
+            <h4>Congress Number</h4>
+            {{bill_form.congress}}
+            <h4>Bill Type</h4>
+            {{bill_form.bill_type_2}}
+            <br />
+            <h4>Subjects</h4>
+            {{bill_form.bill_subjects}}
+            <br />
+            <h4>Geographic Entities</h4>
+            {{bill_form.bill_geo_entities}}
+            <br />
+            <h4>Organizations</h4>
+            {{bill_form.bill_organizations}}
+        </div>
+        <div class="g-0 col">
+            <h4>Select Bill</h4>
+            {{bill_form.bill_num}}
+            <input type="submit" value="Search" />
+        </div>
+    </div>
+</form>
+<script src="{% static 'scripts/updateBillForm.js' %}"></script>

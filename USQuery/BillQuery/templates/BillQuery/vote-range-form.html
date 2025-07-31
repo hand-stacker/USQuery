@@ -1,0 +1,12 @@
+{% load static %}
+<form name="VoteForm" id="id_VoteForm" action="vote-range/" method="get">
+    {{vote_form.non_field_errors }}
+    <h4>Select Chamber</h4>
+    {{vote_form.bill_type}}
+    <h4>Start Date</h4>
+    {{vote_form.start_date}}
+    <br />
+    <h4>End Date</h4>
+    {{vote_form.end_date}}
+    <input type="submit" value="Search" />
+</form>

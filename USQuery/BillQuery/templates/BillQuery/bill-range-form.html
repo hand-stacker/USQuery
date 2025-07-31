@@ -1,0 +1,12 @@
+{% load static %}
+<form name="CalForm" id="id_CalForm" action="action-range/" method="get">
+    {{calendar_form.non_field_errors }}
+    <h4>Bill Type</h4>
+    {{calendar_form.bill_type}}
+    <h4>Start Date</h4>
+    {{calendar_form.start_date}}
+    <br />
+    <h4>End Date</h4>
+    {{calendar_form.end_date}}
+    <input type="submit" value="Search" />
+</form>

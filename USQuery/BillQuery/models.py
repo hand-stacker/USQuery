@@ -59,6 +59,10 @@ class Subject(models.Model):
     def getSubtype(self):
         subtypes = ["Subject", "Geographic Entity", "Organization"]
         return subtypes[self.subtype]
+    def __str__(self):
+        return self.name
+    class Meta():
+        ordering = ["name"]
 
 # id : CCC_N_XXXX, CCC is congress, N is code for bill type, XXXX is bill number
 class Bill(models.Model):

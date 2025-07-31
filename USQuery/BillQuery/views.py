@@ -1,11 +1,16 @@
 import asyncio
 from django.shortcuts import render
+from django.db.models import Q
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponseRedirect
 from app import utils, forms, siteutils
+from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
+from django.http import JsonResponse
+from datetime import date
+
 
 def home(request):
     assert isinstance(request, HttpRequest)
@@ -33,7 +38,7 @@ def vote_query(request):
 def bill_search(request):
     assert isinstance(request, HttpRequest)
     bill_form = forms.BillForm(request.GET)
-    return bill(request, bill_form.data["congress"], bill_form.data["bill_type"], bill_form.data["bill_num"])
+    return bill_return(request, bill_form.data["congress"], bill_form.data["bill_num"])
 
 def search(request, s_d, e_d, bill_type):
     assert isinstance(request, HttpRequest)
@@ -87,22 +92,34 @@ def vote_search(request, s_d, e_d, bill_type):
         }
     )
 
-def bill(request, congress_num, bill_type, bill_num):
+
+def bill_return(request, congress_num, bill_id):
     assert isinstance(request, HttpRequest)
-    mult = 10 if int(bill_num) > 9999 else 1
-    # CCC_T_XXXX(X)
-    bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
     try:
-        bill = Bill.objects.get(id = bill_id)
+        _bill = Bill.objects.get(id = bill_id)
     except Bill.DoesNotExist:
         return HttpResponseRedirect('/bill-query')
-    context = asyncio.run(utils.billHtml(bill, str(congress_num), bill_type, str(bill_num)))
+    bill_type = _bill.getTypeURL()
+    bill_num = _bill.getNum()
+    return bill(request, int(congress_num), bill_type, bill_num, _bill, int(bill_id))
+
+def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = None):
+    assert isinstance(request, HttpRequest)
+    if _bill == None:
+        mult = 10 if int(bill_num) > 9999 else 1
+        # CCC_T_XXXX(X)
+        bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
+        try:
+            _bill = Bill.objects.get(id = bill_id)
+        except Bill.DoesNotExist:
+            return HttpResponseRedirect('/bill-query')
+    context = asyncio.run(utils.billHtml(_bill, str(congress_num), bill_type, str(bill_num)))
     context['bill_id'] = bill_id
     context['bill_type'] = bill_type
     context['show_prediction'] = False
     context['show_request_button'] = False
     context['show_error'] = False
-    context['eligible_for_prediction'] = (not bill.status) and (congress_num >= 119)
+    context['eligible_for_prediction'] = (not _bill.status) and (congress_num >= 119)
     pred_exists = BillPrediction.objects.filter(id = bill_id).exists()
     if pred_exists:
         batch_size = 1000
@@ -146,6 +163,28 @@ def vote(request, vote_id):
         'BillQuery/vote.html',
         context
     )
+
+def update_bills(request, congress_num):
+    assert isinstance(request, HttpRequest)
+    _congress = Congress.objects.get(congress_num__exact=congress_num)
+    context = request.GET.dict()
+    start_date = date(_congress.start_year, 1, 3)
+    end_date = date(_congress.end_year, 1, 3)
+    query = Q(origin_date__gte=start_date, origin_date__lte=end_date)
+    subjects = context['subjects'].split(',')
+    if (context['subjects'] != ''):
+        query.add(Q(subjects__in=subjects), Q.AND)
+    
+    ret = []
+    if (context['type_2'] != '!'):
+        bill_type = context['type_2']
+        bills = Bill.type_objects.get_from_type(bill_type, start_date, end_date).filter(query)
+    else :
+        bills = Bill.objects.filter(query)
+    for b in bills.distinct():
+        ret.append({"id":b.id, "str": str(b)})
+    return JsonResponse({'bills': list(ret)})
+
 
 @staff_member_required
 def populate_bills(request, congress_num, bill_type, limit, offset):
