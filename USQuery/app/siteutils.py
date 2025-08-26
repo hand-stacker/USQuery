@@ -11,16 +11,15 @@ from google.genai import types
 from google import genai
 from django.db.models import Q
 from USQuery import settings
-import secretss
 from app import utils
 from SenateQuery.models import Membership
 from BillQuery.models import BillPrediction, BinaryProbability, Bill
 
 types_list = ['s','sres','sjres','sconres','hr','hres','hjres','hconres']
 pattern = re.compile(r'\s{2,}')
-prompt = secretss.prompt
-column_list = secretss.column_list
-column_dict = secretss.column_dict
+prompt = settings.PROMPT
+column_list = settings.COLUMN_LIST
+column_dict = {col: index for index, col in enumerate(column_list)}
 model = 'gemini-2.0-flash'
 
 def modifyCountyGeoJSON(congress_id):

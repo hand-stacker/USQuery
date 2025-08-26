@@ -369,3 +369,5 @@ FodyWeavers.xsd
 /USQuery/USQuery/dev_settings.py
 /USQuery/env3.11
 /USQuery/USQuery/secretss.py
+/USQuery/.env.local
+/USQuery/.env.prod

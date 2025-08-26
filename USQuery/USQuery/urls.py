@@ -1,7 +1,7 @@
 """
 Definition of urls for USQuery.
 """
-
+from USQuery import settings
 from django.urls import re_path
 from django.views.static import serve
 from datetime import datetime
@@ -9,7 +9,6 @@ from django.urls import path, include
 from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView
 from app import forms, views
-from USQuery import settings
 from django.conf.urls.static import static
 from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
