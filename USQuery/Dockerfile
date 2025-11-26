@@ -5,17 +5,21 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-
-RUN pip install --upgrade pip
-
-RUN apt-get update && apt-get install gcc libpq-dev -y
 COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN pip install --upgrade pip && \
+	apt-get update && \
+	apt-get install gcc libpq-dev -y && \
+	pip install --no-cache-dir -r requirements.txt && \
+	apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+	pip cache purge
 
 # stage 2 : production stage
 FROM python:3.11-slim
-RUN apt-get update && apt-get install gcc libpq-dev -y
-RUN useradd -m -r appuser && \
+RUN apt-get update &&\
+	apt-get install gcc libpq-dev -y && \
+	useradd -m -r appuser && \
 	mkdir /app && \
 	chown -R appuser /app
 

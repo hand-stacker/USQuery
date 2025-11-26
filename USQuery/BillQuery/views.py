@@ -1,10 +1,11 @@
 import asyncio
+import os
 from django.shortcuts import render
 from django.db.models import Q
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
-from django.http import HttpRequest, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
@@ -211,3 +212,11 @@ def update_votes(request, congress_num, date):
     for t in utils.types :
         asyncio.run(utils.updateRecentBills(congress_num, date, t))
     return HttpResponseRedirect("/bill-query")
+
+def daily_task(request):
+    secret = request.GET["X-TASK-SECRET"]
+    if secret != os.environ.get("TASK_SECRET"):
+        return HttpResponseForbidden("Forbidden")
+    for t in utils.types :
+        asyncio.run(utils.updateRecentBills(119, "!", t))
+    return JsonResponse({"status": "ok"})

@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import requests, asyncio, json, aiohttp
 from requests.exceptions import HTTPError
 from USQuery import settings
@@ -276,7 +276,26 @@ def updateArrival(congress_id, arriving_id, arriving_date, in_house) :
 def createMembership(congress_id, member_id, state, in_house, party, arrival_date, departure_date, district_num) :
     in_house = (in_house == 1) 
     congress = Congress.objects.get(congress_num__exact = congress_id)
-    member = Member.objects.get(id = member_id)
+    try:
+        member = Member.objects.get(id = member_id)
+    except:
+        try:
+            headers = {
+                'api_key' : settings.CONGRESS_KEY,
+                'format' : 'json',
+                'currentMember' : 'false',
+                'offset' : '0', 'limit' : '250'
+                }
+            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + member_id, headers).json()
+            member = Member.objects.get_or_create(
+                id = member_id, 
+                full_name = API_response_member['member']['directOrderName'],
+                first_name = API_response_member['member']['firstName'],
+                last_name = API_response_member['member']['lastName'],
+                image_link = "empty"
+                )[0]
+        except:
+            print("BioguideID not present in API")
     membership = Membership.objects.get_or_create(
             congress = congress,
             member = member,
@@ -294,7 +313,10 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
 
 ## updates database, adding new bills or updating bills and votes with actionDate GTE current_date_str
 async def updateRecentBills(congress_num, current_date_str, bill_type):
-    current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
+    if current_date_str != "!":
+        current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
+    else:
+        current_date = datetime.today() - timedelta(days=3)
     header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
@@ -522,7 +544,10 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                 }
                 if not (await set_vote.aexists()):
                     vote_data['dateTime'] = dt
-                vote, created = await Vote.objects.aget_or_create(**vote_data)
+                    vote, created = await Vote.objects.aget_or_create(**vote_data)
+                else: 
+                    vote = await set_vote.afirst()
+                    created = False
                 vote.dateTime = dt
                 await vote.asave()
                 if created or not ignore_exists:

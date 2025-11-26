@@ -1,27 +1,34 @@
 const congressField = document.getElementById('id_congress');
 const typeField = document.getElementById('id_bill_type_2');
 const subField = document.getElementById('id_bill_subjects');
-const geoField = document.getElementById('id_bill_geo_entities');
-const orgField = document.getElementById('id_bill_organizations');
 const numField = document.getElementById('id_bill_num');
 
 congressField.addEventListener('change', updateChoices);
 typeField.addEventListener('change', updateChoices);
 subField.addEventListener('change', updateChoices);
-geoField.addEventListener('change', updateChoices);
-orgField.addEventListener('change', updateChoices);
 function getSelectedValues(selectElement) {
     return Array.from(selectElement.selectedOptions).map(option => option.value);
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+    const selectElement = document.querySelector("#id_bill_subjects");
+
+    if (selectElement) {
+        new TomSelect(selectElement, {
+            plugins: ["remove_button"],
+            persist: false,
+            create: false,
+            maxItems: null,
+            searchField: "text",
+            closeAfterSelect: false,
+        });
+    }
+});
 function updateChoices() {
     const congressId = congressField.value;
     if (congressId == '') { return; }
     var type_2 = typeField.value;
     var subjects = getSelectedValues(subField);
-    var geoEntities = getSelectedValues(geoField);
-    var organizations = getSelectedValues(orgField);
-    var subjects = [...subjects, ...geoEntities, ...organizations].join(',');
     var url = `update-bills/${congressId}?type_2=${type_2}&subjects=${subjects}`;
     fetch(url)
         .then(response => response.json())
@@ -38,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (form) {
         form.addEventListener('submit', function (e) {
             // List the IDs of the fields to clear
-            ['id_bill_subjects', 'id_bill_geo_entities', 'id_bill_organizations', 'id_bill_type_2'].forEach(function (fieldId) {
+            ['id_bill_subjects', 'id_bill_type_2'].forEach(function (fieldId) {
                 const field = document.getElementById(fieldId);
                 if (field) {
                     // For multi-select, deselect all options

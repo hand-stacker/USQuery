@@ -24,7 +24,7 @@ body {
     max-height: 200px !important;
 }
 
-.dark-0 {
+.dark-0, .optgroup-header {
     background: rgba(0, 0, 0, 0.85) !important;
     color: rgb(250,250,250) !important;
     backdrop-filter: blur(6.6px) !important;
@@ -38,7 +38,7 @@ thead {
     border: 1px solid rgba(150,150,150, 0.9) !important;
 }
 
-.dark-01 {
+.dark-01, .ts-wrapper .option, .ts-control, .ts-control input, .ts-dropdown {
     background: rgba(30, 30, 30, 0.9) !important;
     color: rgb(250,250,250) !important;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
@@ -47,7 +47,7 @@ thead {
     border: 1px solid rgba(73, 73, 73, 0.09) !important;
 }
 
-.dark-1 {
+.dark-1, .ts-control .item {
     background: rgba(73, 73, 73, 0.51) !important;
     color: rgb(250,250,250) !important;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;

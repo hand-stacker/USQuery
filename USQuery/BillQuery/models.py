@@ -17,7 +17,7 @@ types = {
 
 class TypeManager(models.Manager):
     def get_from_type(self, _type, start_date, end_date):
-        if _type == '!':
+        if _type == '!' or _type == '':
             return super(TypeManager, self).get_queryset().filter(latest_action__gte=start_date, latest_action__lte=end_date) 
         if _type == '!S' or _type == '!H':
             _addr_bgn = 10000 * types[_type][0]
