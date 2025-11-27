@@ -13,3 +13,6 @@ beautifulsoup4
 pandas
 tensorflow
 scikit-learn
+djangorestframework
+strawberry-graphql[cli]
+strawberry-graphql-django

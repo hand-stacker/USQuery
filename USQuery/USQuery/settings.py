@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'app',
     'SenateQuery',
     'BillQuery',
+    'strawberryAPI',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     'dj_database_url',
     'google',
     'bs4',
+    'rest_framework',
+    'strawberry.django',
 ]
 
 # Middleware framework

@@ -12,6 +12,8 @@ from app import forms, views
 from django.conf.urls.static import static
 from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
+from strawberry.django.views import GraphQLView
+from strawberryAPI.graphql.schema import schema
 admin.autodiscover()
 
 
@@ -59,5 +61,10 @@ urlpatterns = [
     path('bill-query/update-bill/<int:congress_num>/<str:bill_type>/<int:bill_num>', BQviews.update_bill, name = 'billQueryUpdateBill'),
     path('bill-query/update/<int:congress_num>/<str:date>/', BQviews.update_votes, name = 'billQueryUpdateBill'),
     path("tasks/daily-task/", BQviews.daily_task, name="daily-task"),
+    # API ROUTES
+    path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', SQviews.get_membership, name='get_membership'),
+    path('api/v1.0/membership_set/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_memberships_set, name='get_memberships_set'),
+    path('api/v1.0/congress_set/', SQviews.get_congress_set, name='get_congress_set'),
+    path("api/v1.0/graphql/", GraphQLView.as_view(schema=schema)),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

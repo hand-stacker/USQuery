@@ -7,6 +7,13 @@ from app import utils, forms
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Vote
 from django.http import JsonResponse
+from rest_framework import viewsets
+from .serializers import MembershipModelSerializer, CongressModelSerializer
+from BillQuery.serializers import VoteModelSerializerSimple
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from urllib.parse import urlencode
 
 # Create your views here.
 def home(request):
@@ -86,7 +93,7 @@ def search(request, congress_num, bioguide_id, in_house):
         'SenateQuery/representative.html',
         context
     )
-    
+
 def query(request):
     assert isinstance(request, HttpRequest)
     member_form = forms.MemberForm(request.GET)
@@ -100,7 +107,6 @@ def query(request):
     
 
 def update_members(request, congress_num, chamber, state):
-    assert isinstance(request, HttpRequest)
     is_house = chamber != 'Senate'
     _congress = Congress.objects.get(congress_num__exact=congress_num)
     if (state == 'All'):
@@ -109,6 +115,68 @@ def update_members(request, congress_num, chamber, state):
         mems = Member.objects.filter(membership__congress = _congress, membership__state = state, membership__house = is_house)
     mems = mems.values('id', 'full_name')
     return JsonResponse({'members': list(mems)})
+
+@api_view(['GET'])
+def get_membership(request, congress_num, bioguide_id, in_house):
+    try:
+        in_house = bool(in_house)
+        congress = Congress.objects.get(congress_num=congress_num)
+        member = Member.objects.get(id=bioguide_id)
+        membership = Membership.objects.get(congress=congress, member=member, house=in_house)
+    except (Congress.DoesNotExist, Member.DoesNotExist, Membership.DoesNotExist):
+        return Response({'detail': 'Membership not found.'}, status=status.HTTP_404_NOT_FOUND)
+    api_response = utils.updateMember(congress_num, bioguide_id)
+    urlPath = ""
+    past_context = request.GET.dict()
+    for key in past_context:
+        urlPath += key + "=" + past_context[key] + "&"
+    serializer = MembershipModelSerializer(membership)
+    data = serializer.data
+    start = membership.start_date.split('-')
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
+    
+    if (membership.end_date == None):
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date)
+    else:
+        end = membership.end_date.split('-')
+        end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date, dateTime__lt = end_date)
+
+    base_url = request.build_absolute_uri(request.path)
+    query_params = request.GET.copy()
+    paginator = Paginator(votes_in_congress, 15)
+    page_number = request.GET.get("page", 1)
+    vote_list = paginator.get_page(page_number)
+    data['url_path'] = urlPath
+    data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
+
+    if 'member' in api_response:
+        member_data = api_response['member']
+        data['external_party_history'] = member_data.get('partyHistory', [])
+        data['external_leadership'] = member_data.get('leadership', [])
+        data['external_terms'] = member_data.get('terms', [])
+
+    if vote_list.has_previous():
+        query_params['page'] = vote_list.previous_page_number()
+        data['prev'] = f"{base_url}?{urlencode(query_params)}"
+    else:
+        data['prev'] = None
+
+    if vote_list.has_next():
+        query_params['page'] = vote_list.next_page_number()
+        data['next'] = f"{base_url}?{urlencode(query_params)}"
+    else:
+        data['next'] = None
+    return Response(data)
+
+@api_view(['GET'])
+def get_memberships_set(request, congress_num, chamber, state):
+   return update_members(request, congress_num, chamber, state)
+
+@api_view(['GET'])
+def get_congress_set(request):
+    congress_set = Congress.objects.all()
+    return Response(CongressModelSerializer(congress_set, many=True).data)
 
 @staff_member_required
 def populate_congress(request, congress_num):
@@ -131,5 +199,6 @@ def update_arrival(request, congress_num, arriving_id, arriving_date, in_house):
 @staff_member_required
 def create_membership(request, congress_num, bioguide_id, state, in_house, party, arrival_date = None, departure_date = None, district_num = None):
     assert isinstance(request, HttpRequest)
+    if (departure_date == "!") : departure_date = None
     utils.createMembership(congress_num, bioguide_id, state, in_house, party, arrival_date, departure_date, district_num )
     return HttpResponseRedirect('/member-query/')

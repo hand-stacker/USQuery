@@ -22,6 +22,8 @@ column_list = settings.COLUMN_LIST
 column_dict = {col: index for index, col in enumerate(column_list)}
 model = 'gemini-2.0-flash'
 
+# GeoJSON modification function
+# used once to modify GeoJSON for site, use when adding a new GeoJSON map of counties/states
 def modifyCountyGeoJSON(congress_id):
     read_url = 'BillQuery/static/geojsons/cb_us_cd' + str(congress_id) + '_5m.geojson'
     write_url = 'BillQuery/static/geojsons/cb_us_cd' + str(congress_id) + '_5m.geojson'
@@ -40,6 +42,10 @@ def modify(read_url, write_url):
         with open(write_url, 'w') as write_file:
             json.dump(data, write_file, indent=1)
 
+
+# Model N1 functions
+#
+#
 # returns features dict, or None if possible token count exceeds limit
 async def gatherFeatures(bill_id):
     header_str = 'api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'

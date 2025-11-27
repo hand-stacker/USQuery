@@ -9,8 +9,13 @@ from django.http import HttpRequest, HttpResponseRedirect, HttpResponseForbidden
 from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
-from django.http import JsonResponse
 from datetime import date
+from rest_framework import viewsets
+from .serializers import BillModelSerializer
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from urllib.parse import urlencode
 
 
 def home(request):
@@ -186,6 +191,20 @@ def update_bills(request, congress_num):
         ret.append({"id":b.id, "str": str(b)})
     return JsonResponse({'bills': list(ret)})
 
+
+@api_view(['GET'])
+def get_vote(request, vote_id):
+    try:
+        vote = Vote.objects.get(id = vote_id)
+    except Vote.DoesNotExist:
+        return Response({'detail': 'Vote not found.'}, status=status.HTTP_404_NOT_FOUND)
+    context = utils.voteHtml(vote)
+    context['cloro_form'] = forms.CloroChoice(request.GET)
+    return render(
+        request,
+        'BillQuery/vote.html',
+        context
+    )
 
 @staff_member_required
 def populate_bills(request, congress_num, bill_type, limit, offset):

@@ -51,6 +51,9 @@
     <Compile Include="BillQuery\apps.py" />
     <Compile Include="BillQuery\migrations\__init__.py" />
     <Compile Include="BillQuery\models.py" />
+    <Compile Include="BillQuery\serializers.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="BillQuery\tests.py" />
     <Compile Include="BillQuery\views.py" />
     <Compile Include="BillQuery\__init__.py" />
@@ -64,9 +67,30 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="SenateQuery\models.py" />
+    <Compile Include="SenateQuery\serializers.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SenateQuery\tests.py" />
     <Compile Include="SenateQuery\views.py" />
     <Compile Include="SenateQuery\__init__.py" />
+    <Compile Include="strawberryAPI\apps.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="strawberryAPI\graphql\queries.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="strawberryAPI\graphql\schema.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="strawberryAPI\graphql\types.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="strawberryAPI\graphql\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="USQuery\serializers.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="USQuery\__init__.py" />
     <Compile Include="USQuery\settings.py" />
     <Compile Include="USQuery\urls.py" />
@@ -92,6 +116,7 @@
     <Folder Include="BillQuery\templates\" />
     <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="models\" />
+    <Folder Include="strawberryAPI\" />
     <Folder Include="SenateQuery\" />
     <Folder Include="SenateQuery\migrations\" />
     <Folder Include="SenateQuery\static\scripts\" />
@@ -99,6 +124,7 @@
     <Folder Include="SenateQuery\static\content\" />
     <Folder Include="SenateQuery\templates\" />
     <Folder Include="SenateQuery\templates\SenateQuery\" />
+    <Folder Include="strawberryAPI\graphql\" />
     <Folder Include="USQuery\" />
     <Folder Include="USQuery\__pycache__\" />
   </ItemGroup>
@@ -167,15 +193,6 @@
       <Id>env3.11</Id>
       <Version>3.11</Version>
       <Description>env3.11 (Python 3.11 (64-bit))</Description>
-      <InterpreterPath>Scripts\python.exe</InterpreterPath>
-      <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
-      <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
-      <Architecture>X64</Architecture>
-    </Interpreter>
-    <Interpreter Include="env3.13\">
-      <Id>env3.13</Id>
-      <Version>3.13</Version>
-      <Description>env3.13 (Python 3.13 (64-bit))</Description>
       <InterpreterPath>Scripts\python.exe</InterpreterPath>
       <WindowsInterpreterPath>Scripts\pythonw.exe</WindowsInterpreterPath>
       <PathEnvironmentVariable>PYTHONPATH</PathEnvironmentVariable>
