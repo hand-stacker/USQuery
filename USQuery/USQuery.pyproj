@@ -85,6 +85,9 @@
     <Compile Include="strawberryAPI\graphql\types.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="strawberryAPI\graphql\utils.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="strawberryAPI\graphql\__init__.py">
       <SubType>Code</SubType>
     </Compile>

@@ -1,5 +1,6 @@
 from datetime import datetime, date, timedelta
-import requests, asyncio, json, aiohttp
+from django.core.cache import cache
+import requests, asyncio, json, aiohttp, hashlib
 from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
@@ -121,6 +122,18 @@ def etree_to_dict(t):
             d[t.tag] = text
     return d
 
+# hashes url + params
+def make_cache_key(url, headers):
+    header_str = json.dumps(headers, sort_keys=True, separators=(",", ":"))
+    final = f"{url}|{header_str}"
+    return hashlib.shake_256(final.encode()).hexdigest(4)
+
+# hashes url + params
+async def make_cache_keyASYNC(url, header_str):
+    final = url + header_str
+    return hashlib.shake_256(final.encode()).hexdigest(4)
+    
+
 ## connects to an API with given headers
 def connect(fullpath, headers):
     try:
@@ -133,7 +146,6 @@ def connect(fullpath, headers):
     except TimeoutError:
         print('TIMEOUT ERROR')
     else:
-        print('Connected to ' + fullpath)
         return response    
 
 ## connects to an API with given headers(in string format) asynchronously
@@ -142,7 +154,6 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
     try:
         async with session.get(fullpath + header_str, timeout=40) as response:
             response.raise_for_status()
-            print('Connected to ' + fullpath)
             if jsonify:
                 return await response.json()
             else:
@@ -156,11 +167,40 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
     except asyncio.TimeoutError:
         print('TIMEOUT ERROR')
 
+## Caches external API requests, returns a json object
+def connect_and_cache(fullpath, headers, timeout = 60 * 15):
+    key = make_cache_key(fullpath, headers)
+    cached = cache.get(key)
+    if cached:
+        return cached
+    res = connect(fullpath, headers)
+    data = res.json()
+    cache.set(key, data, timeout)
+    return data
+
+## ASYNC : Caches external API requests, returns a json object
+async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = 60 * 15):
+    key = make_cache_key(fullpath, header_str)
+    cached = cache.get(key)
+    if cached:
+        return cached
+    data = connectASYNC(session, fullpath, header_str)
+    cache.set(key, data, timeout)
+    return data
+
 ## returns a list of responses from a list of requests asynchronously
-async def run_concurrent_connect(session, requests, headers) : 
+async def run_concurrent_connect(session, requests, header_str) : 
     tasks = []
     for request in requests: 
-        ret = connectASYNC(session, request, headers)
+        ret = connectASYNC(session, request, header_str)
+        tasks.append(ret)
+    return await asyncio.gather(*tasks, return_exceptions=True)
+
+## returns a list of responses from a list of requests asynchronously with caching
+async def run_concurrent_connect_and_cache(session, requests, header_str, timeout = 60 * 15) : 
+    tasks = []
+    for request in requests: 
+        ret = connect_and_cacheASYNC(session, request, header_str, timeout)
         tasks.append(ret)
     return await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -859,24 +899,26 @@ async def billHtml(bill, congress_id, bill_type, num):
         context['subjects_2'] = sub_list_2
         context['policy_area'] = bill.policy_area
       
-    # currently jut gets first summary in list...
+    # currently just gets first summary in list...
     if (API_data[2] != ''):
+        if (int(num) < 10000):
+            _id = int(congress_id) * 100000 + types[bill_type] * 10000 + int(num)
+        else :
+            _id = int(congress_id) * 1000000 + types[bill_type] * 100000 + int(num)
         if (len(API_data[2]['summaries']) < 1):
             context['AI_generated_content'] = "T"
-            context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, int(congress_id), bill_type, int(num))
+            context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, _id)
         else :
             context['AI_generated_content'] = "F"
             context['summary'] = API_data[2]['summaries'][0]['text']
+            # if summary exists, delete any generated ai summary
+            await BillSummary.objects.filter(id=_id).delete()
     await session.close()
     return context
 
 ## Gets the latest text file from api and summarizes it using gemini api. Memorize summaries in db
-async def getSummaryAI(session, url, header_str, congress_num, bill_type, bill_num):
+async def getSummaryAI(session, url, header_str, _id):
     new_session = aiohttp.ClientSession()
-    if (bill_num < 10000):
-        _id = congress_num * 100000 + types[bill_type] * 10000 + bill_num
-    else :
-        _id = congress_num * 1000000 + types[bill_type] * 100000 + bill_num
     ## get latest text index:
     latest_datetime = datetime(1, 1, 1, 1, 1, 1)
     latest_indx = -1

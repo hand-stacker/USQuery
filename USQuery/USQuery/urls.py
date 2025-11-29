@@ -12,7 +12,7 @@ from app import forms, views
 from django.conf.urls.static import static
 from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
-from strawberry.django.views import GraphQLView
+from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
 admin.autodiscover()
 
@@ -65,6 +65,6 @@ urlpatterns = [
     path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', SQviews.get_membership, name='get_membership'),
     path('api/v1.0/membership_set/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_memberships_set, name='get_memberships_set'),
     path('api/v1.0/congress_set/', SQviews.get_congress_set, name='get_congress_set'),
-    path("api/v1.0/graphql/", GraphQLView.as_view(schema=schema)),
+    path("api/v1.0/graphql/", AsyncGraphQLView.as_view(schema=schema)),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
