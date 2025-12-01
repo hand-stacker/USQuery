@@ -189,15 +189,6 @@ def update_bills(request, congress_num):
         ret.append({"id":b.id, "str": str(b)})
     return JsonResponse({'bills': list(ret)})
 
-
-@api_view(['GET'])
-def get_vote(request, vote_id):
-    try:
-        vote = Vote.objects.get(id = vote_id)
-    except vote.DoesNotExist:
-        Response({'detail': 'Vote not found.'}, status=status.HTTP_404_NOT_FOUND)
-    return Response(VoteModelSerializer(vote).data)
-
 @staff_member_required
 def populate_bills(request, congress_num, bill_type, limit, offset):
     assert isinstance(request, HttpRequest)

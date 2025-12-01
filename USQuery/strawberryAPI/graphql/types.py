@@ -25,6 +25,11 @@ class VoteType:
     dateTime : auto
     bill : "BillType"
     result : str
+    yeas : list["MembershipType"]
+    nays : list["MembershipType"]
+    pres : list["MembershipType"]
+    novt : list["MembershipType"]
+
 
 ## Bill related types
 @strawberry.type
@@ -94,4 +99,6 @@ class MemberType:
 @strawberry_django.type(Congress)
 class CongressType:
     congress_num : auto
+    start_year : auto
+    end_year : auto
     

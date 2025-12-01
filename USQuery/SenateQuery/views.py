@@ -173,11 +173,6 @@ def get_membership(request, congress_num, bioguide_id, in_house):
 def get_memberships_set(request, congress_num, chamber, state):
    return update_members(request, congress_num, chamber, state)
 
-@api_view(['GET'])
-def get_congress_set(request):
-    congress_set = Congress.objects.all()
-    return Response(CongressModelSerializer(congress_set, many=True).data)
-
 @staff_member_required
 def populate_congress(request, congress_num):
     assert isinstance(request, HttpRequest) 

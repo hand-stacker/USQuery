@@ -1,9 +1,9 @@
 import strawberry, aiohttp
 import strawberry.types
 from datetime import date
-from .types import BillConnection, BillEdge, BillType, VoteConnection, VoteEdge, ActionType
+from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType
 from typing import List, Optional
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Prefetch
 from BillQuery.models import Bill, Subject, Vote
 from SenateQuery.models import Congress, Member, Membership
 from .utils import batch_load_summaries, fetch_actions, fetch_summary
@@ -21,11 +21,15 @@ def decode_cursor(cursor: str) -> int:
 @strawberry.type
 class Query:
     @strawberry.field
-    async def getBill(self, bill_id : int) -> BillType:
+    async def getCongressSet(self) -> List[CongressType]:
+        return await sync_to_async(list)(Congress.objects.all())
+
+    @strawberry.field
+    async def getBill(self, bill_id : int) -> Optional[BillType]:
         try:
             bill = await Bill.objects.aget(id = bill_id)
-        except Vote.DoesNotExist:
-            raise Exception("Bill not found") 
+        except Bill.DoesNotExist:
+            return None 
         session = aiohttp.ClientSession()
         sum_context = await fetch_summary(session, bill)
         act_context = await fetch_actions(session,bill)
@@ -50,6 +54,35 @@ class Query:
             is_AI_generated = sum_context['AI_generated_content?'],
             actions = actions
             )
+
+    @strawberry.field
+    async def getVote(self, vote_id : int) -> Optional[VoteType]:
+        try:
+            qs = (
+                Vote.objects
+                .filter(id=vote_id)
+                .prefetch_related(
+                    Prefetch(
+                        "yeas",
+                        queryset=Membership.objects.select_related("member")
+                    ),
+                    Prefetch(
+                        "nays",
+                        queryset=Membership.objects.select_related("member")
+                    ),
+                    Prefetch(
+                        "pres",
+                        queryset=Membership.objects.select_related("member")
+                    ),
+                    Prefetch(
+                        "novt",
+                        queryset=Membership.objects.select_related("member")
+                    )
+                )
+            )
+            return await qs.afirst()
+        except Vote.DoesNotExist:
+            return None
 
     @strawberry.field
     async def recommended_bills(
