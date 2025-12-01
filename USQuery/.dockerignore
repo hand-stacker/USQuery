@@ -1,7 +1,0 @@
-env3.11
-env3.13
-obj
-.env
-.env*
-USQuery/secretss.py
-USQuery/dev_settings.py

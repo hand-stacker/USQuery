@@ -35,6 +35,7 @@
   <ItemGroup>
     <Compile Include="app\forms.py" />
     <Compile Include="app\models.py" />
+    <Compile Include="app\secretss.py" />
     <Compile Include="app\siteutils.py">
       <SubType>Code</SubType>
     </Compile>
@@ -132,7 +133,9 @@
     <Folder Include="USQuery\__pycache__\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include=".dockerignore" />
+    <Content Include=".env">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="app\static\app\content\images\20170207_Capitol_at_Dusk.jpg" />
     <Content Include="app\static\app\scripts\resize.js" />
     <Content Include="app\static\images\favicon.png" />
@@ -160,12 +163,8 @@
     <Content Include="BillQuery\templates\BillQuery\vote-range-form.html" />
     <Content Include="BillQuery\templates\BillQuery\vote.html" />
     <Content Include="build.sh" />
-    <Content Include="docker-compose.yml" />
-    <Content Include="Dockerfile" />
-    <Content Include="entrypoint.prod.sh" />
     <Content Include="models\model.keras" />
     <Content Include="models\model_with_state_welltrained.keras" />
-    <Content Include="nginx.conf" />
     <Content Include="requirements.txt" />
     <Content Include="app\static\app\content\site.css" />
     <Content Include="app\static\app\fonts\glyphicons-halflings-regular.eot" />

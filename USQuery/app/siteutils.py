@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import datetime
+import secretss
 import ast
 import re
 from scipy.stats import binom
@@ -17,9 +18,9 @@ from BillQuery.models import BillPrediction, BinaryProbability, Bill
 
 types_list = ['s','sres','sjres','sconres','hr','hres','hjres','hconres']
 pattern = re.compile(r'\s{2,}')
-prompt = settings.PROMPT
-column_list = settings.COLUMN_LIST
-column_dict = {col: index for index, col in enumerate(column_list)}
+prompt = secretss.prompt
+column_list = secretss.column_list
+column_dict = secretss.column_dict
 model = 'gemini-2.0-flash'
 
 # GeoJSON modification function
