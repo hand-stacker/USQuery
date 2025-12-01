@@ -11,6 +11,10 @@ class MembershipModelSerializer(serializers.ModelSerializer):
         model = Membership
         fields = '__all__'
 
+class MembershipSimpleModelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Membership
+        fields = ['district_num', 'state', 'geoid', 'party', 'member']
 
 class CongressModelSerializer(serializers.ModelSerializer):
     class Meta:

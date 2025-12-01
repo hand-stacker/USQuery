@@ -17,3 +17,4 @@ djangorestframework
 strawberry-graphql[cli]
 strawberry-graphql-django
 django-redis
+markdownify

@@ -161,7 +161,7 @@ class Vote(models.Model):
 
     objects = models.Manager()
     type_objects =TypeManagerVote()
-    
+
     def getDate(self):
         return self.dateTime.strftime("%Y-%m-%d")
     def inHouse(self):

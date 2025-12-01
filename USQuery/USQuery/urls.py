@@ -63,8 +63,9 @@ urlpatterns = [
     path("tasks/daily-task/", BQviews.daily_task, name="daily-task"),
     # API ROUTES
     path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', SQviews.get_membership, name='get_membership'),
-    path('api/v1.0/membership_set/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_memberships_set, name='get_memberships_set'),
-    path('api/v1.0/congress_set/', SQviews.get_congress_set, name='get_congress_set'),
+    path('api/v1.0/membership-set/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_memberships_set, name='get_memberships_set'),
+    path('api/v1.0/vote/<int:vote_id>/', BQviews.get_vote, name='get_vote'),
+    path('api/v1.0/congress-set/', SQviews.get_congress_set, name='get_congress_set'),
     path("api/v1.0/graphql/", AsyncGraphQLView.as_view(schema=schema)),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

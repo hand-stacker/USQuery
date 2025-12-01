@@ -11,6 +11,7 @@ from google import genai
 from bs4 import BeautifulSoup
 
 ## helpful objects that map state related data
+timeout_day = 60 * 60 * 24
 current_congress = 119
 state_list = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA',
               'HI','ID','IN','IL','IA','KS','KY','LA','ME','MD',
@@ -168,7 +169,7 @@ async def connectASYNC(session, fullpath, header_str, jsonify = True):
         print('TIMEOUT ERROR')
 
 ## Caches external API requests, returns a json object
-def connect_and_cache(fullpath, headers, timeout = 60 * 15):
+def connect_and_cache(fullpath, headers, timeout = timeout_day):
     key = make_cache_key(fullpath, headers)
     cached = cache.get(key)
     if cached:
@@ -179,12 +180,12 @@ def connect_and_cache(fullpath, headers, timeout = 60 * 15):
     return data
 
 ## ASYNC : Caches external API requests, returns a json object
-async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = 60 * 15):
+async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = timeout_day):
     key = make_cache_key(fullpath, header_str)
     cached = cache.get(key)
     if cached:
         return cached
-    data = connectASYNC(session, fullpath, header_str)
+    data = await connectASYNC(session, fullpath, header_str)
     cache.set(key, data, timeout)
     return data
 
@@ -197,7 +198,7 @@ async def run_concurrent_connect(session, requests, header_str) :
     return await asyncio.gather(*tasks, return_exceptions=True)
 
 ## returns a list of responses from a list of requests asynchronously with caching
-async def run_concurrent_connect_and_cache(session, requests, header_str, timeout = 60 * 15) : 
+async def run_concurrent_connect_and_cache(session, requests, header_str, timeout = timeout_day) : 
     tasks = []
     for request in requests: 
         ret = connect_and_cacheASYNC(session, request, header_str, timeout)
@@ -802,7 +803,7 @@ async def billHtml(bill, congress_id, bill_type, num):
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     session = aiohttp.ClientSession()
     requests = [apiURL, apiURL + '/actions', apiURL + '/summaries']
-    API_data = await run_concurrent_connect(session, requests, header_str)
+    API_data = await run_concurrent_connect_and_cache(session, requests, header_str)
     date_str = API_data[0]['bill']['updateDate']
     update_date = date(
         int(date_str[0:4]),
@@ -813,7 +814,7 @@ async def billHtml(bill, congress_id, bill_type, num):
     valid_update = (bill.latest_db_update == None) or (int(congress_id) == current_congress and update_date > bill.latest_db_update)
     if valid_update:
         requests = [apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects']
-        API_data_2 = await run_concurrent_connect(session, requests, header_str)
+        API_data_2 = await run_concurrent_connect_and_cache(session, requests, header_str)
 
         if (API_data_2[0] != ''):
             cosponsors_exist = True
@@ -912,7 +913,7 @@ async def billHtml(bill, congress_id, bill_type, num):
             context['AI_generated_content'] = "F"
             context['summary'] = API_data[2]['summaries'][0]['text']
             # if summary exists, delete any generated ai summary
-            await BillSummary.objects.filter(id=_id).delete()
+            await BillSummary.objects.filter(id=_id).adelete()
     await session.close()
     return context
 

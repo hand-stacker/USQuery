@@ -10,12 +10,10 @@ from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
 from datetime import date
-from rest_framework import viewsets
-from .serializers import BillModelSerializer
+from .serializers import VoteModelSerializer
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from urllib.parse import urlencode
 
 
 def home(request):
@@ -196,15 +194,9 @@ def update_bills(request, congress_num):
 def get_vote(request, vote_id):
     try:
         vote = Vote.objects.get(id = vote_id)
-    except Vote.DoesNotExist:
-        return Response({'detail': 'Vote not found.'}, status=status.HTTP_404_NOT_FOUND)
-    context = utils.voteHtml(vote)
-    context['cloro_form'] = forms.CloroChoice(request.GET)
-    return render(
-        request,
-        'BillQuery/vote.html',
-        context
-    )
+    except vote.DoesNotExist:
+        Response({'detail': 'Vote not found.'}, status=status.HTTP_404_NOT_FOUND)
+    return Response(VoteModelSerializer(vote).data)
 
 @staff_member_required
 def populate_bills(request, congress_num, bill_type, limit, offset):

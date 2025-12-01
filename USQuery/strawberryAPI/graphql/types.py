@@ -1,9 +1,30 @@
 import strawberry_django
 import strawberry
-from BillQuery.models import Bill, Subject
+from typing import Optional, List
+from BillQuery.models import Bill, Subject, Vote
 from SenateQuery.models import Membership, Member, Congress
 from strawberry import auto
 
+
+## Vote related types
+@strawberry.type
+class VoteEdge:
+    cursor : str
+    node : "VoteType"
+
+@strawberry.type
+class VoteConnection:
+    edges : list["VoteEdge"]
+    page_info : strawberry.relay.PageInfo
+
+@strawberry_django.type(Vote)
+class VoteType:
+    id : auto
+    title : auto
+    question : auto
+    dateTime : auto
+    bill : "BillType"
+    result : str
 
 ## Bill related types
 @strawberry.type
@@ -20,8 +41,6 @@ class BillConnection:
 @strawberry_django.type(Bill)
 class BillType:
     id : auto
-    sponsor: "MembershipType"
-    cosponsors : list["MembershipType"]
     policy_area : auto
     status : auto
     title : auto
@@ -31,6 +50,14 @@ class BillType:
     match_count : int | None = None
     summary : str | None = None
     is_AI_generated : bool | None = False
+    actions: List["ActionType"]
+
+@strawberry.type
+class ActionType:
+    actionCode: str
+    actionDate: str
+    text: Optional[str]
+    type: Optional[str]
 
 @strawberry_django.type(Subject)
 class SubjectType:
