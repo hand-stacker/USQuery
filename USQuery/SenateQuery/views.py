@@ -122,7 +122,55 @@ def get_membership_by_id(request, membership_id):
         membership = Membership.objects.get(id=membership_id)
     except (Membership.DoesNotExist):
         return Response({'detail': 'Membership not found.'}, status=status.HTTP_404_NOT_FOUND)
-    return get_membership(request, membership.congress.congress_num, membership.member.id, membership.house)
+    congress_num = membership.congress.congress_num
+    bioguide_id = membership.member.id
+    in_house = membership.house
+    congress = Congress.objects.get(congress_num=congress_num)
+    member = Member.objects.get(id=bioguide_id)
+    api_response = utils.updateMember(congress_num, bioguide_id)
+    urlPath = ""
+    past_context = request.GET.dict()
+    for key in past_context:
+        urlPath += key + "=" + past_context[key] + "&"
+    serializer = MembershipModelSerializer(membership)
+    data = serializer.data
+    start = membership.start_date.split('-')
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
+    
+    if (membership.end_date == None):
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date)
+    else:
+        end = membership.end_date.split('-')
+        end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
+        votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date, dateTime__lt = end_date)
+
+    base_url = request.build_absolute_uri(request.path)
+    query_params = request.GET.copy()
+    paginator = Paginator(votes_in_congress, 15)
+    page_number = request.GET.get("page", 1)
+    vote_list = paginator.get_page(page_number)
+    data['url_path'] = urlPath
+    data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
+
+    if 'member' in api_response:
+        member_data = api_response['member']
+        data['external_party_history'] = member_data.get('partyHistory', [])
+        data['external_leadership'] = member_data.get('leadership', [])
+        data['external_terms'] = member_data.get('terms', [])
+
+    if vote_list.has_previous():
+        query_params['page'] = vote_list.previous_page_number()
+        data['prev'] = f"{base_url}?{urlencode(query_params)}"
+    else:
+        data['prev'] = None
+
+    if vote_list.has_next():
+        query_params['page'] = vote_list.next_page_number()
+        data['next'] = f"{base_url}?{urlencode(query_params)}"
+    else:
+        data['next'] = None
+    return Response(data)
+
 
 @api_view(['GET'])
 def get_membership(request, congress_num, bioguide_id, in_house):
