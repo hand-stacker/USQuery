@@ -78,7 +78,7 @@ class MembershipType:
     id: auto
     congress : "CongressType"
     member : "MemberType"
-    district_num : int
+    district_num : int | None = None
     house : bool
     state : str
     geoid : str

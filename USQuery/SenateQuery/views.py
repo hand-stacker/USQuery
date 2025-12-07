@@ -117,6 +117,14 @@ def update_members(request, congress_num, chamber, state):
     return JsonResponse({'members': list(mems)})
 
 @api_view(['GET'])
+def get_membership_by_id(request, membership_id):
+    try:
+        membership = Membership.objects.get(id=membership_id)
+    except (Membership.DoesNotExist):
+        return Response({'detail': 'Membership not found.'}, status=status.HTTP_404_NOT_FOUND)
+    return get_membership(request, membership.congress.congress_num, membership.member.id, membership.house)
+
+@api_view(['GET'])
 def get_membership(request, congress_num, bioguide_id, in_house):
     try:
         in_house = bool(in_house)
