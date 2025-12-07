@@ -963,10 +963,15 @@ async def getSummaryAI(session, url, header_str, _id):
         Write a summary for this US legislation.
         The tone should be formal, concise, and easy to understand for the average voter.
         Refer to the legislation by its title or the bill type and number if there is no title."""
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=[text, prompt]
-        )
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[text, prompt]
+            )
+    except Exception as e:
+        print(f"GENAI ERROR during generate_content: {e}")
+        await new_session.close()
+        return bill_summary.summary
     summary = response.text
     summary = summary.removeprefix("```html").removesuffix("```")
     bill_summary.source_date = latest_date
