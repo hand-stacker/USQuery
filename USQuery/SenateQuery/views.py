@@ -122,7 +122,7 @@ def get_membership_by_id(request, membership_id):
         membership = Membership.objects.get(id=membership_id)
     except (Membership.DoesNotExist):
         return Response({'detail': 'Membership not found.'}, status=status.HTTP_404_NOT_FOUND)
-        congress_num = membership.congress.congress_num
+    congress_num = membership.congress.congress_num
     bioguide_id = membership.member.id
     in_house = membership.house
     congress = Congress.objects.get(congress_num=congress_num)
