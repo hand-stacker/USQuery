@@ -1,6 +1,7 @@
 """
 Definition of urls for USQuery.
 """
+from rest_framework.views import csrf_exempt
 from USQuery import settings
 from django.urls import re_path
 from django.views.static import serve
@@ -62,8 +63,8 @@ urlpatterns = [
     path('bill-query/update/<int:congress_num>/<str:date>/', BQviews.update_votes, name = 'billQueryUpdateBill'),
     path("tasks/daily-task/", BQviews.daily_task, name="daily-task"),
     # API ROUTES (too lazy to make graphql queries for these two routes)
-    path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', SQviews.get_membership, name='get_membership'),
-    path('api/v1.0/membership-set/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_memberships_set, name='get_memberships_set'),
-    path("api/v1.0/graphql/", AsyncGraphQLView.as_view(schema=schema)),
+    path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', csrf_exempt(SQviews.get_membership)),
+    path('api/v1.0/membership-set/<int:congress_num>/<str:chamber>/<str:state>/', csrf_exempt(SQviews.get_memberships_set)),
+    path("api/v1.0/graphql/", csrf_exempt(AsyncGraphQLView.as_view(schema=schema))),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
