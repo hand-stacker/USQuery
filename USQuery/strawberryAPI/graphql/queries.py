@@ -48,7 +48,7 @@ class Query:
             title = bill.title,
             origin_date = bill.origin_date,
             latest_action = bill.latest_action,
-            subjects = bill.subjects,
+            subjects = bill.subjects.all(),
             match_count = 0,
             summary =md(sum_context['summary']) ,
             is_AI_generated = sum_context['AI_generated_content?'],
