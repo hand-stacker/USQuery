@@ -1,0 +1,16 @@
+name: Daily Server Trigger
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call endpoint
+        run: |
+          curl -X GET "https://USQuery.com/tasks/daily-task/" \
+               -H "X-TASK-SECRET: $TASK_SECRET"
+        env:
+          TASK_SECRET: ${{ secrets.TASK_SECRET }}
