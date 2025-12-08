@@ -25,6 +25,10 @@ class Query:
         return await sync_to_async(list)(Congress.objects.all())
 
     @strawberry.field
+    async def getSubjectSet(self) -> List[CongressType]:
+        return await sync_to_async(list)(Subject.objects.all())
+
+    @strawberry.field
     async def getBill(self, bill_id : int) -> Optional[BillType]:
         try:
             bill = await Bill.objects.aget(id = bill_id)
