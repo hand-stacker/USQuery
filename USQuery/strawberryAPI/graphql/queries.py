@@ -1,7 +1,7 @@
 import strawberry, aiohttp
 import strawberry.types
 from datetime import date
-from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType
+from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
 from typing import List, Optional
 from django.db.models import Q, Count, Prefetch
 from BillQuery.models import Bill, Subject, Vote
@@ -25,7 +25,7 @@ class Query:
         return await sync_to_async(list)(Congress.objects.all())
 
     @strawberry.field
-    async def getSubjectSet(self) -> List[CongressType]:
+    async def getSubjectSet(self) -> List[SubjectType]:
         return await sync_to_async(list)(Subject.objects.all())
 
     @strawberry.field
