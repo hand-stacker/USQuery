@@ -158,10 +158,14 @@ class Query:
     async def get_recent_votes(
         self,
         first: int = 15,
+        subjectList: Optional[List[int]] = None,
         after: Optional[str] = None) -> VoteConnection:
         first = min(first, 50)
         ## selects only from the provided congress num
         qs = Vote.objects.all()
+
+        if subjectList:
+            qs = qs.filter(bill__subjects__in=subjectList).distinct()
 
         ##  handles pagination
         if after:
