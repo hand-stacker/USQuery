@@ -18,6 +18,13 @@ def encode_cursor(article_id: int) -> str:
 def decode_cursor(cursor: str) -> int:
     return int(base64.b64decode(cursor).decode())
 
+def vote_id_helper(a):
+    if "recordedVotes" in a:
+        in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
+        vote_id = a['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
+        return vote_id
+    return None
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -40,6 +47,7 @@ class Query:
         actions = [ActionType(
             actionCode=a.get("actionCode"),
             actionDate=a.get("actionDate"),
+            voteId=vote_id_helper(a),
             text=a.get("text"),
             type=a.get("type"),
             ) for a in act_context['actions']

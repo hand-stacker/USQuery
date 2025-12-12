@@ -59,8 +59,9 @@ class BillType:
 
 @strawberry.type
 class ActionType:
-    actionCode: str
-    actionDate: str
+    actionCode: str | None = None
+    actionDate: str | None = None
+    voteId : int | None = None
     text: Optional[str]
     type: Optional[str]
 
