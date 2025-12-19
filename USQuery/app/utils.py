@@ -721,11 +721,11 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
     return -1    
                     
 def updateMember(congress_num, member_id): 
-    _congress = Congress.objects.get(congress_num__exact = congress_num)    
-    _member = Member.objects.get(id__exact = member_id)
-    API_response_member = connect(_member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
-    image_link = _member.image_link
-    if image_link != "empty": return API_response_member
+    congress = Congress.objects.get(congress_num__exact = congress_num)    
+    member = Member.objects.get(id__exact = member_id)
+    API_response_member = connect(member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
+    image_link = member.image_link
+    if image_link != "empty" and member.official_link != None and member.office != None and member.phone != None: return API_response_member
     
     office_addr = None
     phone_num = None
@@ -736,24 +736,18 @@ def updateMember(congress_num, member_id):
         death_year = API_response_member['member']['deathYear']
         
     if (API_response_member['member']['currentMember']) :
-        site = API_response_member['member']['officialWebsiteUrl']
-        if 'officeAddress' not in API_response_member['member']['addressInformation']:
-            print("WARNING: API CANNOT PROVIDE ADDRESS, MANUALLY ADD ADDRESS")
-            office_addr = "pippy"
-        else:
+        site = API_response_member['member'].get('officialWebsiteUrl', None)
+        if 'officeAddress' in API_response_member['member'].get('addressInformation', {}):
             office_addr = API_response_member['member']['addressInformation']['officeAddress']
             
-        if 'phoneNumber' not in API_response_member['member']['addressInformation']:
-            print("WARNING: API CANNOT PROVIDE PHONE, MANUALLY ADD PHONE")
-            phone_num = "pippy"
-        else:
+        if 'phoneNumber' in API_response_member['member']['addressInformation']:
             phone_num = API_response_member['member']['addressInformation']['phoneNumber']
 
     ## find this term's party
     if (len(API_response_member['member']['partyHistory']) > 1):
-        _membership = Membership.objects.get(congress = _congress, member = _member)
+        _membership = Membership.objects.get(congress = congress, member = member)
         for hist in API_response_member['member']['partyHistory']:
-            if (hist['startYear'] < _congress.end_year and ('endYear' not in hist or hist['endYear'] > _congress.start_year)):
+            if (hist['startYear'] < congress.end_year and ('endYear' not in hist or hist['endYear'] > congress.start_year)):
                 _membership.party = hist['partyName']
                 _membership.save()
                 break
@@ -1114,26 +1108,31 @@ def voteTablePage(vote_list):
     return tableHTML
 
 def voteTable(vote_list, bioguideID, congress_num):
-    _congress = Congress.objects.get(congress_num__exact = congress_num)    
-    _member = Member.objects.get(id__exact = bioguideID)
+    congress = Congress.objects.get(congress_num__exact = congress_num)    
+    member = Member.objects.get(id__exact = bioguideID)
     tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th><th>Vote</th></tr></thead><tbody>'
-    colors = ['yeas', 'nays', 'pres', 'novt']
-    vote_type = ['Yea', 'Nay', 'Present', 'No Vote']
+    colors = {'Yea':'yeas', 'Nay' : 'nays', 'Present' : 'pres', 'No Vote' : 'novt'}
     for vote in vote_list:
         bill = vote.bill
-        i = 3
-        if vote.yeas.filter(congress = _congress, member = _member).exists():
-            i = 0
-        elif vote.nays.filter(congress = _congress, member = _member).exists():
-            i = 1
-        elif vote.pres.filter(congress = _congress, member = _member).exists():
-            i = 2
+        vote_type = getVoteType(vote, congress, member)
         tableHTML += '<tr><td>' + vote.getDate() + '</td>'
         tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '" >' + bill.__str__() + '</a></td>'
         tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
-        tableHTML += '<td class="' + colors[i] + '">' + vote_type[i] + '</td></tr>'
+        tableHTML += '<td class="' + colors[vote_type] + '">' + vote_type + '</td></tr>'
     tableHTML += '</tbody></table>'
     return tableHTML
+
+def getVoteType(vote, congress, member):
+    vote_type = ['Yea', 'Nay', 'Present', 'No Vote']
+    i = 3
+    if vote.yeas.filter(congress = congress, member = member).exists():
+        i = 0
+    elif vote.nays.filter(congress = congress, member = member).exists():
+        i = 1
+    elif vote.pres.filter(congress = congress, member = member).exists():
+        i = 2
+    return vote_type[i]
+    
     
 def partyList(party_history):
     party_list = ''
