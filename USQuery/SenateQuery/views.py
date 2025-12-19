@@ -7,8 +7,7 @@ from app import utils, forms
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Vote
 from django.http import JsonResponse
-from rest_framework import viewsets
-from .serializers import MembershipModelSerializer, CongressModelSerializer
+from .serializers import MemberModelSerializer, MembershipModelSerializer
 from BillQuery.serializers import VoteModelSerializerSimple
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -132,8 +131,7 @@ def get_membership_by_id(request, membership_id):
     past_context = request.GET.dict()
     for key in past_context:
         urlPath += key + "=" + past_context[key] + "&"
-    serializer = MembershipModelSerializer(membership)
-    data = serializer.data
+    data = MembershipModelSerializer(membership).data | MemberModelSerializer(member).data
     start = membership.start_date.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
     
@@ -151,6 +149,11 @@ def get_membership_by_id(request, membership_id):
     vote_list = paginator.get_page(page_number)
     data['url_path'] = urlPath
     data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
+
+    for i in range(len(vote_list)):
+        vote = vote_list[i]
+        vote_type = utils.getVoteType(vote, congress, member)
+        data['vote_list'][i]['mem_vote'] = vote_type
 
     if 'member' in api_response:
         member_data = api_response['member']
@@ -186,8 +189,7 @@ def get_membership(request, congress_num, bioguide_id, in_house):
     past_context = request.GET.dict()
     for key in past_context:
         urlPath += key + "=" + past_context[key] + "&"
-    serializer = MembershipModelSerializer(membership)
-    data = serializer.data
+    data = MembershipModelSerializer(membership).data | MemberModelSerializer(member).data
     start = membership.start_date.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
     
@@ -205,6 +207,11 @@ def get_membership(request, congress_num, bioguide_id, in_house):
     vote_list = paginator.get_page(page_number)
     data['url_path'] = urlPath
     data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
+
+    for i in range(len(vote_list)):
+        vote = vote_list[i]
+        vote_type = utils.getVoteType(vote, congress, member)
+        data['vote_list'][i]['mem_vote'] = vote_type
 
     if 'member' in api_response:
         member_data = api_response['member']

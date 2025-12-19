@@ -4,12 +4,12 @@ from .models import Member, Membership, Congress
 class MemberModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
-        fields = '__all__'
+        fields = ['full_name', 'image_link', 'official_link', 'office', 'phone', 'birth_year', 'death_year']
 
 class MembershipModelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
-        fields = '__all__'
+        fields = ['id', 'district_num', 'house', 'state', 'party', 'start_date', 'end_date']
 
 class MembershipSimpleModelSerializer(serializers.ModelSerializer):
     class Meta:
