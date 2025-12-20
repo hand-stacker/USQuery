@@ -373,11 +373,12 @@ async def updateRecentBills(congress_num, current_date_str, bill_type):
     end_operation = False
     while API_response is not None:
         for bill in API_response['bills']:
-            latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
-            if latest_action_date >= current_date:
-                await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
-            else :
-                end_operation = True
+            if bill['latestAction'] and 'actionDate' in bill['latestAction']:
+                latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
+                if latest_action_date >= current_date:
+                    await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
+                else :
+                    end_operation = True
         if 'next' in API_response['pagination'] and not end_operation:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
