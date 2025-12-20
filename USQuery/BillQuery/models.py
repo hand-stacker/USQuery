@@ -40,7 +40,7 @@ class TypeManager(models.Manager):
 class TypeManagerVote(models.Manager):
     def get_from_type(self, _type, start_date, end_date):
         if _type == '!':
-            return super(TypeManager, self).get_queryset().filter(dateTime__gte=start_date, dateTime__lte=end_date) 
+            return super(TypeManagerVote, self).get_queryset().filter(dateTime__gte=start_date, dateTime__lte=end_date) 
         _addr = 1_0_00000 if _type == 'h' else 0
         _start = 110_0_1_00001
         _end = 110_0_2_99999
