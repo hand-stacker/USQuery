@@ -234,7 +234,14 @@ def get_membership(request, congress_num, bioguide_id, in_house):
 
 @api_view(['GET'])
 def get_memberships_set(request, congress_num, chamber, state):
-   return update_members(request, congress_num, chamber, state)
+    is_house = chamber != 'Senate'
+    congress = Congress.objects.get(congress_num__exact=congress_num)
+    if (state == 'All'):
+        mems =Membership.objects.filter(congress = congress, house = is_house)
+    else :
+        mems = Membership.objects.filter(congress = congress, state = state, house = is_house)
+    mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party')
+    return JsonResponse({'members': list(mems)})
 
 @staff_member_required
 def populate_congress(request, congress_num):
