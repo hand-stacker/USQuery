@@ -1,6 +1,6 @@
 import strawberry, aiohttp
 import strawberry.types
-from datetime import date
+from datetime import date, datetime
 from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
 from typing import List, Optional
 from django.db.models import Q, Count, Prefetch
@@ -9,14 +9,23 @@ from SenateQuery.models import Congress, Member, Membership
 from .utils import batch_load_summaries, fetch_actions, fetch_summary
 from asgiref.sync import sync_to_async
 from markdownify import markdownify as md
-
 import base64
+import json
 
-def encode_cursor(article_id: int) -> str:
-    return base64.b64encode(str(article_id).encode()).decode()
+def encode_cursor(payload: dict) -> str:
+    ## payload should be a dict, e.g. {"id": 123, "latest_action": "2025-12-19", "match_count": 2}
+    return base64.b64encode(json.dumps(payload).encode()).decode()
 
-def decode_cursor(cursor: str) -> int:
-    return int(base64.b64decode(cursor).decode())
+def decode_cursor(cursor: str) -> dict:
+    raw = base64.b64decode(cursor).decode()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        ## backward-compat: old cursors were just the id as a plain integer string
+        try:
+            return {"id": int(raw)}
+        except ValueError:
+            return {}
 
 def vote_id_helper(a):
     if "recordedVotes" in a:
@@ -113,24 +122,69 @@ class Query:
         ## selects only from the provided congress num
         qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
 
-        ##  handles pagination
-        if after:
-            after_id = decode_cursor(after)
-            qs = qs.filter(id__gt=after_id)
-
-        if not subjectList:
-            qs = qs[: first + 1]
-        else:
-            qs = (
-                qs.annotate(
+        ## When subjectList provided we annotate match_count, require match_count > 0,
+        ## and order by relevance (match_count) then recency (latest_action) then id for stability.
+        if subjectList:
+            qs = qs.annotate(
                     match_count=Count(
                         "subjects",
                         filter=Q(subjects__in=subjectList),
                         distinct=True
                     )
-                )
-                .order_by("-match_count")[: first + 1]
-            )
+                ).filter(match_count__gt=0)
+
+            qs = qs.order_by("-match_count", "-latest_action", "-id")
+
+            ## handle pagination with composite cursor (match_count, latest_action, id)
+            if after:
+                cursor = decode_cursor(after)
+                last_match = cursor.get("match_count")
+                last_action_str = cursor.get("latest_action")
+                last_id = cursor.get("id")
+                if last_match is not None:
+                    try:
+                        last_match = int(last_match)
+                    except Exception:
+                        last_match = None
+                if last_match is not None and last_action_str and last_id is not None:
+                    try:
+                        last_action = date.fromisoformat(last_action_str)
+                        ## ordering is descending: choose rows that come after the cursor:
+                        ## 1) match_count < last_match
+                        ## 2) OR match_count == last_match AND latest_action < last_action
+                        ## 3) OR match_count == last_match AND latest_action == last_action AND id < last_id
+                        qs = qs.filter(
+                            Q(match_count__lt=last_match) |
+                            (Q(match_count=last_match) & (
+                                Q(latest_action__lt=last_action) |
+                                (Q(latest_action=last_action) & Q(id__lt=last_id))
+                            ))
+                        )
+                    except Exception:
+                        ## fallback to id-only filter (descending)
+                        if last_id is not None:
+                            qs = qs.filter(id__lt=last_id)
+                elif last_id is not None:
+                    qs = qs.filter(id__lt=last_id)
+
+            qs = qs[: first + 1]
+        else:
+            ## No subject ordering required use stable ordering by latest_action desc
+            qs = qs.order_by("-latest_action", "-id")
+            if after:
+                cursor = decode_cursor(after)
+                last_action_str = cursor.get("latest_action")
+                last_id = cursor.get("id")
+                if last_action_str and last_id is not None:
+                    try:
+                        last_action = date.fromisoformat(last_action_str)
+                        qs = qs.filter(Q(latest_action__lt=last_action) | (Q(latest_action=last_action) & Q(id__lt=last_id)))
+                    except Exception:
+                        if last_id is not None:
+                            qs = qs.filter(id__lt=last_id)
+                elif last_id is not None:
+                    qs = qs.filter(id__lt=last_id)
+            qs = qs[: first + 1]
 
         items = await sync_to_async(list)(qs)
         has_next = len(items) > first
@@ -146,7 +200,7 @@ class Query:
             
         edges = [
             BillEdge(
-                cursor=encode_cursor(a.id),
+                cursor=encode_cursor({"id": a.id, "latest_action": a.latest_action.isoformat(), "match_count": getattr(a, "match_count", 0)}),
                 node=a
             )
             for a in items
@@ -166,19 +220,80 @@ class Query:
     async def get_recent_votes(
         self,
         first: int = 15,
+        congress_num: int = 119,
+        bill_type:str = "!",
         subjectList: Optional[List[int]] = None,
         after: Optional[str] = None) -> VoteConnection:
         first = min(first, 50)
         ## selects only from the provided congress num
-        qs = Vote.objects.all()
+        _congress = await Congress.objects.aget(congress_num__exact=congress_num)
+        start_date = date(_congress.start_year, 1, 3)
+        end_date = date(_congress.end_year, 1, 3)
+        qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date)
 
+        ## When subjectList provided we annotate match_count based on the vote's bill subjects,
+        ## require match_count > 0, and order by relevance (match_count) then recency (dateTime) then id.
         if subjectList:
-            qs = qs.filter(bill__subjects__in=subjectList).distinct()
+            qs = qs.annotate(
+                    match_count=Count(
+                        "bill__subjects",
+                        filter=Q(bill__subjects__in=subjectList),
+                        distinct=True
+                    )
+                ).filter(match_count__gt=0)
 
-        ##  handles pagination
-        if after:
-            after_id = decode_cursor(after)
-            qs = qs.filter(id__gt=after_id)
+            qs = qs.order_by("-match_count", "-dateTime", "-id")
+
+            ## handle pagination with composite cursor (match_count, dateTime, id)
+            if after:
+                cursor = decode_cursor(after)
+                last_match = cursor.get("match_count")
+                last_dateTime_str = cursor.get("dateTime")
+                last_id = cursor.get("id")
+                if last_match is not None:
+                    try:
+                        last_match = int(last_match)
+                    except Exception:
+                        last_match = None
+                if last_match is not None and last_dateTime_str and last_id is not None:
+                    try:
+                        last_dateTime = datetime.fromisoformat(last_dateTime_str)
+                        ## ordering is descending: choose rows that come after the cursor:
+                        ## 1) match_count < last_match
+                        ## 2) OR match_count == last_match AND dateTime < last_dateTime
+                        ## 3) OR match_count == last_match AND dateTime == last_dateTime AND id < last_id
+                        qs = qs.filter(
+                            Q(match_count__lt=last_match) |
+                            (Q(match_count=last_match) & (
+                                Q(dateTime__lt=last_dateTime) |
+                                (Q(dateTime=last_dateTime) & Q(id__lt=last_id))
+                            ))
+                        )
+                    except Exception:
+                        ## fallback to id-only filter (descending)
+                        if last_id is not None:
+                            qs = qs.filter(id__lt=last_id)
+                elif last_id is not None:
+                    qs = qs.filter(id__lt=last_id)
+
+            qs = qs[: first + 1]
+        else:
+            ## No subject ordering required  use stable ordering by dateTime desc
+            qs = qs.order_by("-dateTime", "-id")
+            if after:
+                cursor = decode_cursor(after)
+                last_dateTime_str = cursor.get("dateTime")
+                last_id = cursor.get("id")
+                if last_dateTime_str and last_id is not None:
+                    try:
+                        last_dateTime = datetime.fromisoformat(last_dateTime_str)
+                        qs = qs.filter(Q(dateTime__lt=last_dateTime) | (Q(dateTime=last_dateTime) & Q(id__lt=last_id)))
+                    except Exception:
+                        if last_id is not None:
+                            qs = qs.filter(id__lt=last_id)
+                elif last_id is not None:
+                    qs = qs.filter(id__lt=last_id)
+            qs = qs[: first + 1]
 
         items = await sync_to_async(list)(qs)
         has_next = len(items) > first
@@ -186,7 +301,7 @@ class Query:
 
         edges = [
             VoteEdge(
-                cursor=encode_cursor(a.id),
+                cursor=encode_cursor({"id": a.id, "dateTime": a.dateTime.isoformat(), "match_count": getattr(a, "match_count", 0)}),
                 node=a
             )
             for a in items
