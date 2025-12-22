@@ -34,6 +34,30 @@ def vote_id_helper(a):
         return vote_id
     return None
 
+
+## Recursively search AST selection nodes for a field named `target_field`.
+## Works with Strawberry `info.field_nodes` (GraphQL AST nodes).
+
+def _ast_selection_contains(nodes, target_field: str) -> bool:
+    
+    for node in nodes:
+        sel_set = getattr(node, "selection_set", None)
+        if not sel_set:
+            continue
+        for sel in sel_set.selections:
+            name = getattr(getattr(sel, "name", None), "value", None)
+            if name == target_field:
+                return True
+            # recurse into nested selection sets (e.g. edges -> node -> summary)
+            if getattr(sel, "selection_set", None):
+                if _ast_selection_contains([sel], target_field):
+                    return True
+    return False
+
+def selection_contains_field(info: "strawberry.types.Info", field_name: str) -> bool:
+    # info.field_nodes is a list of AST Field nodes for the current resolver
+    return _ast_selection_contains(info.field_nodes, field_name)
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -113,8 +137,9 @@ class Query:
         subjectList: Optional[List[int]] = None,
         first: int = 5,
         after: Optional[str] = None,
+        info: "strawberry.types.Info" = None,
     ) -> BillConnection:
-        first = min(first, 15)
+        first = min(first, 30)
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
         end_date = date(_congress.end_year, 1, 3)
@@ -190,13 +215,20 @@ class Query:
         has_next = len(items) > first
         items = items[:first]
         
-        ## Run summary batch request
-        summaries = await batch_load_summaries([i for i in items])
-
-        ## Attach summaries dynamically
-        for i in items:
-            i.summary = md(summaries.get(i.id)["summary"])
-            i.is_AI_generated = summaries.get(i.id)["AI_generated_content?"]
+        ## Run summary batch request only if the GraphQL selection requests the `summary` field
+        # Traverses the AST for the current field to find any selection named "summary"
+        if info is not None and selection_contains_field(info, "summary"):
+            summaries = await batch_load_summaries(items)
+            ## Attach summaries dynamically
+            for i in items:
+                s = summaries.get(i.id)
+                if s:
+                    i.summary = md(s["summary"])
+                    i.is_AI_generated = s["AI_generated_content?"]
+        else:
+            for i in items:
+                i.summary = None
+                i.is_AI_generated = False
             
         edges = [
             BillEdge(

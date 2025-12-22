@@ -5,11 +5,12 @@ from USQuery import settings
 
 timeout_day = 60 * 60 * 24
 ## ASYNC : Special async caching func for bill summaries, returns {"_id" : <int>, "AI_generated_content?" : <bool>, "summary" : <text> }
-async def fetch_summary(session, bill):
+async def fetch_summary(session, bill, try_AI_fetch=True):
     context = {}
     _id = bill.id
     context["_id"] = _id
     context['AI_generated_content?'] = False
+    context['summary'] = "We cannot provide a summary at this time."
 
     apiURL = settings.CONGRESS_DIR + "bill/" + bill.getURL()
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
@@ -22,8 +23,9 @@ async def fetch_summary(session, bill):
     data = await connectASYNC(session, fullpath, header_str)
     if (data != ''):
         if (len(data['summaries']) < 1):
-            context['AI_generated_content?'] = True
-            context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, _id)
+            if (try_AI_fetch) :
+                context['AI_generated_content?'] = True
+                context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, _id)
         else :
             context['summary'] = data['summaries'][0]['text']
     if not context["AI_generated_content?"]: cache.set(key, context["summary"], timeout_day)
@@ -47,16 +49,39 @@ async def fetch_actions(session, bill):
     return context
 
 async def batch_load_summaries(args):
-    session = aiohttp.ClientSession()
-    tasks = [fetch_summary(session, arg) for arg in args]
-    results = await asyncio.gather(*tasks)
-    await session.close()
+    n = len(args)
+    results = [None] * n
+    limit = 5
+
+    async with aiohttp.ClientSession() as session:
+        sem = asyncio.Semaphore(limit)
+
+        async def _worker(idx, bill):
+            async with sem:
+                ## fetch summary without calling AI API in order to limit token usage and make sure bandwith is fast
+                results[idx] = await fetch_summary(session, bill, False)
+
+        async with asyncio.TaskGroup() as tg:
+            for i, bill in enumerate(args):
+                tg.create_task(_worker(i, bill))
+
     return {blob["_id"]: blob for blob in results}
 
 
 async def batch_load_actions(args):
-    session = aiohttp.ClientSession()
-    tasks = [fetch_actions(session, arg) for arg in args]
-    results = await asyncio.gather(*tasks)
-    await session.close()
+    n = len(args)
+    results = [None] * n
+    limit = 5
+
+    async with aiohttp.ClientSession() as session:
+        sem = asyncio.Semaphore(limit)
+
+        async def _worker(idx, bill):
+            async with sem:
+                results[idx] = await fetch_actions(session, bill)
+
+        async with asyncio.TaskGroup() as tg:
+            for i, bill in enumerate(args):
+                tg.create_task(_worker(i, bill))
+
     return {blob["_id"]: blob for blob in results}
