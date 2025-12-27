@@ -240,7 +240,7 @@ def get_memberships_set(request, congress_num, chamber, state):
         mems =Membership.objects.filter(congress = congress, house = is_house)
     else :
         mems = Membership.objects.filter(congress = congress, state = state, house = is_house)
-    mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party')
+    mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party', 'district_num')
     return JsonResponse({'members': list(mems)})
 
 @staff_member_required
