@@ -5,6 +5,7 @@ from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Bill, Vote, BillSummary, Subject
+from notifications.push import send_bill_notification
 from collections import defaultdict
 from xml.etree import cElementTree as ET
 from google import genai
@@ -627,6 +628,13 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                         tg.create_task(vote.pres.aset(pres))
                         tg.create_task(vote.novt.aset(novt))
                     print('Added Vote : ' + str(vote_id))
+                    if created:
+                        send_bill_notification(
+                            bill_id=bill.congressional_id,
+                            title="New Vote",
+                            body="A new voe was taken on a bill you starred"
+                        )
+
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
