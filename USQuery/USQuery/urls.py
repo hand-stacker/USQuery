@@ -15,6 +15,7 @@ from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
+from notifications.views import RegisterDevice, StarBill, UnstarBill
 admin.autodiscover()
 
 
@@ -69,3 +70,10 @@ urlpatterns = [
     path("api/v1.0/graphql/", csrf_exempt(AsyncGraphQLView.as_view(schema=schema))),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
+
+urlpatterns += [
+    path("api/notif/register-device/", RegisterDevice.as_view()),
+    path("api/notif/star-bill/", StarBill.as_view()),
+    path("api/notif/unstar-bill/", UnstarBill.as_view()),
+]

@@ -59,6 +59,33 @@
     <Compile Include="BillQuery\views.py" />
     <Compile Include="BillQuery\__init__.py" />
     <Compile Include="manage.py" />
+    <Compile Include="notifications\admin.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\apps.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\migrations\0001_initial.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\migrations\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\models.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\push.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\tests.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\views.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="notifications\__init__.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="SenateQuery\admin.py" />
     <Compile Include="SenateQuery\apps.py" />
     <Compile Include="SenateQuery\migrations\__init__.py">
