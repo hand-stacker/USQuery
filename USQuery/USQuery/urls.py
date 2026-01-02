@@ -15,7 +15,7 @@ from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
-from notifications.views import RegisterDevice, StarBill, UnstarBill
+from notifications.views import RegisterDevice, StarBill, UnstarBill, send_test_bill_notification, send_test_bill_notification_exclusion_test, MassUnstar
 admin.autodiscover()
 
 
@@ -76,4 +76,8 @@ urlpatterns += [
     path("api/notif/register-device/", RegisterDevice.as_view()),
     path("api/notif/star-bill/", StarBill.as_view()),
     path("api/notif/unstar-bill/", UnstarBill.as_view()),
+    # Admin-only test endpoint to trigger a mock push notification
+    path("api/notif/send-test/", send_test_bill_notification),
+    path("api/notif/send-test-null/", send_test_bill_notification_exclusion_test),
+    path("api/notif/mass-unstar/<int:congress_num>", MassUnstar)
 ]

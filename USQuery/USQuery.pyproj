@@ -123,6 +123,7 @@
     <Folder Include="BillQuery\templates\" />
     <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="models\" />
+    <Folder Include="notifications\" />
     <Folder Include="strawberryAPI\" />
     <Folder Include="SenateQuery\" />
     <Folder Include="SenateQuery\migrations\" />
