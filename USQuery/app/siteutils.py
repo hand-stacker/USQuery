@@ -152,11 +152,21 @@ def createPredictions(bill_id):
             )
     BinaryProbability.objects.bulk_create(objs)
 
+# gets sample_size batch of vote simulations. 
+# assumes bill exists
+# when bill has passes deletes any BillPrediction objects an returns None
+# when Errors occur returns None
 def getPredictionBatch(bill_id, in_house, sample_size, run_sample = True):
     bill = Bill.objects.get(id = bill_id)
     _set = BillPrediction.objects.filter(id= bill_id)
+    if bill.status : 
+        if _set.exists():
+            deletePred(bill_id)
+        return None
+
     if not _set.exists() and createPredictions(bill_id) == -1: return None
     bill_pred = BillPrediction.objects.get(id=bill_id)
+    # if new actions maybe new text file, thus BillPrediction is recreated
     if (bill.latest_action > bill_pred.creation_date):
         bill_pred.delete()
         createPredictions(bill_id)
@@ -170,3 +180,8 @@ def getPredictionBatch(bill_id, in_house, sample_size, run_sample = True):
         rvs = binom.rvs(p_func.counts, float(p_func.p), size = sample_size)
         batch += rvs
     return batch.tolist()
+
+# Deletes BillPrediction (assumes this prediction exists)
+def deletePred(bill_id):
+    bill_pred = BillPrediction.objects.get(id=bill_id)
+    bill_pred.delete()
