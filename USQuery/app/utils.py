@@ -353,12 +353,20 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
     membership.end_date = departure_date
     membership.save()
 
-## updates database, adding new bills or updating bills and votes with actionDate GTE current_date_str
-async def updateRecentBills(congress_num, current_date_str, bill_type):
-    if current_date_str != "!":
-        current_date = datetime.strptime(current_date_str, '%Y-%m-%d')
-    else:
-        current_date = datetime.today() - timedelta(days=3)
+## updates database, adding new bills or updating bills and votes with actionDate GTE date_str
+async def updateRecentBills(congress_num, date_str, bill_type):
+    key = await make_cache_keyASYNC('last_processed_action_date?', bill_type)
+    # if no date_str provided, we take the last_processed_action_date?{bill_type} date and use it as our limit
+    if date_str == "!":
+        cached = cache.get(key)
+        if cached:
+            date_str = cached
+        else: 
+            print ("Fatal error for updateRecentBills: no cached last_processed_action_date")
+            return
+
+    last_processed_action_date = datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)
+    tracked_latest_date = datetime.strptime(date_str, '%Y-%m-%d')
     header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
@@ -376,14 +384,18 @@ async def updateRecentBills(congress_num, current_date_str, bill_type):
         for bill in API_response['bills']:
             if bill['latestAction'] and 'actionDate' in bill['latestAction']:
                 latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
-                if latest_action_date >= current_date:
+                if latest_action_date >= last_processed_action_date:
                     await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
+                    if latest_action_date > tracked_latest_date:
+                        tracked_latest_date = latest_action_date
                 else :
-                    end_operation = True
-        if 'next' in API_response['pagination'] and not end_operation:
+                    API_response = None
+                    break
+        if API_response is not None and 'next' in API_response['pagination']:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
+    cache.set(key, tracked_latest_date.strftime('%Y-%m-%d'), 60 * 60 * 12)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
         tg.create_task(vote_session.close())
@@ -501,7 +513,7 @@ async def updateBill(congress_num, _type, num) :
                     tg.create_task(vote.nays.aset(nays))
                     tg.create_task(vote.pres.aset(pres))
                     tg.create_task(vote.novt.aset(novt))
-                print('Added Vote : ' + str(vote_id))
+                # print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
@@ -537,9 +549,15 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
     except:
         print('Membership not Found')
         return
+    ### REFACTOR NEEDED : use status codes here instead...
     status = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
+
+    # Track previous latest_action when bill already exists so we can stop processing older actions
+    prev_latest_action = None
     if (bill_exists) : 
         bill = await Bill.objects.aget(id = _id)
+        # preserve previous latest_action (DateField) for early exit while processing actions
+        prev_latest_action = bill.latest_action
         bill.title = b['title']
         bill.status = status
         bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
@@ -555,8 +573,23 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
             )
         bill = bill[0]
 
+    # Normalize prev_latest_action to a date object if present
+    if prev_latest_action is not None and isinstance(prev_latest_action, datetime):
+        prev_latest_action = prev_latest_action.date()
+
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
+            # If the bill already existed and we reach an action older-or-equal to the stored previous latest_action,
+            # stop processing further actions for this bill (and pagination).
+            try:
+                action_date = datetime.strptime(a['actionDate'], '%Y-%m-%d').date()
+            except Exception:
+                action_date = None
+            if prev_latest_action is not None and action_date is not None and action_date <= prev_latest_action:
+                # stop processing further actions (they are older)
+                API_response_actions = None
+                break
+
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
@@ -627,7 +660,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                         tg.create_task(vote.nays.aset(nays))
                         tg.create_task(vote.pres.aset(pres))
                         tg.create_task(vote.novt.aset(novt))
-                    print('Added Vote : ' + str(vote_id))
+                    # print('Added Vote : ' + str(vote_id))
                     if created:
                         send_bill_notification(
                             bill_id=bill.congressional_id,
@@ -635,7 +668,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                             body="A new voe was taken on a bill you starred"
                         )
 
-        if 'next' in API_response_actions['pagination']:
+        if API_response_actions is not None and 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None

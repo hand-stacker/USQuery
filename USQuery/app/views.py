@@ -2,7 +2,8 @@ from datetime import datetime
 from urllib import request
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
-from django.http import HttpRequest, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect, HttpResponse
+from django.views.decorators.http import require_GET
 from SenateQuery.models import Congress
 from BillQuery.models import Vote
 from app import siteutils, utils
@@ -58,3 +59,45 @@ def updateSTATES(request) :
     assert isinstance(request, HttpRequest)
     siteutils.modifyStateGeoJSON()
     return HttpResponseRedirect("/")
+
+@require_GET
+def robots_txt(request):
+    content = """ 
+User-agent: *
+Disallow: /admin
+Disallow: /admin/
+Disallow: /admin*
+Disallow: /admin/*
+Disallow: /login
+Disallow: /login/
+Disallow: /login*
+Disallow: /login/*
+Disallow: /logout
+Disallow: /logout*
+Disallow: /logout/
+Disallow: /logout/*
+Disallow: /member-query/update-mems
+Disallow: /member-query/update-mems/
+Disallow: /member-query/update-mems*
+Disallow: /member-query/update-mems/*
+Disallow: /bill-query/prediction-request
+Disallow: /bill-query/prediction-request/
+Disallow: /bill-query/prediction-request*
+Disallow: /bill-query/prediction-request/*
+Disallow: /bill-query/bill
+Disallow: /bill-query/bill/
+Disallow: /bill-query/bill*
+Disallow: /bill-query/bill/*
+Disallow: /bill-query/vote
+Disallow: /bill-query/vote/
+Disallow: /bill-query/vote*
+Disallow: /bill-query/vote/*
+Allow: /bill-query/bill/119
+Allow: /bill-query/bill/119/
+Allow: /bill-query/bill/119*
+Allow: /bill-query/bill/119/*
+Allow: /bill-query/vote/119*
+
+Crawl-delay: 10
+    """
+    return HttpResponse(content, content_type="text/plain")

@@ -16,6 +16,7 @@ from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
 from notifications.views import RegisterDevice, StarBill, UnstarBill, send_test_bill_notification, send_test_bill_notification_exclusion_test, MassUnstar
+from app.views import robots_txt
 admin.autodiscover()
 
 
@@ -72,6 +73,7 @@ urlpatterns = [
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
 
+#Notif api
 urlpatterns += [
     path("api/notif/register-device/", RegisterDevice.as_view()),
     path("api/notif/star-bill/", StarBill.as_view()),
@@ -80,4 +82,8 @@ urlpatterns += [
     path("api/notif/send-test/", send_test_bill_notification),
     path("api/notif/send-test-null/", send_test_bill_notification_exclusion_test),
     path("api/notif/mass-unstar/<int:congress_num>", MassUnstar)
+]
+
+urlpatterns += [
+    path("robots.txt", robots_txt),
 ]
