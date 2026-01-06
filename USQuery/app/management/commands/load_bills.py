@@ -4,8 +4,9 @@ from app.utils import updateRecentBills, types
 
 class Command(BaseCommand):
     help = "Load data from congress API into database"
-
+    
     def handle(self, *args, **options):
+        self.stdout.write("start load")
         for t in types :
             asyncio.run(updateRecentBills(119, "!", t))
         self.stdout.write("Data load completed")
