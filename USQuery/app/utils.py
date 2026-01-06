@@ -395,7 +395,7 @@ async def updateRecentBills(congress_num, date_str, bill_type):
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
-    cache.set(key, tracked_latest_date.strftime('%Y-%m-%d'), 60 * 60 * 12)
+    cache.set(key, tracked_latest_date.strftime('%Y-%m-%d'), 60 * 60 * 24)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
         tg.create_task(vote_session.close())
