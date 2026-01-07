@@ -130,7 +130,7 @@ class Query:
             return None
 
     @strawberry.field
-    async def recommended_bills(
+    async def getRecommendedBills(
         self,
         congress_num: int = 119,
         bill_type:str = "!",
@@ -249,7 +249,70 @@ class Query:
         )
 
     @strawberry.field
-    async def get_recent_votes(
+    async def getStarredBills(
+        self,
+        starredList: List[int] = None,
+        first: int = 5,
+        after: Optional[str] = None,\
+        info: "strawberry.types.Info" = None,
+    ) -> BillConnection:
+        first = min(first, 30)
+        qs = Bill.type_objects.filter(id__in=starredList)
+        qs = qs.order_by("-latest_action", "-id")
+        if after:
+            cursor = decode_cursor(after)
+            last_action_str = cursor.get("latest_action")
+            last_id = cursor.get("id")
+            if last_action_str and last_id is not None:
+                try:
+                    last_action = date.fromisoformat(last_action_str)
+                    qs = qs.filter(Q(latest_action__lt=last_action) | (Q(latest_action=last_action) & Q(id__lt=last_id)))
+                except Exception:
+                    if last_id is not None:
+                        qs = qs.filter(id__lt=last_id)
+            elif last_id is not None:
+                qs = qs.filter(id__lt=last_id)
+        qs = qs[: first + 1]
+
+        items = await sync_to_async(list)(qs)
+        has_next = len(items) > first
+        items = items[:first]
+        
+        ## Run summary batch request only if the GraphQL selection requests the `summary` field
+        # Traverses the AST for the current field to find any selection named "summary"
+        if info is not None and selection_contains_field(info, "summary"):
+            summaries = await batch_load_summaries(items)
+            ## Attach summaries dynamically
+            for i in items:
+                s = summaries.get(i.id)
+                if s:
+                    i.summary = md(s["summary"])
+                    i.is_AI_generated = s["AI_generated_content?"]
+        else:
+            for i in items:
+                i.summary = None
+                i.is_AI_generated = False
+            
+        edges = [
+            BillEdge(
+                cursor=encode_cursor({"id": a.id, "latest_action": a.latest_action.isoformat()}),
+                node=a
+            )
+            for a in items
+        ]
+
+        return BillConnection(
+            edges=edges,
+            page_info=strawberry.relay.PageInfo(
+                has_next_page=has_next,
+                has_previous_page=after is not None,
+                start_cursor=edges[0].cursor if edges else None,
+                end_cursor=edges[-1].cursor if edges else None,
+            ),
+        )
+
+    @strawberry.field
+    async def getRecentVotes(
         self,
         first: int = 15,
         congress_num: int = 119,
