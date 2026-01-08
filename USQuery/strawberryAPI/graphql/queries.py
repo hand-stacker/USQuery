@@ -142,7 +142,7 @@ class Query:
         first = min(first, 30)
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
-        end_date = date(_congress.end_year, 1, 3)
+        end_date = date(_congress.end_year + 1, 1, 3)
 
         ## selects only from the provided congress num
         qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
@@ -323,7 +323,7 @@ class Query:
         ## selects only from the provided congress num
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
-        end_date = date(_congress.end_year, 1, 3)
+        end_date = date(_congress.end_year + 1, 1, 3)
         qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date)
 
         ## When subjectList provided we annotate match_count based on the vote's bill subjects,
