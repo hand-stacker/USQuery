@@ -242,6 +242,15 @@ def get_memberships_set(request, congress_num, chamber, state):
     mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party', 'district_num')
     return JsonResponse({'members': list(mems)})
 
+@api_view(['GET'])
+def get_specific_memberships(request):
+    context = request.GET.dict()
+    mem_list = context['membershipIds'].split(',')
+    mem_list = mem_list[0: min(len(mem_list), 50)]
+    mems =Membership.objects.filter(id__in=mem_list)
+    mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party', 'district_num')
+    return JsonResponse({'members': list(mems)})
+
 @staff_member_required
 def populate_congress(request, congress_num):
     assert isinstance(request, HttpRequest) 

@@ -68,6 +68,7 @@ urlpatterns = [
     path('api/v1.0/membership/<int:congress_num>/<str:bioguide_id>/<int:in_house>/', csrf_exempt(SQviews.get_membership)),
     path('api/v1.0/membership-by-id/<int:membership_id>', csrf_exempt(SQviews.get_membership_by_id)),
     path('api/v1.0/membership-set/<int:congress_num>/<str:chamber>/<str:state>/', csrf_exempt(SQviews.get_memberships_set)),
+    path('api/v1.0/memberships/', csrf_exempt(SQviews.get_specific_memberships)),
     path("api/v1.0/graphql/", csrf_exempt(AsyncGraphQLView.as_view(schema=schema))),
     re_path(r'^static/(?P<path>.*)$', serve,{'document_root': settings.STATIC_ROOT})
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
