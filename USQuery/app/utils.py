@@ -662,7 +662,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                         tg.create_task(vote.novt.aset(novt))
                     # print('Added Vote : ' + str(vote_id))
                     if created:
-                        send_bill_notification(
+                        await send_bill_notification(
                             bill_id=bill.id,
                             title="New Vote",
                             body="A new vote was taken on " + bill.__str__()
