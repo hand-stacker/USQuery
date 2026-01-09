@@ -663,9 +663,9 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                     # print('Added Vote : ' + str(vote_id))
                     if created:
                         send_bill_notification(
-                            bill_id=bill.congressional_id,
+                            bill_id=bill.id,
                             title="New Vote",
-                            body="A new voe was taken on a bill you starred"
+                            body="A new vote was taken on " + bill.__str__()
                         )
 
         if API_response_actions is not None and 'next' in API_response_actions['pagination']:
