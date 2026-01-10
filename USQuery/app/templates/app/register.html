@@ -1,0 +1,57 @@
+{% extends "app/layout.html" %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-6">
+        <h2>Register</h2>
+        <hr />
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="error">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <p>
+                {{ form.email.label_tag }}<br>
+                {{ form.email }}
+                {{ form.email.errors }}
+            </p>
+
+            <p>
+                {{ form.email2.label_tag }}<br>
+                {{ form.email2 }}
+                {{ form.email2.errors }}
+            </p>
+
+            <p>
+                {{ form.password1.label_tag }}<br>
+                {{ form.password1 }}
+                {{ form.password1.errors }}
+            </p>
+
+            <p>
+                {{ form.password2.label_tag }}<br>
+                {{ form.password2 }}
+                {{ form.password2.errors }}
+            </p>
+
+            <button type="submit" class="btn btn-primary px-5 mb-5">Register</button>
+        </form>
+    </div>
+    <div class="col-md-6">
+        <h2>Already registered?</h2>
+        <hr />
+        <a href="{% url 'login' %}" class="btn btn-primary px-5 mb-5">Log in</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+{% load static %}
+<script src="{% static 'app/scripts/jquery.validate.min.js' %}"></script>
+{% endblock %}

@@ -16,7 +16,6 @@ from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
 from notifications.views import RegisterDevice, StarBill, UnstarBill, send_test_bill_notification, send_test_bill_notification_exclusion_test, MassUnstar
-from app.views import robots_txt
 admin.autodiscover()
 
 
@@ -24,7 +23,7 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('about/', views.about, name='about'),
     path('login/',
-         LoginView.as_view
+         views.CustomLoginView.as_view
          (
              template_name='app/login.html',
              authentication_form=forms.BootstrapAuthenticationForm,
@@ -36,6 +35,10 @@ urlpatterns = [
          ),
          name='login'),
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
+    path('register/', views.register, name='register'),
+    path('verify-email/<int:user_id>/', views.verify_email, name='verify-email'),
+    path('verify-email/<int:user_id>/resend/', views.resend_verification, name="resend-verification"),
+    path("robots.txt", views.robots_txt),
     path('admin/', admin.site.urls),
     path('updateJSON/<int:congress_id>/', views.updateJSON, name='updateJSON'),
     path('updateSTATES/', views.updateSTATES, name='updateSTATES'),
@@ -85,6 +88,8 @@ urlpatterns += [
     path("api/notif/mass-unstar/<int:congress_num>", MassUnstar)
 ]
 
+#Auth api
 urlpatterns += [
-    path("robots.txt", robots_txt),
+    path('api/auth/', include('app.api.urls')),
+    
 ]
