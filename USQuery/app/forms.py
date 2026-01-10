@@ -1,5 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from SenateQuery import models as SQmodels
 from BillQuery import models as BQmodels
@@ -72,7 +74,7 @@ class BootstrapAuthenticationForm(AuthenticationForm):
     username = forms.CharField(max_length=254,
                                widget=forms.TextInput({
                                    'class': 'form-control',
-                                   'placeholder': 'User name'}))
+                                   'placeholder': 'Email address'}))
     password = forms.CharField(label=_("Password"),
                                widget=forms.PasswordInput({
                                    'class': 'form-control',
@@ -168,4 +170,47 @@ class VoteForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["bill_type"].widget.attrs.update(classic_form)
-    
+
+class RegisterForm(UserCreationForm):
+    email = forms.EmailField()
+    email2 = forms.EmailField(label="Confirm email")
+
+    class Meta:
+        model = User
+        fields = ("email", "password1", "password2")
+
+    def clean(self):
+        cleaned = super().clean()
+        email = cleaned.get("email")
+        email2 = cleaned.get("email2")
+
+        if email and email2 and email != email2:
+            raise forms.ValidationError("Emails do not match")
+
+        if User.objects.filter(email=email).exists():
+            raise forms.ValidationError("Email already registered")
+
+        return cleaned
+
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.username = self.cleaned_data["email"]
+        user.email = self.cleaned_data["email"]
+        user.is_active = False  # must verify email first
+
+        if commit:
+            user.save()
+
+        return user
+
+class VerificationForm(forms.Form):
+    code = forms.UUIDField(
+        label="Verification code",
+        help_text="Enter the code sent to your email",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "e.g. 9b6p8op6c-5c74-4c7e-a9e3-8aefb5a94fcb",
+            }
+        ),
+    )

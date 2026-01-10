@@ -33,7 +33,16 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="app\api\serializers.py" />
+    <Compile Include="app\api\urls.py" />
+    <Compile Include="app\api\views.py" />
+    <Compile Include="app\auth_backends.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="app\forms.py" />
+    <Compile Include="app\management\commands\cleanup_verifications.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="app\models.py" />
     <Compile Include="app\secretss.py" />
     <Compile Include="app\siteutils.py">
@@ -138,6 +147,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="app\" />
+    <Folder Include="app\api\" />
     <Folder Include="app\migrations\" />
     <Folder Include="app\static\" />
     <Folder Include="app\static\app\" />
@@ -179,6 +189,8 @@
     <Content Include="app\static\app\content\images\20170207_Capitol_at_Dusk.jpg" />
     <Content Include="app\static\app\scripts\resize.js" />
     <Content Include="app\static\images\favicon.png" />
+    <Content Include="app\templates\app\register.html" />
+    <Content Include="app\templates\app\verify_email.html" />
     <Content Include="BillQuery\static\geojsons\cb_us_state_5m.js" />
     <Content Include="BillQuery\static\geojsons\cb_us_cd116_5m.js" />
     <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.js" />
