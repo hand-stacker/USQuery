@@ -18,3 +18,4 @@ strawberry-graphql[cli]
 strawberry-graphql-django
 django-redis
 markdownify
+rest_framework_simplejwt
