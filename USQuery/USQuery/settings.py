@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     'bs4',
     'rest_framework',
     'strawberry.django',
+    'rest_framework_simplejwt'
 ]
 
 # Middleware framework
