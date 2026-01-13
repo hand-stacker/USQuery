@@ -16,12 +16,12 @@ class RegisterSerializer(serializers.Serializer):
         return value
 
 class VerifySerializer(serializers.Serializer):
-    user_id = serializers.IntegerField()
+    email = serializers.EmailField()
     code = serializers.CharField()
 
 class ResendSerializer(serializers.Serializer):
-    user_id = serializers.IntegerField()
+    email = serializers.EmailField()
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+    email = serializers.CharField()
     password = serializers.CharField(write_only=True)

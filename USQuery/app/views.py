@@ -81,7 +81,7 @@ class CustomLoginView(LoginView):
                     user = None
             if user is not None and user.check_password(password) and not user.is_active:
                 messages.info(self.request, "Account not verified. Enter your verification code.")
-                return redirect('verify-email', user_id=user.id)
+                return redirect('verify-email', email=user.email)
 
         return super().form_invalid(form)
 
@@ -107,14 +107,14 @@ def register(request):
                 fail_silently=False,
             )
 
-            return redirect("verify-email", user_id=user.id)
+            return redirect("verify-email", email=user.email)
     else:
         form = RegisterForm()
 
     return render(request, "app/register.html", {"form": form})
 
-def verify_email(request, user_id):
-    user = get_object_or_404(User, id=user_id)
+def verify_email(request, email):
+    user = get_object_or_404(User, username=email)
     verification = get_object_or_404(EmailVerification, user=user)
 
     if request.method == "POST":
@@ -146,8 +146,8 @@ def verify_email(request, user_id):
         {"form": form, "email": user.email}
     )
 
-def resend_verification(request, user_id):
-    user = get_object_or_404(User, id=user_id)
+def resend_verification(request, email):
+    user = get_object_or_404(User, email=email)
     verification = get_object_or_404(EmailVerification, user=user)
 
     if user.is_active:
@@ -162,14 +162,14 @@ def resend_verification(request, user_id):
             request,
             "Too many resend attempts from this IP. Please try again later."
         )
-        return redirect("verify-email", user_id=user.id)
+        return redirect("verify-email", email=user.email)
 
     if not verification.can_resend():
         messages.error(
             request,
             "Daily resend limit reached. Please try again tomorrow."
         )
-        return redirect("verify-email", user_id=user.id)
+        return redirect("verify-email", email=user.email)
 
     cache.set(cache_key, attempts + 1, timeout=3600)
 
@@ -191,7 +191,7 @@ def resend_verification(request, user_id):
         request,
         "A new verification code has been sent to your email."
     )
-    return redirect("verify-email", user_id=user.id)
+    return redirect("verify-email", email=user.email)
 
 @staff_member_required
 def updateJSON(request, congress_id) : 
