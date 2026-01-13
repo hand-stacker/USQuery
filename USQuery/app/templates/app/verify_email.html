@@ -35,7 +35,7 @@
         <p>
             Didn't receive a code?
         </p>
-        <a href="{% url 'resend-verification' user_id=request.resolver_match.kwargs.user_id %}" class="btn btn-primary px-5 mb-5">Resend code</a>
+        <a href="{% url 'resend-verification' email %}" class="btn btn-primary px-5 mb-5">Resend code</a>
     </div>
 </div>
 

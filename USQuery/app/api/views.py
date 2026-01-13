@@ -33,17 +33,17 @@ def api_register(request):
         fail_silently=False,
     )
 
-    return Response({"user_id": user.id, "email": user.email}, status=status.HTTP_201_CREATED)
+    return Response({"status": "success", "email": user.email}, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def api_verify_email(request):
     s = VerifySerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    user_id = s.validated_data['user_id']
+    email = s.validated_data['email']
     code = s.validated_data['code']
 
-    user = get_object_or_404(User, id=user_id)
+    user = get_object_or_404(User, email=email)
     verification = get_object_or_404(EmailVerification, user=user)
 
     # compare as text because model stores UUIDField
@@ -60,14 +60,13 @@ def api_verify_email(request):
 def api_resend_verification(request):
     s = ResendSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    user_id = s.validated_data['user_id']
+    email = s.validated_data['email']
 
-    user = get_object_or_404(User, id=user_id)
-    verification = get_object_or_404(EmailVerification, user=user)
-
+    user = get_object_or_404(User, email=email)
     if user.is_active:
         return Response({"detail": "Account already verified."}, status=status.HTTP_400_BAD_REQUEST)
 
+    verification = get_object_or_404(EmailVerification, user=user)
     if not verification.can_resend():
         return Response({"detail": "Daily resend limit reached."}, status=status.HTTP_429_TOO_MANY_REQUESTS)
 
