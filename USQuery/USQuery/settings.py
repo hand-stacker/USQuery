@@ -121,12 +121,19 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# SMTP settings
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.sendgrid.net"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "apikey"
+EMAIL_HOST_PASSWORD = os.environ.get("SENDGRID_API_KEY")
+DEFAULT_FROM_EMAIL = "USQuery <no-reply@usquery.com>"
+
 AUTHENTICATION_BACKENDS = [
     "app.auth_backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "USQuery <no-reply@usquery.local>"
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
