@@ -9,6 +9,7 @@ from notifications.push import send_bill_notification
 from collections import defaultdict
 from xml.etree import cElementTree as ET
 from google import genai
+from django.db.models import Q, Count, Prefetch
 from bs4 import BeautifulSoup
 
 ## helpful objects that map state related data
@@ -810,30 +811,58 @@ def updateMember(congress_num, member_id):
     # need to somehow store history of legislation and party history and leadership
     return API_response_member
 
-def getBillsInRange(s_d, e_d, bill_type):
+# takes s_d (start date) and e_d (end date) strings with fomat YYYY-MM-DD and bill type (string abstraction)
+# returns bills (queryset) of bill type in date range
+def getBillsInRange(s_d, e_d, bill_type, topics):
     start = s_d.split('-')
     end = e_d.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
     end_date = datetime(int(end[0]), int(end[1]), int(end[2]))
     if bill_type != '!':
-        return Bill.type_objects.get_from_type(bill_type, start_date, end_date)
-    return Bill.objects.filter(latest_action__gte=start_date, latest_action__lte=end_date)
+        qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
+    else :
+        qs = Bill.objects.filter(latest_action__gte=start_date, latest_action__lte=end_date)
+    if len(topics) > 0:
+        qs = qs.annotate(
+                match_count=Count(
+                    "subjects",
+                    filter=Q(subjects__in=topics),
+                    distinct=True
+                )
+            ).filter(match_count__gt=0)
+        qs = qs.order_by("-match_count", "-latest_action", "-id")
 
-def getVotesInRange(s_d, e_d, bill_type):
+    return qs
+
+
+# takes s_d (start date) and e_d (end date) strings with fomat YYYY-MM-DD and bill type (string abstraction)
+# returns votes (queryset) of bill type in date range
+def getVotesInRange(s_d, e_d, bill_type, topics):
     start = s_d.split('-')
     end = e_d.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]),0,0,1)
     end_date = datetime(int(end[0]), int(end[1]), int(end[2]),23,59,59)
     if bill_type != '!':
-        return Vote.type_objects.get_from_type(bill_type, start_date, end_date)
-    return Vote.objects.filter(dateTime__gte=start_date, dateTime__lte=end_date)
+        qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date)
+    else :
+       qs = Vote.objects.filter(dateTime__gte=start_date, dateTime__lte=end_date)
+    if len(topics) > 0:
+        qs = qs.annotate(
+                match_count=Count(
+                "bill__subjects",
+                filter=Q(bill__subjects__in=topics),
+                distinct=True
+            )
+        ).filter(match_count__gt=0)
+
+        qs = qs.order_by("-match_count", "-dateTime", "-id")
+    return qs
 
 def intToFIPS(num):
     if num < 10 : return '0' + str(num)
     return str(num)
-#### 
+
 ##  return a context for http request to fill html page with content
-####
 async def billHtml(bill, congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'

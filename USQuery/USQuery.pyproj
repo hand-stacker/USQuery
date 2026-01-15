@@ -176,12 +176,12 @@
     <Content Include="BillQuery\static\scripts\loadSize.js" />
     <Content Include="BillQuery\static\scripts\loadSize_bill.js" />
     <Content Include="BillQuery\static\scripts\loadState.js" />
+    <Content Include="BillQuery\static\scripts\loadTomSelectForms.js" />
     <Content Include="BillQuery\static\scripts\predictionHist.js" />
     <Content Include="BillQuery\static\scripts\predictionHist2.js" />
     <Content Include="BillQuery\static\scripts\sunburstPlot.js" />
     <Content Include="BillQuery\static\scripts\updateBillForm.js" />
     <Content Include="BillQuery\templates\BillQuery\bill-range-form.html" />
-    <Content Include="BillQuery\templates\BillQuery\bill-search-form.html" />
     <Content Include="BillQuery\templates\BillQuery\bill.html" />
     <Content Include="BillQuery\templates\BillQuery\bill_list.html" />
     <Content Include="BillQuery\templates\BillQuery\cloro_choice_form.html" />

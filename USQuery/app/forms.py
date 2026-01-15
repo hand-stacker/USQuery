@@ -68,7 +68,7 @@ chamber_list2 = (('!','All'),('Senate', 'Senate'),('House of Representatives', '
 type_list = (('!','All'),('!H','All House'),('!S','All Senate'),('hr', 'H. R.'),('hres', 'H. Res.'),('hjres', 'H. J. Res.'),('hconres','H. Con. Res.'),
              ('s','S.'),('sres','S. Res.'),('sjres', 'S. J. Res.'), ('sconres', 'S. Con. Res.'))
 
-classic_form = {"class": "dark-01 overflow-scroll rounded-3","style" : "max-width:240px;"}
+classic_form = {"class": "dark-01 overflow-scroll rounded-3 mb-3","style" : "max-width:240px;"}
 class BootstrapAuthenticationForm(AuthenticationForm):
     """Authentication form which uses boostrap CSS."""
     username = forms.CharField(max_length=254,
@@ -114,26 +114,12 @@ class CloroChoice(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["cloro_choice"].widget.attrs.update(classic_form)
 
-class CalendarDateForm(forms.Form):
+class BillForm(forms.Form):
     bill_type = forms.ChoiceField(
         choices = type_list
         )
-    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3"}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3"}))
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["bill_type"].widget.attrs.update(classic_form)
-
-class BillForm(forms.Form):
-    congress = forms.ModelChoiceField(
-        queryset=SQmodels.Congress.objects.all(),
-        required=True,
-        empty_label="Select a Congress"
-        )
-    bill_type_2 = forms.ChoiceField(
-        choices = type_list,
-        required=True
-        )
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3 mb-3"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3 mb-3"}))
     bill_subjects = forms.ModelMultipleChoiceField(
         queryset=BQmodels.Subject.objects.filter(subtype=0),
         widget=forms.SelectMultiple,
@@ -146,30 +132,40 @@ class BillForm(forms.Form):
         queryset=BQmodels.Subject.objects.filter(subtype=2),
         widget=forms.SelectMultiple,
         required=False)
-    bill_num = forms.ModelChoiceField(
-        queryset=BQmodels.Bill.objects.none(),
-        required=True
-        )
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        super(BillForm, self).__init__(*args, **kwargs)
-        self.fields["congress"].widget.attrs.update(classic_form)
-        self.fields["bill_type_2"].widget.attrs.update(classic_form)
-        self.fields["bill_num"].widget.attrs.update(classic_form)
+        self.fields["bill_type"].widget.attrs.update(classic_form)
         self.fields["bill_subjects"].widget.attrs.update(classic_form)
         self.fields["bill_geo_entities"].widget.attrs.update(classic_form)
         self.fields["bill_organizations"].widget.attrs.update(classic_form)
-
 
 class VoteForm(forms.Form):
     bill_type = forms.ChoiceField(
         choices = (('!', 'All'),('h', 'House'),('s', 'Senate')),
         )
-    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3"}))
-    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3"}))
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3 mb-3"}))
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date',"class": "dark-01 rounded-3 mb-3"}))
+
+    # technically votes do not have their own subjects
+    # so we filter based on related bill's subjects
+    bill_subjects = forms.ModelMultipleChoiceField(
+        queryset=BQmodels.Subject.objects.filter(subtype=0),
+        widget=forms.SelectMultiple,
+        required=False)
+    bill_geo_entities = forms.ModelMultipleChoiceField(
+        queryset=BQmodels.Subject.objects.filter(subtype=1),
+        widget=forms.SelectMultiple,
+        required=False)
+    bill_organizations = forms.ModelMultipleChoiceField(
+        queryset=BQmodels.Subject.objects.filter(subtype=2),
+        widget=forms.SelectMultiple,
+        required=False)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["bill_type"].widget.attrs.update(classic_form)
+        self.fields["bill_subjects"].widget.attrs.update(classic_form)
+        self.fields["bill_geo_entities"].widget.attrs.update(classic_form)
+        self.fields["bill_organizations"].widget.attrs.update(classic_form)
 
 class RegisterForm(UserCreationForm):
     email = forms.EmailField()
