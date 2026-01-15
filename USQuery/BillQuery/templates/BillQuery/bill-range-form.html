@@ -1,12 +1,35 @@
 {% load static %}
-<form name="CalForm" id="id_CalForm" action="action-range/" method="get">
-    {{calendar_form.non_field_errors }}
-    <h4>Bill Type</h4>
-    {{calendar_form.bill_type}}
-    <h4>Start Date</h4>
-    {{calendar_form.start_date}}
-    <br />
-    <h4>End Date</h4>
-    {{calendar_form.end_date}}
-    <input type="submit" value="Search" />
+<form name="BillForm" id="id_BillForm" action="bill-query/" method="get">
+    <div class="g-0 row align-items-md-stretch">
+        <div class="g-0 col">
+            {{bill_form.non_field_errors }}
+            <h4>Bill Type</h4>
+            {{bill_form.bill_type}}
+            <h4>Start Date</h4>
+            {{bill_form.start_date}}
+            <br />
+            <h4>End Date</h4>
+            {{bill_form.end_date}}
+            <h4>Subjects</h4>
+
+            <select class="tselect mb-3" id="id_bill_subjects" name="bill_subjects" multiple>
+                <optgroup label="Bill Subjects">
+                    {% for t in bill_form.fields.bill_subjects.queryset %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Geographic Entities">
+                    {% for t in bill_form.fields.bill_geo_entities.queryset %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </optgroup>
+                <optgroup label="Organizations">
+                    {% for t in bill_form.fields.bill_organizations.queryset %}
+                    <option value="{{ t.id }}">{{ t.name }}</option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+            <input type="submit" value="Search" class="submit_button" />
+        </div>
+    </div>
 </form>

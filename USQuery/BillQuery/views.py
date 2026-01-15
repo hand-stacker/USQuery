@@ -10,10 +10,6 @@ from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
 from datetime import date
-from .serializers import VoteModelSerializer
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from rest_framework import status
 
 
 def home(request):
@@ -23,31 +19,50 @@ def home(request):
         'BillQuery/index.html',
         {   
             'title':"Bill Query", 
-            "calendar_form" : forms.CalendarDateForm(request.GET),
             "bill_form" : forms.BillForm(request.GET),
             "vote_form" : forms.VoteForm(request.GET)
         }
     )
 
-def query(request):
+def bill_query(request):
     assert isinstance(request, HttpRequest)
-    cal_form = forms.CalendarDateForm(request.GET)
-    return search(request, cal_form.data["start_date"], cal_form.data["end_date"], cal_form.data["bill_type"])
+    bill_form = forms.BillForm(request.GET)
+    # Use QueryDict.getlist to preserve all selected values from a multi-select input
+    raw_subject_ids = request.GET.get("bill_subjects", '')
+    if raw_subject_ids == '':
+        topics=[]
+    else : 
+        topics = list(map(int, raw_subject_ids.split(',')))
+    return bill_search(
+        request,
+        bill_form.data.get("start_date"),
+        bill_form.data.get("end_date"),
+        bill_form.data.get("bill_type"),
+        topics
+    )
 
 def vote_query(request):
     assert isinstance(request, HttpRequest)
     vote_form = forms.VoteForm(request.GET)
-    return vote_search(request, vote_form.data["start_date"], vote_form.data["end_date"], vote_form.data["bill_type"])
+    # VoteForm uses the same field name 'bill_subjects' — use getlist here as well
+    raw_subject_ids = request.GET.get("vote_subjects", '')
+    if raw_subject_ids == '':
+        topics=[]
+    else : 
+        topics = list(map(int, raw_subject_ids.split(',')))
+    raw_subject_ids = list(map(int, raw_subject_ids))
+    return vote_search(
+        request,
+        vote_form.data.get("start_date"),
+        vote_form.data.get("end_date"),
+        vote_form.data.get("bill_type"),
+        topics
+    )
 
-def bill_search(request):
-    assert isinstance(request, HttpRequest)
-    bill_form = forms.BillForm(request.GET)
-    return bill_return(request, bill_form.data["congress"], bill_form.data["bill_num"])
-
-def search(request, s_d, e_d, bill_type):
+def bill_search(request, s_d, e_d, bill_type, topics):
     assert isinstance(request, HttpRequest)
     try: 
-        q_set = utils.getBillsInRange(s_d, e_d, bill_type)
+        q_set = utils.getBillsInRange(s_d, e_d, bill_type, topics)
     except:
         return HttpResponseRedirect('/bill-query')
     urlPath = ""
@@ -70,10 +85,10 @@ def search(request, s_d, e_d, bill_type):
         }
     )
 
-def vote_search(request, s_d, e_d, bill_type):
+def vote_search(request, s_d, e_d, bill_type, topics):
     assert isinstance(request, HttpRequest)
     try:
-        q_set = utils.getVotesInRange(s_d, e_d, bill_type)
+        q_set = utils.getVotesInRange(s_d, e_d, bill_type, topics)
     except:
         return HttpResponseRedirect('/bill-query')
     urlPath = ""
@@ -95,17 +110,6 @@ def vote_search(request, s_d, e_d, bill_type):
             'title':"Results",
         }
     )
-
-
-def bill_return(request, congress_num, bill_id):
-    assert isinstance(request, HttpRequest)
-    try:
-        _bill = Bill.objects.get(id = bill_id)
-    except Bill.DoesNotExist:
-        return HttpResponseRedirect('/bill-query')
-    bill_type = _bill.getTypeURL()
-    bill_num = _bill.getNum()
-    return bill(request, int(congress_num), bill_type, bill_num, _bill, int(bill_id))
 
 def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = None):
     assert isinstance(request, HttpRequest)
@@ -167,27 +171,6 @@ def vote(request, vote_id):
         'BillQuery/vote.html',
         context
     )
-
-def update_bills(request, congress_num):
-    assert isinstance(request, HttpRequest)
-    _congress = Congress.objects.get(congress_num__exact=congress_num)
-    context = request.GET.dict()
-    start_date = date(_congress.start_year, 1, 3)
-    end_date = date(_congress.end_year, 1, 3)
-    query = Q(origin_date__gte=start_date, origin_date__lte=end_date)
-    subjects = context['subjects'].split(',')
-    if (context['subjects'] != ''):
-        query.add(Q(subjects__in=subjects), Q.AND)
-    
-    ret = []
-    if (context['type_2'] != '!'):
-        bill_type = context['type_2']
-        bills = Bill.type_objects.get_from_type(bill_type, start_date, end_date).filter(query)
-    else :
-        bills = Bill.objects.filter(query)
-    for b in bills.distinct():
-        ret.append({"id":b.id, "str": str(b)})
-    return JsonResponse({'bills': list(ret)})
 
 @staff_member_required
 def populate_bills(request, congress_num, bill_type, limit, offset):

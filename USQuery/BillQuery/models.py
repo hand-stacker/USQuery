@@ -169,7 +169,7 @@ class Vote(models.Model):
     def __str__(self):
         return "congress " + self.congress.__str__() + " : Date "  + self.getDate() + " : " + self.bill.__str__() + " " + self.question
     class Meta():
-        ordering = ["-dateTime"]
+        ordering = ["-dateTime", "-id"]
     
 class ChoiceVote(models.Model) :
     id = models.IntegerField(primary_key=True)

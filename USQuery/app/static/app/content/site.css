@@ -207,6 +207,14 @@ input[type="checkbox"].input-validation-error {
     width: 100%;
 }
 
+.tselect {
+    width: 300px !important;
+}
+
+.submit_button {
+    width :200px !important;
+}
+
 @media only screen and (max-width: 1400px) {
     h1 {
         font-size: 36px !important;
