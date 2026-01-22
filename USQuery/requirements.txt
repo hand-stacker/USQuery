@@ -19,3 +19,4 @@ strawberry-graphql-django
 django-redis
 markdownify
 djangorestframework-simplejwt
+strawberry-django-auth

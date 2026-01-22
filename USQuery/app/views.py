@@ -229,19 +229,6 @@ Disallow: /bill-query/prediction-request
 Disallow: /bill-query/prediction-request/
 Disallow: /bill-query/prediction-request*
 Disallow: /bill-query/prediction-request/*
-Disallow: /bill-query/bill
-Disallow: /bill-query/bill/
-Disallow: /bill-query/bill*
-Disallow: /bill-query/bill/*
-Disallow: /bill-query/vote
-Disallow: /bill-query/vote/
-Disallow: /bill-query/vote*
-Disallow: /bill-query/vote/*
-Allow: /bill-query/bill/119
-Allow: /bill-query/bill/119/
-Allow: /bill-query/bill/119*
-Allow: /bill-query/bill/119/*
-Allow: /bill-query/vote/119*
 
 Crawl-delay: 10
     """

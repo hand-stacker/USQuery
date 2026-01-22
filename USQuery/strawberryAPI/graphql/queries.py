@@ -11,6 +11,10 @@ from asgiref.sync import sync_to_async
 from markdownify import markdownify as md
 import base64
 import json
+from rest_framework_simplejwt.tokens import AccessToken
+from notifications.models import StarredBill
+from app.models import UserProfile
+
 
 def encode_cursor(payload: dict) -> str:
     ## payload should be a dict, e.g. {"id": 123, "latest_action": "2025-12-19", "match_count": 2}
@@ -251,13 +255,33 @@ class Query:
     @strawberry.field
     async def getStarredBills(
         self,
-        starredList: List[int] = None,
         first: int = 5,
-        after: Optional[str] = None,\
+        after: Optional[str] = None,
+        access_token: Optional[str] = None,
         info: "strawberry.types.Info" = None,
     ) -> BillConnection:
+        starred_ids=[]
         first = min(first, 30)
-        qs = Bill.type_objects.filter(id__in=starredList)
+        if access_token:
+            try:
+                token = AccessToken(access_token)
+                user_id = token.get("user_id")
+                user_profile = await UserProfile.objects.aget(user__id=user_id)
+                sb_qs = StarredBill.objects.filter(user_profile=user_profile)
+                # values_list is sync; convert to list asynchronously
+                raw_ids = await sync_to_async(list)(sb_qs.values_list("bill_id", flat=True))
+                # convert stored string bill ids to ints where possible
+                starred_ids = []
+                for _id in raw_ids:
+                    try:
+                        starred_ids.append(int(_id))
+                    except Exception:
+                        # skip non-integer or malformed ids
+                        continue
+            except Exception:
+                # invalid token -> empty list
+                starred_ids = []
+        qs = Bill.type_objects.filter(id__in=starred_ids)
         qs = qs.order_by("-latest_action", "-id")
         if after:
             cursor = decode_cursor(after)
