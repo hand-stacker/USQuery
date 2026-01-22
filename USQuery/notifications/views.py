@@ -1,69 +1,90 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from app.models import UserProfile
 from .models import Device, StarredBill
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
 from .push import send_bill_notification
+from django.core.exceptions import ValidationError
+from rest_framework.permissions import IsAuthenticated
 
+# Registers a new device for a user_profile
+# expects a device_token and platform to add device, and an access_token for verification
 class RegisterDevice(APIView):
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile = UserProfile.objects.get_or_create(user=request.user)
+
         token = request.data.get("device_token")
         platform = request.data.get("platform")
 
         if not token or not platform:
             return Response({"error": "Missing fields"}, status=400)
+        try:
+            Device.objects.update_or_create(
+                device_token=token,
+                user_profile = user_profile,
+                defaults={"platform": platform}
+            )
+        except ValidationError as e:
+            return Response(e, status=400)
 
-        Device.objects.update_or_create(
-            device_token=token,
-            defaults={"platform": platform}
-        )
 
         return Response({"status": "registered"})
 
+# unregisters a device
+# expects a device_token to delete, and an access_token for verification
+class UnregisterDevice(APIView):
+    authentication_classes = []
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile = UserProfile.objects.get_or_create(user=request.user)
+        token = request.data.get("device_token")
+
+        Device.objects.filter(
+            device_token=token,
+            user_profile=user_profile).delete()
+        return Response({"status" : "device unregistered"}, status=200)
+
+
+
+# Stars a bill for all devices of a user
+# expects acces_token for verification
 class StarBill(APIView):
     authentication_classes = []
-    permission_classes = []
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        token = request.data.get("device_token")
         bill_id = request.data.get("bill_id")
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
 
-        device = Device.objects.filter(device_token=token).first()
-        if not device:
-            return Response({"error": "Device not registered"}, status=400)
-
-        # Validate bill belongs to current congress (IDs starting with "119")
-        if bill_id is None or not str(bill_id).startswith("119"):
-            return Response("Bill is not from current congress", status=400)
-
+        user_profile = UserProfile.objects.get_or_create(user=request.user)
         StarredBill.objects.get_or_create(
-            device=device,
+            user_profile=user_profile,
             bill_id=bill_id
         )
 
         return Response({"status": "starred"})
 
+# Unstars a bill for all devices of a user
+# expects acces_token for verification
 class UnstarBill(APIView):
     authentication_classes = []
     permission_classes = []
 
     def post(self, request):
-        token = request.data.get("device_token")
         bill_id = request.data.get("bill_id")
-
-        device = Device.objects.filter(device_token=token).first()
-        if not device:
-            return Response({"error": "Device not registered"}, status=400)
-
-        StarredBill.objects.filter(
-            device=device,
-            bill_id=bill_id
-        ).delete()
-
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile = UserProfile.objects.get_or_create(user=request.user)
+        user_profile.get_starred_bills().filter(bill_id=bill_id).delete()
         return Response({"status": "unstarred"})
 
 @staff_member_required

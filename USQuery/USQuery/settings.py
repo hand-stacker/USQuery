@@ -1,15 +1,4 @@
-"""
-Django settings for USQuery project.
-
-Based on 'django-admin startproject' using Django 2.1.2.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/2.1/topics/settings/
-
-For the full list of settings and their values, see
-https://docs.djangoproject.com/en/2.1/ref/settings/
-"""
-
+from gqlauth.settings_type import GqlAuthSettings
 import os
 from pathlib import Path
 import dj_database_url
@@ -52,7 +41,8 @@ INSTALLED_APPS = [
     'bs4',
     'rest_framework',
     'strawberry.django',
-    'rest_framework_simplejwt'
+    'rest_framework_simplejwt',
+    'gqlauth'
 ]
 
 # Middleware framework
@@ -65,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'gqlauth.core.middlewares.django_jwt_middleware'
 ]
 
 ROOT_URLCONF = 'USQuery.urls'
@@ -120,6 +111,12 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+# Auth settings for graphql
+GQL_AUTH = GqlAuthSettings(
+    LOGIN_REQUIRE_CAPTCHA=False,
+    REGISTER_REQUIRE_CAPTCHA=False,
+)
 
 # SMTP settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

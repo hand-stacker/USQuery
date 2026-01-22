@@ -33,6 +33,9 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="app\admin.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="app\api\serializers.py" />
     <Compile Include="app\api\urls.py" />
     <Compile Include="app\api\views.py" />
