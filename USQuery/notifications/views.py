@@ -1,91 +1,176 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from app.models import UserProfile
-from .models import Device, StarredBill
+from .models import Device, StarredBill, FavoriteSubject, StarredMembership
 from django.contrib.admin.views.decorators import staff_member_required
 from django.http import JsonResponse
+from django.db import transaction
 from .push import send_bill_notification
 from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # Registers a new device for a user_profile
 # expects a device_token and platform to add device, and an access_token for verification
 class RegisterDevice(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if not request.user.is_active:
             return Response({"error" :"Verify your email."}, status=403)
-        user_profile = UserProfile.objects.get_or_create(user=request.user)
-
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
         token = request.data.get("device_token")
         platform = request.data.get("platform")
-
         if not token or not platform:
             return Response({"error": "Missing fields"}, status=400)
         try:
             Device.objects.update_or_create(
                 device_token=token,
                 user_profile = user_profile,
-                defaults={"platform": platform}
+                platform = platform,
+                is_active = False,
+                defaults={"is_active": True}
             )
         except ValidationError as e:
-            return Response(e, status=400)
+            return Response({"error" : e}, status=403)
 
-
-        return Response({"status": "registered"})
+        return Response({"status": "registered"}, status=201)
 
 # unregisters a device
 # expects a device_token to delete, and an access_token for verification
 class UnregisterDevice(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
         if not request.user.is_active:
             return Response({"error" :"Verify your email."}, status=403)
-        user_profile = UserProfile.objects.get_or_create(user=request.user)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
         token = request.data.get("device_token")
+        if not token:
+            return Response({"error": "Missing fields"}, status=400)
+        user_profile.get_active_devices().filter(device_token=token).update(is_active=False)
 
-        Device.objects.filter(
-            device_token=token,
-            user_profile=user_profile).delete()
-        return Response({"status" : "device unregistered"}, status=200)
-
-
+        return Response({"status" : "device unregistered"}, status=202)
 
 # Stars a bill for all devices of a user
 # expects acces_token for verification
 class StarBill(APIView):
-    authentication_classes = []
+    authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        bill_id = request.data.get("bill_id")
         if not request.user.is_active:
             return Response({"error" :"Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        bill_id = request.data.get("bill_id")
+        if not bill_id:
+            return Response({"error": "Missing fields"}, status=400)
+        try:
+            StarredBill.objects.update_or_create(
+                user_profile=user_profile,
+                bill_id=bill_id,
+                is_active = False,
+                defaults={"is_active": True}
+            )
+        except ValidationError as e:
+            return Response({"error" : e}, status=403)
 
-        user_profile = UserProfile.objects.get_or_create(user=request.user)
-        StarredBill.objects.get_or_create(
-            user_profile=user_profile,
-            bill_id=bill_id
-        )
-
-        return Response({"status": "starred"})
+        return Response({"status": "starred"}, status=201)
 
 # Unstars a bill for all devices of a user
 # expects acces_token for verification
 class UnstarBill(APIView):
-    authentication_classes = []
-    permission_classes = []
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        bill_id = request.data.get("bill_id")
         if not request.user.is_active:
             return Response({"error" :"Verify your email."}, status=403)
-        user_profile = UserProfile.objects.get_or_create(user=request.user)
-        user_profile.get_starred_bills().filter(bill_id=bill_id).delete()
-        return Response({"status": "unstarred"})
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        bill_id = request.data.get("bill_id")
+        if not bill_id:
+            return Response({"error": "Missing fields"}, status=400)
+        user_profile.get_starred_bills().filter(bill_id=bill_id).update(is_active=False)
+
+        return Response({"status": "unstarred"}, status = 202)
+
+# Stars a bill for all devices of a user
+# expects acces_token for verification
+class StarMembership(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        membership_id = request.data.get("membership_id")
+        if not membership_id:
+            return Response({"error": "Missing fields"}, status=400)
+        try:
+            StarredMembership.objects.update_or_create(
+                user_profile=user_profile,
+                membership_id=membership_id,
+                is_active = False,
+                defaults={"is_active": True}
+            )
+        except ValidationError as e:
+            return Response({"error" : e}, status=403)
+
+        return Response({"status": "starred"}, status=201)
+
+# Unstars a bill for all devices of a user
+# expects acces_token for verification
+class UnstarMembership(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        membership_id = request.data.get("membership_id")
+        if not membership_id:
+            return Response({"error": "Missing fields"}, status=400)
+        user_profile.get_starred_memberships().filter(membership_id=membership_id).update(is_active=False)
+
+        return Response({"status": "unstarred"}, status = 202)
+
+class UpdateFavoriteSubjects(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        with transaction.atomic():
+            subject_ids = request.data.get("subject_ids")
+            if not request.user.is_active:
+                return Response({"error" :"Verify your email."}, status=403)
+            user_profile = UserProfile.objects.get_or_create(user=request.user)
+            # deactivates any active subjects not in the posted list
+            user_profile.get_favorite_subjects().exclude(subject_id__in=subject_ids).update(is_active=False)
+            # split update and create for list
+            existing_objs = FavoriteSubject.objects.filter(user_profile=user_profile, subject_id__in=subject_ids) 
+            existing_by_subject_id = {fav.subject_id: fav for fav in existing_objs}
+            to_update = []
+            to_create = []
+            for subject_id in subject_ids:
+                fav = existing_by_subject_id.get(subject_id)
+                if fav:
+                    if not fav.is_active:
+                        fav.is_active = True
+                        to_update.append(fav)
+                else:
+                    to_create.append(FavoriteSubject(
+                        user_profile=user_profile,
+                        subject_id=subject_id))
+
+            if to_update:
+                FavoriteSubject.objects.bulk_update(to_update, ["is_active"])
+            if to_create:
+                FavoriteSubject.objects.bulk_create(to_create)
+            return Response({"status": "updated favorites"}, status=202)
 
 @staff_member_required
 def send_test_bill_notification(request):

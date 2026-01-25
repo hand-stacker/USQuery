@@ -1,4 +1,3 @@
-from email.policy import default
 import uuid
 from django.contrib.auth.models import User
 from django.db import models
@@ -10,6 +9,18 @@ DEVICE_LIMITS = {
     0:3,
     1:10,
     2:10,
+    3:1000}
+
+STARRED_BILLS_LIMITS = {
+    0:10,
+    1:100,
+    2:1000,
+    3:1000}
+
+STARRED_MEMBERSHIPS_LIMITS = {
+    0:5,
+    1:100,
+    2:1000,
     3:1000}
 
 PREDICTION_LIMITS = {
@@ -33,18 +44,28 @@ class UserProfile(models.Model):
         return self.devices.filter(is_active=True)
 
     def get_starred_bills(self):
-        return self.started_bills
+        return self.started_bills.filter(is_active=True)
 
     def get_starred_memberships(self):
-        return self.starred_memberships
+        return self.starred_memberships.filter(is_active=True)
 
+    # gets active subjects
     def get_favorite_subjects(self):
-        return self.favorite_subjects
+        return self.favorite_subjects.filter(is_active=True)
 
     # returns the device limit (int) for this user_profile
     def get_device_limit(self):
         return DEVICE_LIMITS[self.user_type]
 
+    # returns the starred bills limit (int) for this user_profile
+    def get_starred_bills_limit(self):
+        return STARRED_BILLS_LIMITS[self.user_type]
+
+    # returns the starred memberships limit (int) for this user_profile
+    def get_starred_memberships_limit(self):
+        return STARRED_MEMBERSHIPS_LIMITS[self.user_type]
+
+    # for future use, limits daily prediction views
     def get_predicton_limit(self):
         return PREDICTION_LIMITS[self.user_type]
 
@@ -92,25 +113,3 @@ class EmailVerification(models.Model):
                 "last_resend_date",
             ]
         )
-
-class StarredMember(models.Model):
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE,related_name = "starred_memberships")
-    membership_id = models.IntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user_profile", "membership_id")
-
-    def __str__(self):
-        return f"{self.user_profile} - {self.membership_id}"
-
-class FavoriteSubjects(models.Model):
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name = "favorite_subjects")
-    subject_id = models.IntegerField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = ("user_profile", "subject_id")
-
-    def __str__(self):
-        return f"{self.user_profile} - {self.subject_id}"

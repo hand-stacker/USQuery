@@ -9,6 +9,7 @@ from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpRes
 from django.views.decorators.http import require_GET
 from SenateQuery.models import Congress
 from BillQuery.models import Vote
+from notifications.models import UserProfile
 from app import siteutils, utils
 from app.forms import RegisterForm, VerificationForm
 from app.models import EmailVerification
@@ -126,6 +127,7 @@ def verify_email(request, email):
                 user.is_active = True
                 user.save()
                 verification.delete()
+                user_profile = UserProfile.objects.get_or_create(user=request.user)
 
                 messages.success(
                     request,
