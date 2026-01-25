@@ -1,8 +1,6 @@
 import datetime
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models.fields import related
-
 from app.models import UserProfile
 
 class Device(models.Model):
@@ -31,7 +29,7 @@ class Device(models.Model):
         if not self.user_profile:
             return
 
-        qs = Device.objects.filter(user_profile=self.user_profile, is_active=True)
+        qs = self.user_profile.get_active_devices()
         if self.id:
             qs = qs.exclude(id=self.id)
 
@@ -60,10 +58,71 @@ class Device(models.Model):
 class StarredBill(models.Model):
     user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name = "starred_bills",blank=True, null=True)
     bill_id = models.CharField(max_length=64)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        if not self.user_profile:
+            return
+
+        qs = self.user_profile.get_starred_bills()
+        if self.id:
+            qs = qs.exclude(id=self.id)
+
+        starred_limit = self.user_profile.get_starred_bills_limit()
+        if qs.count() >= starred_limit:
+            raise ValidationError(message="You can have at most " + str(starred_limit) + " starred bills on your account.", code="BillLimit")
+
+    def save(self, *args, **kwargs):
+        # enforce validation (including max-3 check)
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ("user_profile", "bill_id")
 
     def __str__(self):
         return f"{self.user_profile} - {self.bill_id}"
+
+class StarredMembership(models.Model):
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE,related_name = "starred_memberships")
+    membership_id = models.IntegerField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def clean(self):
+        super().clean()
+        if not self.user_profile:
+            return
+
+        qs = self.user_profile.get_starred_memberships()
+        if self.id:
+            qs = qs.exclude(id=self.id)
+
+        starred_limit = self.user_profile.get_starred_memberships_limit()
+        if qs.count() >= starred_limit:
+            raise ValidationError(message="You can have at most " + str(starred_limit) + " starred members on your account.", code="MembershipLimit")
+
+    def save(self, *args, **kwargs):
+        # enforce validation (including max-3 check)
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ("user_profile", "membership_id")
+
+    def __str__(self):
+        return f"{self.user_profile} - {self.membership_id}"
+
+class FavoriteSubject(models.Model):
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name = "favorite_subjects")
+    subject_id = models.IntegerField()
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("user_profile", "subject_id")
+
+    def __str__(self):
+        return f"{self.user_profile} - {self.subject_id}"

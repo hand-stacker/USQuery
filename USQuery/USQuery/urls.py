@@ -15,7 +15,12 @@ from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
-from notifications.views import RegisterDevice, StarBill, UnstarBill, send_test_bill_notification, send_test_bill_notification_exclusion_test, MassUnstar
+from notifications import views as NViews
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenBlacklistView,
+)
 admin.autodiscover()
 
 
@@ -77,17 +82,23 @@ urlpatterns = [
 
 #Notif api
 urlpatterns += [
-    path("api/notif/register-device/", RegisterDevice.as_view()),
-    path("api/notif/star-bill/", StarBill.as_view()),
-    path("api/notif/unstar-bill/", UnstarBill.as_view()),
+    path("api/notif/register-device/", NViews.RegisterDevice.as_view()),
+    path("api/notif/unregister-device/", NViews.UnregisterDevice.as_view()),
+    path("api/notif/star-bill/", NViews.StarBill.as_view()),
+    path("api/notif/unstar-bill/", NViews.UnstarBill.as_view()),
+    path("api/notif/star-membership/", NViews.StarMembership.as_view()),
+    path("api/notif/unstar-membership/", NViews.UnstarMembership.as_view()),
+    path("api/notif/update-favorites/", NViews.UpdateFavoriteSubjects.as_view()),
     # Admin-only test endpoint to trigger a mock push notification
-    path("api/notif/send-test/", send_test_bill_notification),
-    path("api/notif/send-test-null/", send_test_bill_notification_exclusion_test),
-    path("api/notif/mass-unstar/<int:congress_num>", MassUnstar)
+    path("api/notif/send-test/", NViews.send_test_bill_notification),
+    path("api/notif/send-test-null/", NViews.send_test_bill_notification_exclusion_test),
+    path("api/notif/mass-unstar/<int:congress_num>", NViews.MassUnstar)
 ]
 
 #Auth api
 urlpatterns += [
     path('api/auth/', include('app.api.urls')),
-    
+    path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
+    path("api/auth/token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),
 ]

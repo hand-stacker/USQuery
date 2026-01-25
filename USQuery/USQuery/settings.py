@@ -1,4 +1,5 @@
 from gqlauth.settings_type import GqlAuthSettings
+from datetime import timedelta
 import os
 from pathlib import Path
 import dj_database_url
@@ -44,6 +45,8 @@ INSTALLED_APPS = [
     'google',
     'bs4',
     'rest_framework',
+    "rest_framework.authtoken",
+    "rest_framework_simplejwt.token_blacklist",
     'strawberry.django',
     'rest_framework_simplejwt',
     'gqlauth'
@@ -135,6 +138,26 @@ AUTHENTICATION_BACKENDS = [
     "app.auth_backends.EmailBackend",
     "django.contrib.auth.backends.ModelBackend",
 ]
+
+# JWT
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+# Auth config
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+    ),
+}
 
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
