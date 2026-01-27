@@ -263,25 +263,24 @@ class Query:
     ) -> BillConnection:
         starred_ids=[]
         first = min(first, 30)
-        if access_token:
-            try:
-                token = AccessToken(access_token)
-                user_id = token.get("user_id")
-                user_profile = await UserProfile.objects.aget(user__id=user_id)
-                sb_qs = StarredBill.objects.filter(user_profile=user_profile)
-                # values_list is sync; convert to list asynchronously
-                raw_ids = await sync_to_async(list)(sb_qs.values_list("bill_id", flat=True))
-                # convert stored string bill ids to ints where possible
-                starred_ids = []
-                for _id in raw_ids:
-                    try:
-                        starred_ids.append(int(_id))
-                    except Exception:
-                        # skip non-integer or malformed ids
-                        continue
-            except Exception:
-                # invalid token -> raise GraphQL error so client receives an error response
-                raise GraphQLError("Invalid access token or user not found")
+        try:
+            token = AccessToken(access_token)
+            user_id = token.get("user_id")
+            user_profile = await UserProfile.objects.aget(user__id=user_id)
+            sb_qs = StarredBill.objects.filter(user_profile=user_profile)
+            # values_list is sync; convert to list asynchronously
+            raw_ids = await sync_to_async(list)(sb_qs.values_list("bill_id", flat=True))
+            # convert stored string bill ids to ints where possible
+            starred_ids = []
+            for _id in raw_ids:
+                try:
+                    starred_ids.append(int(_id))
+                except Exception:
+                    # skip non-integer or malformed ids
+                    continue
+        except Exception:
+            # invalid token -> raise GraphQL error so client receives an error response
+            raise GraphQLError("Invalid access token or user not found")
         qs = Bill.type_objects.filter(id__in=starred_ids)
         qs = qs.order_by("-latest_action", "-id")
         if after:
