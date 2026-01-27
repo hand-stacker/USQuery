@@ -12,6 +12,7 @@ from markdownify import markdownify as md
 import base64
 import json
 from rest_framework_simplejwt.tokens import AccessToken
+from graphql import GraphQLError
 from notifications.models import StarredBill
 from app.models import UserProfile
 
@@ -257,7 +258,7 @@ class Query:
         self,
         first: int = 5,
         after: Optional[str] = None,
-        access_token: Optional[str] = None,
+        access_token: str = None,
         info: "strawberry.types.Info" = None,
     ) -> BillConnection:
         starred_ids=[]
@@ -279,8 +280,8 @@ class Query:
                         # skip non-integer or malformed ids
                         continue
             except Exception:
-                # invalid token -> empty list
-                starred_ids = []
+                # invalid token -> raise GraphQL error so client receives an error response
+                raise GraphQLError("Invalid access token or user not found")
         qs = Bill.type_objects.filter(id__in=starred_ids)
         qs = qs.order_by("-latest_action", "-id")
         if after:
