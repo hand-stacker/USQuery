@@ -9,7 +9,7 @@ class Device(models.Model):
         "app.UserProfile",
         on_delete=models.CASCADE,
         related_name="devices",
-        blank=False,
+        blank=True,
         #for now set to True so database accepts it
         null=True,
     )
@@ -45,11 +45,11 @@ class Device(models.Model):
     # every once in a while delete inactive devices from database
     def deactivate(self):
         self.is_active = False
-        super.save()
+        super().save()
 
     def refresh_last_used(self):
         self.last_used=datetime.datetime.now()
-        super.save()
+        super().save()
 
     class Meta:
         ordering = ["device_token", "user_profile"]
