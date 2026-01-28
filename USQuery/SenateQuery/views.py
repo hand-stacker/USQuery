@@ -9,7 +9,8 @@ from BillQuery.models import Vote
 from django.http import JsonResponse
 from .serializers import MemberModelSerializer, MembershipModelSerializer
 from BillQuery.serializers import VoteModelSerializerSimple
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from urllib.parse import urlencode
@@ -116,6 +117,7 @@ def update_members(request, congress_num, chamber, state):
     return JsonResponse({'members': list(mems)})
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_membership_by_id(request, membership_id):
     try:
         membership = Membership.objects.get(id=membership_id)
@@ -176,6 +178,7 @@ def get_membership_by_id(request, membership_id):
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_membership(request, congress_num, bioguide_id, in_house):
     try:
         in_house = bool(in_house)
@@ -233,6 +236,7 @@ def get_membership(request, congress_num, bioguide_id, in_house):
     return Response(data)
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_memberships_set(request, congress_num, chamber, state):
     is_house = chamber != 'Senate'
     congress = Congress.objects.get(congress_num__exact=congress_num)
@@ -244,6 +248,7 @@ def get_memberships_set(request, congress_num, chamber, state):
     return JsonResponse({'members': list(mems)})
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_specific_memberships(request):
     context = request.GET.dict()
     mem_list = context['membershipIds'].split(',')
