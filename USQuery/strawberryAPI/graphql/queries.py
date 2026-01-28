@@ -267,7 +267,7 @@ class Query:
             token = AccessToken(access_token)
             user_id = token.get("user_id")
             user_profile = await UserProfile.objects.aget(user__id=user_id)
-            sb_qs = StarredBill.objects.filter(user_profile=user_profile)
+            sb_qs = user_profile.get_starred_bills()
             # values_list is sync; convert to list asynchronously
             raw_ids = await sync_to_async(list)(sb_qs.values_list("bill_id", flat=True))
             # convert stored string bill ids to ints where possible
