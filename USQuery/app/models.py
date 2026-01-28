@@ -44,7 +44,7 @@ class UserProfile(models.Model):
         return self.devices.filter(is_active=True)
 
     def get_starred_bills(self):
-        return self.started_bills.filter(is_active=True)
+        return self.starred_bills.filter(is_active=True)
 
     def get_starred_memberships(self):
         return self.starred_memberships.filter(is_active=True)
