@@ -147,7 +147,7 @@ class UpdateFavoriteSubjects(APIView):
             subject_ids = request.data.get("subject_ids")
             if not request.user.is_active:
                 return Response({"error" :"Verify your email."}, status=403)
-            user_profile = UserProfile.objects.get_or_create(user=request.user)
+            user_profile, created = UserProfile.objects.get_or_create(user=request.user)
             # deactivates any active subjects not in the posted list
             user_profile.get_favorite_subjects().exclude(subject_id__in=subject_ids).update(is_active=False)
             # split update and create for list
