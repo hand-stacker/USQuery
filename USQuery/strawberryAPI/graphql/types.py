@@ -41,6 +41,7 @@ class BillEdge:
 class BillConnection:
     edges : list["BillEdge"]
     page_info : strawberry.relay.PageInfo
+    error : str
 
 
 @strawberry_django.type(Bill)

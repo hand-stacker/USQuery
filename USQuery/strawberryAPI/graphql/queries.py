@@ -251,6 +251,7 @@ class Query:
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
             ),
+            error="None"
         )
 
     @strawberry.field
@@ -263,8 +264,20 @@ class Query:
     ) -> BillConnection:
         starred_ids=[]
         first = min(first, 30)
+
+        # Early check: missing token -> return error in payload (do not raise)
         if not access_token or access_token == "":
-            return GraphQLError("Session expired. Please log in.")
+            return BillConnection(
+                edges=[],
+                page_info=strawberry.relay.PageInfo(
+                    has_next_page=False,
+                    has_previous_page=False,
+                    start_cursor=None,
+                    end_cursor=None,
+                ),
+                error="Session expired. Please log in."
+            )
+
         try:
             token = AccessToken(access_token)
             user_id = token.get("user_id")
@@ -280,9 +293,31 @@ class Query:
                 except Exception:
                     # skip non-integer or malformed ids
                     continue
-        except Exception:
-            # invalid token -> raise GraphQL error so client receives an error response
-            raise GraphQLError("Invalid access token or user not found")
+        except GraphQLError as e:
+            # return GraphQL error message in the connection payload
+            return BillConnection(
+                edges=[],
+                page_info=strawberry.relay.PageInfo(
+                    has_next_page=False,
+                    has_previous_page=False,
+                    start_cursor=None,
+                    end_cursor=None,
+                ),
+                error=str(e)
+            )
+        except Exception as e:
+            # any other failure (invalid token / user not found / db error) -> return error
+            return BillConnection(
+                edges=[],
+                page_info=strawberry.relay.PageInfo(
+                    has_next_page=False,
+                    has_previous_page=False,
+                    start_cursor=None,
+                    end_cursor=None,
+                ),
+                error="Invalid access token or user not found"
+            )
+
         qs = Bill.type_objects.filter(id__in=starred_ids)
         qs = qs.order_by("-latest_action", "-id")
         if after:
@@ -335,6 +370,7 @@ class Query:
                 start_cursor=edges[0].cursor if edges else None,
                 end_cursor=edges[-1].cursor if edges else None,
             ),
+            error="None"
         )
 
     @strawberry.field
