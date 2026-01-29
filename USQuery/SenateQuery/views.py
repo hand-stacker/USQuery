@@ -7,6 +7,8 @@ from app import utils, forms
 from SenateQuery.models import Member, Congress, Membership
 from BillQuery.models import Vote
 from django.http import JsonResponse
+
+from app.models import UserProfile
 from .serializers import MemberModelSerializer, MembershipModelSerializer
 from BillQuery.serializers import VoteModelSerializerSimple
 from rest_framework.decorators import api_view, permission_classes
@@ -247,12 +249,9 @@ def get_memberships_set(request, congress_num, chamber, state):
     return JsonResponse({'members': list(mems)})
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
-def get_specific_memberships(request):
-    context = request.GET.dict()
-    mem_list = context['membershipIds'].split(',')
-    mem_list = mem_list[0: min(len(mem_list), 50)]
-    mems =Membership.objects.filter(id__in=mem_list)
+def get_starred_memberships(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    mems = user_profile.get_starred_memberships()
     mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party', 'district_num')
     return JsonResponse({'members': list(mems)})
 
