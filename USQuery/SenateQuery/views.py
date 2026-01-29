@@ -252,7 +252,8 @@ def get_memberships_set(request, congress_num, chamber, state):
 @api_view(['GET'])
 def get_starred_memberships(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
-    mems = user_profile.get_starred_memberships()
+    mem_list = user_profile.get_starred_memberships().values('membership_id')
+    mems =Membership.objects.filter(id__in=mem_list)
     mems = mems.values('id', 'member__full_name', 'member__image_link', 'state', 'party', 'district_num')
     return JsonResponse({'members': list(mems)})
 
