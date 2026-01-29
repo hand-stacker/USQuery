@@ -213,7 +213,7 @@ def getUserPreferences(request):
         except Exception:
             continue
 
-    return Response({"bill_ids": starred_mem_ids, "membership_ids" : starred_mem_ids, "subject_ids" : fav_sub_ids}, status=202)
+    return Response({"bill_ids": starred_bill_ids, "membership_ids" : starred_mem_ids, "subject_ids" : fav_sub_ids}, status=202)
 
 @staff_member_required
 def send_test_bill_notification(request):
