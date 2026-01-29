@@ -16,7 +16,7 @@ from django.utils import timezone
 def api_register(request):
     s = RegisterSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    email = s.validated_data['email']
+    email = s.validated_data['email'].lower()
     password = s.validated_data['password']
 
     user = User.objects.create(username=email, email=email, is_active=False)
@@ -40,7 +40,7 @@ def api_register(request):
 def api_verify_email(request):
     s = VerifySerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    email = s.validated_data['email']
+    email = s.validated_data['email'].lower()
     code = s.validated_data['code']
 
     user = get_object_or_404(User, email=email)
@@ -60,7 +60,7 @@ def api_verify_email(request):
 def api_resend_verification(request):
     s = ResendSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    email = s.validated_data['email']
+    email = s.validated_data['email'].lower()
 
     user = get_object_or_404(User, email=email)
     if user.is_active:
@@ -87,7 +87,7 @@ def api_resend_verification(request):
 def api_login(request):
     s = LoginSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    username = s.validated_data['email']
+    username = s.validated_data['email'].lower()
     password = s.validated_data['password']
 
     # allow login by email or username (your web uses email as username)
