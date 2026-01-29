@@ -1,3 +1,4 @@
+from rest_framework.decorators import api_view
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from app.models import UserProfile
@@ -171,6 +172,41 @@ class UpdateFavoriteSubjects(APIView):
             if to_create:
                 FavoriteSubject.objects.bulk_create(to_create)
             return Response({"status": "updated favorites"}, status=202)
+
+# Returns a user's starred bills, starred memberships, and favorite subjects (as last stored in db)
+# expects acces_token for verification
+@api_view(['GET'])
+def getUserPreferences(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    # TODO : make one single query rather than 3...
+    sb_qs = user_profile.get_starred_bills()
+    raw_sb_ids =  list(sb_qs.values_list("bill_id", flat=True))
+    starred_bill_ids = []
+    for _id in raw_sb_ids:
+        try:
+            starred_bill_ids.append(int(_id))
+        except Exception:
+            continue
+
+    sm_qs = user_profile.get_starred_memberships()
+    raw_sm_ids =  list(sm_qs.values_list("membership_id", flat=True))
+    starred_mem_ids = []
+    for _id in raw_sm_ids:
+        try:
+            starred_mem_ids.append(int(_id))
+        except Exception:
+            continue
+
+    fs_qs = user_profile.get_favorite_subjects()
+    raw_fs_ids =  list(fs_qs.values_list("subject_id", flat=True))
+    fav_sub_ids = []
+    for _id in raw_fs_ids:
+        try:
+            fav_sub_ids.append(int(_id))
+        except Exception:
+            continue
+
+    return Response({"bill_ids": starred_mem_ids, "membership_ids" : starred_mem_ids, "subject_ids" : fav_sub_ids}, status=202)
 
 @staff_member_required
 def send_test_bill_notification(request):
