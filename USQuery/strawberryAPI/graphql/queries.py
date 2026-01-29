@@ -263,6 +263,8 @@ class Query:
     ) -> BillConnection:
         starred_ids=[]
         first = min(first, 30)
+        if not access_token or access_token == "":
+            return GraphQLError("Session expired. Please log in.")
         try:
             token = AccessToken(access_token)
             user_id = token.get("user_id")
