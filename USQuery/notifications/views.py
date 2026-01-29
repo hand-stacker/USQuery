@@ -11,6 +11,13 @@ from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+def _validation_error_detail(e: ValidationError):
+    if hasattr(e, "message_dict"):
+        return e.message_dict
+    if hasattr(e, "messages"):
+        return e.messages
+    return str(e)
+
 # Registers a new device for a user_profile
 # expects a device_token and platform to add device, and an access_token for verification
 class RegisterDevice(APIView):
@@ -34,7 +41,7 @@ class RegisterDevice(APIView):
                 defaults={"is_active": True}
             )
         except ValidationError as e:
-            return Response({"error" : e}, status=403)
+            return Response({"error": _validation_error_detail(e)}, status=403)
 
         return Response({"status": "registered"}, status=201)
 
@@ -76,7 +83,7 @@ class StarBill(APIView):
                 defaults={"is_active": True}
             )
         except ValidationError as e:
-            return Response({"error" : e}, status=403)
+            return Response({"error": _validation_error_detail(e)}, status=403)
 
         return Response({"status": "starred"}, status=201)
 
@@ -118,7 +125,7 @@ class StarMembership(APIView):
                 defaults={"is_active": True}
             )
         except ValidationError as e:
-            return Response({"error" : e}, status=403)
+            return Response({"error": _validation_error_detail(e)}, status=403)
 
         return Response({"status": "starred"}, status=201)
 
