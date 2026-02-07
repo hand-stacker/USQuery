@@ -109,7 +109,7 @@ urlpatterns += [
         template_name="app/password_reset.html",
         email_template_name="app/password_reset_email.txt",
         subject_template_name="app/password_reset_subject.txt",
-        success_url="/password-reset/done/",
+        success_url="done/",
     ),
     name="password_reset",
 ),
@@ -126,7 +126,7 @@ path(
     "api/auth/reset/<uidb64>/<token>/",
     PasswordResetConfirmView.as_view(
         template_name="app/password_reset_confirm.html",
-        success_url="/reset/done/",
+        success_url="/api/auth/reset/done/",
     ),
     name="password_reset_confirm",
 ),
