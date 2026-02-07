@@ -8,7 +8,8 @@ from django.views.static import serve
 from datetime import datetime
 from django.urls import path, include
 from django.contrib import admin
-from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import LoginView, LogoutView,PasswordResetView, PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
+
 from app import forms, views
 from django.conf.urls.static import static
 from SenateQuery import views as SQviews
@@ -102,4 +103,40 @@ urlpatterns += [
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),
+    path(
+    "api/auth/password-reset/",
+    PasswordResetView.as_view(
+        template_name="app/password_reset.html",
+        email_template_name="app/password_reset_email.txt",
+        subject_template_name="app/password_reset_subject.txt",
+        success_url="/password-reset/done/",
+    ),
+    name="password_reset",
+),
+
+path(
+    "api/auth/password-reset/done/",
+    PasswordResetDoneView.as_view(
+        template_name="app/password_reset_done.html"
+    ),
+    name="password_reset_done",
+),
+
+path(
+    "api/auth/reset/<uidb64>/<token>/",
+    PasswordResetConfirmView.as_view(
+        template_name="app/password_reset_confirm.html",
+        success_url="/reset/done/",
+    ),
+    name="password_reset_confirm",
+),
+
+path(
+    "api/auth/reset/done/",
+    PasswordResetCompleteView.as_view(
+        template_name="app/password_reset_complete.html"
+    ),
+    name="password_reset_complete",
+),
+
 ]
