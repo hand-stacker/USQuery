@@ -1,0 +1,9 @@
+{% extends "app/layout.html" %}
+{% block content %}
+<h2>Password reset complete</h2>
+
+<p>Your password has been updated.</p>
+<p>
+    <a href="{% url 'login' %}">Log in</a>
+</p>
+{% endblock %}
