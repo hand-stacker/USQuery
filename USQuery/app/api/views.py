@@ -8,8 +8,11 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
 from app.models import EmailVerification
+from django.contrib.auth.views import PasswordResetView
 from .serializers import RegisterSerializer, VerifySerializer, ResendSerializer, LoginSerializer
-from django.utils import timezone
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -110,3 +113,15 @@ def api_login(request):
         "user_id": user.id,
         "email": user.email,
     }, status=status.HTTP_200_OK)
+
+@method_decorator(csrf_exempt, name="dispatch")
+class api_reset_password(PasswordResetView):
+    email_template_name="app/password_reset_email.txt"
+    subject_template_name="app/password_reset_subject.txt"
+    def form_valid(self, form):
+        form.save(
+            request=self.request,
+            use_https=True,
+            from_email=None,
+        )
+        return JsonResponse({"detail": "If the email exists, a reset link was sent."})
