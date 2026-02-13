@@ -2,6 +2,8 @@ from django.db import models
 from SenateQuery import models as SQmodels
 from datetime import date
 from django.db.models import Q
+from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.indexes import GinIndex
 
 types = {
             's' : 0,
@@ -78,6 +80,7 @@ class Bill(models.Model):
     origin_date = models.DateField(db_index=True)
     latest_action = models.DateField(db_index=True)
     latest_db_update = models.DateField(null=True, blank = True)
+    search_vector = SearchVectorField(null=True)
     objects = models.Manager()
     type_objects =TypeManager()
 
@@ -143,6 +146,9 @@ class Bill(models.Model):
     
     class Meta():
         ordering = ["-latest_action", "origin_date", "-id"]
+        indexes = [
+            GinIndex(fields=["search_vector"]),
+        ]
                 
 # id : CCC_H_S_XXXXX , CCC is congress, H is 0 if senate, else house, S is session 1 or 2, XXXXX is vote num
 class Vote(models.Model):

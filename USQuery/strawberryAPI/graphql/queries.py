@@ -4,8 +4,9 @@ from datetime import date, datetime
 from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
 from typing import List, Optional
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramSimilarity
-from django.db.models import Q, Count, Prefetch
+from django.db.models import F, Q, Count, Prefetch, Value, FloatField, Max
 from BillQuery.models import Bill, Subject, Vote
+from django.db.models.functions import Coalesce
 from SenateQuery.models import Congress, Member, Membership
 from .utils import batch_load_summaries, fetch_actions, fetch_summary
 from asgiref.sync import sync_to_async
@@ -254,6 +255,7 @@ class Query:
             ),
             error="None"
         )
+
     @strawberry.field
     async def getBillsByKeyword(
         self,
@@ -262,7 +264,6 @@ class Query:
         bill_type: str = "!",
         first: int = 5,
         after: Optional[str] = None,
-        info: "strawberry.types.Info" = None,
     ) -> BillConnection:
 
         first = min(first, 30)
@@ -273,38 +274,49 @@ class Query:
 
         qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
 
-        # Build full-text search
-        vector = (
-            SearchVector("title", weight="A") +
-            SearchVector("subjects__name", weight="B")
-        )
-
         query = SearchQuery(keyword)
 
-        qs = (
-            qs.annotate(
-                search=vector,
-                rank=SearchRank(vector, query)
-            )
-            .filter(rank__gt=0.0)
-            .order_by("-rank", "-latest_action", "-id")
-            .distinct()
-        )
+        qs = qs.annotate(
+            # Full text ranking
+            rank=SearchRank(F("search_vector"), query),
 
+            # Trigram fallback
+            title_similarity=TrigramSimilarity("title", keyword),
+            subject_similarity=Max(
+                TrigramSimilarity("subjects__name", keyword)
+            ),
+        ).annotate(
+            similarity=(
+                F("title_similarity") * 0.7 +
+                F("subject_similarity") * 0.3
+            ),
+
+        ).annotate(
+            # Combine both into one final score
+            final_score=(
+                Coalesce(F("rank"), Value(0.0), output_field=FloatField()) * 0.8 +
+                Coalesce(F("similarity"), Value(0.0), output_field=FloatField()) * 0.2
+            )
+        ).filter(
+            Q(rank__gt=0.0) | Q(similarity__gt=0.2)
+        ).order_by(
+            "-final_score",
+            "-latest_action",
+            "-id"
+        ).distinct()
 
         # Cursor pagination (rank + latest_action + id)
         if after:
             cursor = decode_cursor(after)
-            last_rank = cursor.get("rank")
+            last_score = cursor.get("final_score")
             last_action_str = cursor.get("latest_action")
             last_id = cursor.get("id")
 
-            if last_rank and last_action_str and last_id:
+            if last_score and last_action_str and last_id:
                 last_action = date.fromisoformat(last_action_str)
-
                 qs = qs.filter(
-                    Q(rank__lt=last_rank) |
-                    (Q(rank=last_rank) & (
+                    Q(final_score__lt=last_score) |
+                    (Q(final_score=last_score) & (
                         Q(latest_action__lt=last_action) |
                         (Q(latest_action=last_action) & Q(id__lt=last_id))
                     ))
@@ -321,7 +333,7 @@ class Query:
                 cursor=encode_cursor({
                     "id": a.id,
                     "latest_action": a.latest_action.isoformat(),
-                    "rank": getattr(a, "rank", 0),
+                    "final_score": getattr(a, "final_score", 0),
                 }),
                 node=a
             )
