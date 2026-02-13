@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone
 from django.core.cache import cache
 import requests, asyncio, json, aiohttp, hashlib
 from requests.exceptions import HTTPError
@@ -11,6 +11,7 @@ from xml.etree import cElementTree as ET
 from google import genai
 from django.db.models import Q, Count, Prefetch
 from bs4 import BeautifulSoup
+from urllib.parse import quote
 
 ## helpful objects that map state related data
 timeout_day = 60 * 60 * 24
@@ -355,7 +356,7 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
     membership.save()
 
 ## updates database, adding new bills or updating bills and votes with actionDate GTE date_str
-async def updateRecentBills(congress_num, date_str, bill_type):
+async def updateRecentBills(congress_num, date_str, bill_type, force = False):
     key = await make_cache_keyASYNC('last_processed_action_date?', bill_type)
     # if no date_str provided, we take the last_processed_action_date?{bill_type} date and use it as our limit
     if date_str == "!":
@@ -369,6 +370,10 @@ async def updateRecentBills(congress_num, date_str, bill_type):
     last_processed_action_date = datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)
     tracked_latest_date = datetime.strptime(date_str, '%Y-%m-%d')
     header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
+    # adds filtering by update_date to reduce size of input while Congress API is bugged
+    iso_string = last_processed_action_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+    encoded_string = quote(iso_string, safe="-TZ")
+    header_str += '&fromDateTime=' + encoded_string
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
     async with asyncio.TaskGroup() as tg:
@@ -389,9 +394,14 @@ async def updateRecentBills(congress_num, date_str, bill_type):
                     await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
                     if latest_action_date > tracked_latest_date:
                         tracked_latest_date = latest_action_date
+                """
+                this is commented out so all bills are processed.
+                Why? Because Congress API's bills endpoint is not properly
+                sorting bills by action date.
                 else :
                     API_response = None
                     break
+                """
         if API_response is not None and 'next' in API_response['pagination']:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
