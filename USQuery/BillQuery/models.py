@@ -14,7 +14,8 @@ types = {
             'hconres' : 7,
             '!S' : (0,3),
             '!H' : (4,7)}
-
+## due to bad planning the bill ids can be of integer form CCC_T_XXXX or CCC_T_XXXXX
+# (CCC is congress num, T is bill type, XXXX is bill num) if the bill number is higher than 9999
 class TypeManager(models.Manager):
     def get_from_type(self, _type, start_date, end_date):
         if _type == '!' or _type == '':
