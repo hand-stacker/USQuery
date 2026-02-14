@@ -7,11 +7,13 @@ from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from django.db.models import F, Q, Count, Prefetch, Value, FloatField, Max
 from BillQuery.models import Bill, Subject, Vote
 from django.db.models.functions import Coalesce
+from django.core.cache import cache
 from SenateQuery.models import Congress, Member, Membership
 from .utils import batch_load_summaries, fetch_actions, fetch_summary
 from asgiref.sync import sync_to_async
 from markdownify import markdownify as md
 import base64
+import hashlib
 import json
 from rest_framework_simplejwt.tokens import AccessToken
 from graphql import GraphQLError
@@ -271,70 +273,78 @@ class Query:
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
         end_date = date(_congress.end_year + 1, 1, 3)
+        search_params = {
+            "keyword": keyword,
+            "congress": congress_num,
+            "bill_type": bill_type,
+        }
 
-        qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
+        raw_key = json.dumps(search_params, sort_keys=True)
+        search_hash = hashlib.md5(raw_key.encode()).hexdigest()
+        cache_key = f"bill_search_ids:{search_hash}"
+        cached_ids = cache.get(cache_key)
 
-        query = SearchQuery(keyword)
+        if not cached_ids:
+            qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
 
-        qs = qs.annotate(
-            # Full text ranking
-            rank=SearchRank(F("search_vector"), query),
+            query = SearchQuery(keyword)
 
-            # Trigram fallback
-            title_similarity=TrigramSimilarity("title", keyword),
-            subject_similarity=Max(
-                TrigramSimilarity("subjects__name", keyword)
-            ),
-        ).annotate(
-            similarity=(
-                F("title_similarity") * 0.7 +
-                F("subject_similarity") * 0.3
-            ),
+            qs = qs.annotate(
+                # Full text ranking
+                rank=SearchRank(F("search_vector"), query),
 
-        ).annotate(
-            # Combine both into one final score
-            final_score=(
-                Coalesce(F("rank"), Value(0.0), output_field=FloatField()) * 0.8 +
-                Coalesce(F("similarity"), Value(0.0), output_field=FloatField()) * 0.2
+                # Trigram fallback
+                title_similarity=TrigramSimilarity("title", keyword),
+                subject_similarity=Max(
+                    TrigramSimilarity("subjects__name", keyword)
+                ),
+            ).annotate(
+                similarity=(
+                    F("title_similarity") * 0.7 +
+                    F("subject_similarity") * 0.3
+                ),
+
+            ).annotate(
+                # Combine both into one final score
+                final_score=(
+                    Coalesce(F("rank"), Value(0.0), output_field=FloatField()) * 0.8 +
+                    Coalesce(F("similarity"), Value(0.0), output_field=FloatField()) * 0.2
+                )
+            ).filter(
+                Q(rank__gt=0.0) | Q(similarity__gt=0.2)
+            ).order_by(
+                "-final_score",
+                "-latest_action",
+                "-id"
+            ).distinct()
+
+            cached_ids = await sync_to_async(list)(
+                qs.values_list("id", flat=True)
             )
-        ).filter(
-            Q(rank__gt=0.0) | Q(similarity__gt=0.2)
-        ).order_by(
-            "-final_score",
-            "-latest_action",
-            "-id"
-        ).distinct()
 
+            cache.set(cache_key, cached_ids, timeout=600) 
+
+        start_indx = 0
         # Cursor pagination (rank + latest_action + id)
         if after:
             cursor = decode_cursor(after)
-            last_score = cursor.get("final_score")
-            last_action_str = cursor.get("latest_action")
             last_id = cursor.get("id")
 
-            if last_score and last_action_str and last_id:
-                last_action = date.fromisoformat(last_action_str)
-                qs = qs.filter(
-                    Q(final_score__lt=last_score) |
-                    (Q(final_score=last_score) & (
-                        Q(latest_action__lt=last_action) |
-                        (Q(latest_action=last_action) & Q(id__lt=last_id))
-                    ))
-                )
+            if last_id in cached_ids:
+                start_indx = cached_ids.index(last_id) + 1
 
-        qs = qs[: first + 1]
-
-        items = await sync_to_async(list)(qs)
-        has_next = len(items) > first
-        items = items[:first]
+        page_ids = cached_ids[start_indx : start_indx + first + 1]
+        has_next = len(page_ids) > first
+        page_ids = page_ids[:first]
+        items = await sync_to_async(list)(
+            Bill.objects.filter(id__in=page_ids)
+        )
+        id_position = {id_: pos for pos, id_ in enumerate(page_ids)}
+        items.sort(key=lambda x: id_position[x.id])
 
         edges = [
             BillEdge(
-                cursor=encode_cursor({
-                    "id": a.id,
-                    "latest_action": a.latest_action.isoformat(),
-                    "final_score": getattr(a, "final_score", 0),
-                }),
+                cursor=encode_cursor({"id": a.id}),
                 node=a
             )
             for a in items
