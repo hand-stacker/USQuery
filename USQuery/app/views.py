@@ -59,6 +59,17 @@ def about(request):
         }
     )
 
+def my_congress_privacy_policy(request):
+    """Renders the about page."""
+    assert isinstance(request, HttpRequest)
+    return render(
+        request,
+        'app/my_congress_privacy_policy.html',
+        {
+            'title':'About',
+        }
+    )
+
 class CustomLoginView(LoginView):
     """
     Subclass of Django's LoginView that, when the submitted credentials are correct

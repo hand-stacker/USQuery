@@ -45,6 +45,7 @@ urlpatterns = [
     path('verify-email/<str:email>/', views.verify_email, name='verify-email'),
     path('verify-email/<str:email>/resend/', views.resend_verification, name="resend-verification"),
     path("robots.txt", views.robots_txt),
+    path('privacy-policy/', views.my_congress_privacy_policy, name='MCPrivPolicy'),
     path('admin/', admin.site.urls),
     path('updateJSON/<int:congress_id>/', views.updateJSON, name='updateJSON'),
     path('updateSTATES/', views.updateSTATES, name='updateSTATES'),

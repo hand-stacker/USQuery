@@ -192,6 +192,7 @@
     <Content Include="app\static\app\content\images\20170207_Capitol_at_Dusk.jpg" />
     <Content Include="app\static\app\scripts\resize.js" />
     <Content Include="app\static\images\favicon.png" />
+    <Content Include="app\templates\app\my_congress_privacy_policy.html" />
     <Content Include="app\templates\app\password_reset.html" />
     <Content Include="app\templates\app\password_reset_confirm.html" />
     <Content Include="app\templates\app\password_reset_done.html" />
