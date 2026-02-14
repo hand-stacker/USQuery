@@ -18,6 +18,11 @@ from django.conf import settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.views import LoginView
 
+# New imports for account deletion management
+from django.contrib.auth.decorators import login_required
+from django.urls import reverse
+from app.models import UserProfile as AppUserProfile
+
 
 def home(request):
     """Renders the home page."""
@@ -38,7 +43,7 @@ def home(request):
     )
 
 def contact(request):
-    """Renders the contact page."""
+    """Renders the contact page.""" 
     assert isinstance(request, HttpRequest)
     return render(
         request,
@@ -49,7 +54,7 @@ def contact(request):
     )
 
 def about(request):
-    """Renders the about page."""
+    """Renders the about page.""" 
     assert isinstance(request, HttpRequest)
     return render(
         request,
@@ -60,7 +65,7 @@ def about(request):
     )
 
 def my_congress_privacy_policy(request):
-    """Renders the about page."""
+    """Renders the about page.""" 
     assert isinstance(request, HttpRequest)
     return render(
         request,
@@ -246,3 +251,30 @@ Disallow: /bill-query/prediction-request/*
 Crawl-delay: 10
     """
     return HttpResponse(content, content_type="text/plain")
+
+
+# New: page and toggle for scheduling/unscheduling account deletion
+@login_required
+def manage_account_deletion(request):
+    """
+    GET: show explanation and a single button that schedules or unschedules deletion.
+    POST: performs schedule/unschedule and redirects back.
+    """
+    profile, _ = AppUserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "schedule" and not profile.scheduled_for_deletion:
+            profile.scheduled_for_deletion = True
+            profile.save(update_fields=["scheduled_for_deletion"])
+            messages.success(request, "Your account has been scheduled for deletion.")
+        elif action == "unschedule" and profile.scheduled_for_deletion:
+            profile.scheduled_for_deletion = False
+            profile.save(update_fields=["scheduled_for_deletion"])
+            messages.success(request, "Account deletion has been cancelled.")
+        else:
+            messages.info(request, "No change was made.")
+        return redirect("account-delete")
+
+    return render(request, "app/account_delete.html", {"profile": profile})
+
