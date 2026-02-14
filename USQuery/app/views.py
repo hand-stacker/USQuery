@@ -19,7 +19,6 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.views import LoginView
 
 # New imports for account deletion management
-from django.contrib.auth.decorators import login_required
 from django.urls import reverse
 from app.models import UserProfile as AppUserProfile
 
@@ -253,13 +252,21 @@ Crawl-delay: 10
     return HttpResponse(content, content_type="text/plain")
 
 
-# New: page and toggle for scheduling/unscheduling account deletion
-@login_required
+# Page and toggle for scheduling/unscheduling account deletion.
+# If user is not authenticated the page shows a button linking to login.
 def manage_account_deletion(request):
     """
     GET: show explanation and a single button that schedules or unschedules deletion.
-    POST: performs schedule/unschedule and redirects back.
+    POST: performs schedule/unschedule and redirects back. POST from anonymous users
+    redirects to login.
     """
+    if not request.user.is_authenticated:
+        # POSTs from anonymous users should go to login with next
+        if request.method == "POST":
+            return redirect(f"{reverse('login')}?next={request.path}")
+        # Render page for anonymous users; template will show a login link
+        return render(request, "app/account_delete.html", {"profile": None})
+
     profile, _ = AppUserProfile.objects.get_or_create(user=request.user)
 
     if request.method == "POST":
