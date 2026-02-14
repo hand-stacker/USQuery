@@ -1,43 +1,52 @@
 <!doctype html>
 <html>
-<head>
+  <head>
     <meta charset="utf-8">
     <title>Account deletion</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Delete your USQuery account</h1>
 
     <section>
-        <h2>How to request deletion</h2>
-        <p>
-            To request deletion of your account and associated data for the app listed on Google Play ("USQuery"),
-            press the button below. This will schedule your account for deletion. A scheduled account will be
-            permanently deleted when the site operator runs the deletion job (typically every 30 days).
-        </p>
+      <h2>How to request deletion</h2>
+      <p>
+        To request deletion of your account and associated data for the app listed on Google Play ("USQuery"),
+        press the button below. This will schedule your account for deletion. A scheduled account will be
+        permanently deleted when the site operator runs the deletion job (typically every 30 days).
+      </p>
     </section>
 
     <section>
-        <h2>What data is deleted or kept</h2>
-        <ul>
-            <li>Deleted: your User account and any models that reference that User or UserProfile with <code>on_delete=models.CASCADE</code>. This includes profile data, devices, starred items, etc., per your model cascade rules.</li>
-            <li>Kept: any data from other systems or backups may be retained according to our retention/backup policy. (Specify any additional retention specifics here.)</li>
-        </ul>
+      <h2>What data is deleted or kept</h2>
+      <ul>
+        <li>Deleted: your User account and any models that reference that User or UserProfile with <code>on_delete=models.CASCADE</code>. This includes profile data, devices, starred items, etc., per your model cascade rules.</li>
+        <li>Kept: any data from other systems or backups may be retained according to our retention/backup policy. (Specify any additional retention specifics here.)</li>
+      </ul>
     </section>
 
     <section>
-        <h2>Schedule or cancel deletion</h2>
+      <h2>Schedule or cancel deletion</h2>
+
+      {% if user.is_authenticated %}
         <form method="post" action="{% url 'account-delete' %}">
-            {% csrf_token %}
-            {% if profile.scheduled_for_deletion %}
+          {% csrf_token %}
+          {% if profile and profile.scheduled_for_deletion %}
             <p>Your account is currently scheduled for deletion.</p>
             <button type="submit" name="action" value="unschedule">Cancel scheduled deletion</button>
-            {% else %}
+          {% else %}
             <p>Your account is not scheduled for deletion.</p>
             <button type="submit" name="action" value="schedule">Schedule account deletion</button>
-            {% endif %}
+          {% endif %}
         </form>
+      {% else %}
+        <p>You must be logged in to schedule account deletion.</p>
+        <a href="{% url 'login' %}?next={{ request.path }}">
+          <button type="button">Log in to request deletion</button>
+        </a>
+      {% endif %}
+
     </section>
 
     <p><a href="{% url 'home' %}">Back to home</a></p>
-</body>
+  </body>
 </html>
