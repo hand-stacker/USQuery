@@ -101,7 +101,7 @@ urlpatterns += [
 #Auth api
 urlpatterns += [
     path('api/auth/', include('app.api.urls')),
-    path('account/delete/', views.manage_account_deletion, name='account-delete'),
+    path('api/auth/delete/', views.manage_account_deletion, name='account-delete'),
     path("api/auth/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
     path("api/auth/token/refresh/", TokenRefreshView.as_view(), name="token_refresh"),
     path("api/auth/token/blacklist/", TokenBlacklistView.as_view(), name="token_blacklist"),
