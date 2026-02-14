@@ -1,0 +1,39 @@
+{% extends "app/layout.html" %}
+
+{% block content %}
+
+<h1>Delete your USQuery account</h1>
+
+<section>
+    <h2>How to request deletion</h2>
+    <p>
+        To request deletion of your account and associated personal data,
+        press the button below. This will schedule your account for deletion. A scheduled account will be
+        permanently deleted when the site operator runs the deletion job (typically every 30 days).
+    </p>
+</section>
+
+<section>
+    <h2>What data is deleted or kept</h2>
+    <ul>
+        <li>Deleted: your User account and any personal information associated with the account. This includes profile data, email, devices, starred items, etc.</li>
+        <li>Kept: any data from other systems or backups may be retained according to our retention/backup policy.</li>
+    </ul>
+</section>
+
+<section>
+    <h2>Schedule or cancel deletion</h2>
+    <form method="post" action="{% url 'account-delete' %}">
+        {% csrf_token %}
+        {% if profile.scheduled_for_deletion %}
+        <p>Your account is currently scheduled for deletion.</p>
+        <button type="submit" name="action" value="unschedule">Cancel scheduled deletion</button>
+        {% else %}
+        <p>Your account is not scheduled for deletion.</p>
+        <button type="submit" name="action" value="schedule">Schedule account deletion</button>
+        {% endif %}
+    </form>
+</section>
+
+<p><a href="{% url 'home' %}">Back to home</a></p>
+{% endblock %}
