@@ -46,6 +46,7 @@
     <Compile Include="app\management\commands\cleanup_verifications.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="app\management\commands\delete_scheduled_users.py" />
     <Compile Include="app\models.py" />
     <Compile Include="app\secretss.py" />
     <Compile Include="app\siteutils.py">
