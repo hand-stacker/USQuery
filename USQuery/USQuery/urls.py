@@ -65,6 +65,7 @@ urlpatterns = [
     path('bill-query/bill-query/', BQviews.bill_query, name='billQueryAR'),
     path('bill-query/vote-query/', BQviews.vote_query, name='billQueryVR'),
     path('bill-query/bill/<int:congress_num>/<str:bill_type>/<int:bill_num>', BQviews.bill, name = 'billQueryBill'),
+    path('bill-query/generate-summary/<int:congress_num>/<str:bill_type>/<int:bill_num>/', BQviews.generate_summary, name='generate_summary'),
     path('bill-query/prediction-request/<int:congress_num>/<str:bill_type>/<int:bill_num>', BQviews.requestPrediction, name = 'billQueryrequestPrediction'),
     path('bill-query/vote/<int:vote_id>', BQviews.vote, name = "billQueryVote"),
     path('bill-query/fix/<int:congress_num>/<int:year>/<int:nums>/', BQviews.fix_votes, name = 'billQueryFixVotes'),

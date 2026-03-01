@@ -21,7 +21,7 @@ pattern = re.compile(r'\s{2,}')
 prompt = secretss.prompt
 column_list = secretss.column_list
 column_dict = secretss.column_dict
-model = 'gemini-2.0-flash'
+model = 'gemini-2.5-flash'
 
 # GeoJSON modification function
 # used once to modify GeoJSON for site, use when adding a new GeoJSON map of counties/states
@@ -51,7 +51,7 @@ def modify(read_url, write_url):
 async def gatherFeatures(bill_id):
     header_str = 'api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
     session = aiohttp.ClientSession()
-    client = genai.Client(api_key= settings.GEMINI_KEY)
+    client = genai.Client(api_key=settings.GEMINI_KEY)
     generate_content_config = types.GenerateContentConfig(response_mime_type='text/plain')
     mult = 1 if bill_id < 99_999_999 else 10
     congress_num = bill_id // (100000 * mult)
@@ -59,57 +59,78 @@ async def gatherFeatures(bill_id):
     bill_type = types_list[type_enum]
     bill_num = bill_id % (10000 * mult)
     fullpath = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + bill_type + '/' + str(bill_num)
-    blob = await utils.run_concurrent_connect(session, [fullpath + '/text?', fullpath + '/subjects?'], header_str)
-    subjects = blob[1]
-    texts = blob[0]
-    if len(texts['textVersions']) == 0 or len(subjects['subjects']['legislativeSubjects']) == 0: return None
-    subj_litr = '['
-    for subject in subjects['subjects']['legislativeSubjects']:
-        subj_litr += '"' + subject['name'] + '",'
-    subj_litr += ']'
-    indx = -1
-    date_max = datetime.datetime(1,1,1,1,1,1)
-    for j in range(len(texts['textVersions'])):
-        date_str = texts['textVersions'][j]['date']
-        if date_str == None: continue
-        curr_date = datetime.datetime(
-            int(date_str[0:4]),
-            int(date_str[5:7]),
-            int(date_str[8:10]),
-            int(date_str[11:13]),
-            int(date_str[14:16]),
-            int(date_str[17:19])
+    try:
+        blob = await utils.run_concurrent_connect(session, [fullpath + '/text?', fullpath + '/subjects?'], header_str)
+        subjects = blob[1]
+        texts = blob[0]
+
+        if len(texts['textVersions']) == 0 or len(subjects['subjects']['legislativeSubjects']) == 0:
+            return None
+
+        subj_litr = '['
+        for subject in subjects['subjects']['legislativeSubjects']:
+            subj_litr += '"' + subject['name'] + '",'
+        subj_litr += ']'
+
+        indx = -1
+        date_max = datetime.datetime(1, 1, 1, 1, 1, 1)
+        for j in range(len(texts['textVersions'])):
+            date_str = texts['textVersions'][j]['date']
+            if date_str is None:
+                continue
+            curr_date = datetime.datetime(
+                int(date_str[0:4]),
+                int(date_str[5:7]),
+                int(date_str[8:10]),
+                int(date_str[11:13]),
+                int(date_str[14:16]),
+                int(date_str[17:19])
             )
-        if curr_date > date_max:
-            date_max = curr_date
-            indx = j
-    txt_html = await utils.connectASYNC(session, texts['textVersions'][indx]['formats'][0]['url'], '', False)
-    if txt_html == None : return None
-    soup = BeautifulSoup(txt_html)
-    version_text = soup.get_text()
-    version_text = version_text.replace('\n','').replace('_','')
-    version_text = re.sub(pattern, ' ', version_text)
-    ctns=[version_text,subj_litr, prompt]
-    token_count = client.models.count_tokens(model=model, contents=ctns)
-    if token_count.total_tokens > 1_000_000 : return None
-    response = await client.aio.models.generate_content(
-        model = model,
-        contents = ctns,
-        config = generate_content_config
-        )
-    response = response.text
-    response = response.removeprefix('```python')
-    response = response.removesuffix('```')
-    response = response.removesuffix('```\n')
-    try :
-        d = ast.literal_eval(response)
-    except:
-        return None
-    for key in list(d.keys()):
-        if key not in column_dict:
-            d.pop(key)
-    await session.close()
-    return d
+            if curr_date > date_max:
+                date_max = curr_date
+                indx = j
+
+        txt_html = await utils.connectASYNC(session, texts['textVersions'][indx]['formats'][0]['url'], '', False)
+        if txt_html is None:
+            return None
+
+        soup = BeautifulSoup(txt_html)
+        version_text = soup.get_text()
+        version_text = version_text.replace('\n', '').replace('_', '')
+        version_text = re.sub(pattern, ' ', version_text)
+        ctns = [version_text, subj_litr, prompt]
+
+        # Use synchronous genai calls inside a thread so we don't depend on an async client API.
+        try:
+            token_count = await asyncio.to_thread(client.models.count_tokens, model=model, contents=ctns)
+        except Exception:
+            return None
+
+        if getattr(token_count, 'total_tokens', None) is not None and token_count.total_tokens > 250_000:
+            return None
+
+        try:
+            response = await asyncio.to_thread(lambda: client.models.generate_content(model=model, contents=ctns, config=generate_content_config))
+        except Exception:
+            return None
+
+        response = response.text
+        response = response.removeprefix('```python')
+        response = response.removesuffix('```')
+        response = response.removesuffix('```\n')
+
+        try:
+            d = ast.literal_eval(response)
+        except Exception:
+            return None
+
+        for key in list(d.keys()):
+            if key not in column_dict:
+                d.pop(key)
+
+        return d
+    finally:
+        await session.close()
 
 # returns -1 if any errors occured, 1 if creation was successfull
 def createPredictions(bill_id):

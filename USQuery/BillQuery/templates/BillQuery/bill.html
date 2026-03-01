@@ -12,8 +12,22 @@
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
             <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
             <hr />
-            <div id="AI_warning" role="alert" class="alert alert-warning">Warning: The content below was generated with AI.</div>
-            <h5 id="bill_summary" class="t-responsive-lg overflow-scroll">{{summary | safe}}</h5>
+            <div id="summary-container">
+                {% if summary %}
+                <div id="bill-summary">{{ summary|safe }}</div>
+                {% else %}
+                <div id="bill-summary">Summary not found.</div>
+                {% endif %}
+            </div>
+
+            {% if show_generate_button %}
+            <button id="generate-summary"
+                    class="btn btn-primary"
+                    data-url="{% url 'generate_summary' congress_num=bill_id bill_type=bill_type bill_num=bill_num %}"
+                    data-endpoint="/bill-query/generate-summary/{{ congress_num }}/{{ bill_type }}/{{ bill_num }}/">
+                Generate AI summary
+            </button>
+            {% endif %}
         </div>
         <div class="border dark-0 align-items-center d-flex justify-content-center p-3">
             <h4>Action Timeline</h4>
@@ -113,5 +127,9 @@
 <script src="{% static 'scripts/loadSize_bill.js' %}"></script>
 <script src="{% static 'scripts/predictionHist.js' %}"></script>
 <script src="{% static 'scripts/predictionHist2.js' %}"></script>
+{% endif %}
+
+{% if show_generate_button %}
+<script src="{% static 'scripts/generate_summary.js' %}"></script>
 {% endif %}
 {% endblock %}
