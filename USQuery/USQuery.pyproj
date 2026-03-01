@@ -180,6 +180,7 @@
     <Content Include="BillQuery\static\geojsons\cb_us_cd118_5m.js" />
     <Content Include="BillQuery\static\scripts\AI_warning.js" />
     <Content Include="BillQuery\static\scripts\cloroplethPlot.js" />
+    <Content Include="BillQuery\static\scripts\generate_summary.js" />
     <Content Include="BillQuery\static\scripts\loadCounty.js" />
     <Content Include="BillQuery\static\scripts\donutPlot.js" />
     <Content Include="BillQuery\static\scripts\barPlot.js" />

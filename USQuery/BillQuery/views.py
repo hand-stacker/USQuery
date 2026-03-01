@@ -1,11 +1,14 @@
 import asyncio
 import os
+import aiohttp
 from django.shortcuts import render
 from django.db.models import Q
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.http import HttpRequest, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
+from django.views.decorators.http import require_POST
+from django.conf import settings
 from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
@@ -124,6 +127,8 @@ def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = Non
     context = asyncio.run(utils.billHtml(_bill, str(congress_num), bill_type, str(bill_num)))
     context['bill_id'] = bill_id
     context['bill_type'] = bill_type
+    context['congress_num'] = congress_num
+    context['bill_num'] = bill_num
     context['show_prediction'] = False
     context['show_request_button'] = False
     context['show_error'] = False
@@ -205,3 +210,39 @@ def daily_task(request):
     for t in utils.types :
         asyncio.run(utils.updateRecentBills(119, "!", t))
     return JsonResponse({"status": "ok"})
+
+# AJAX/POST endpoint that generates an AI summary for a bill on-demand.
+# The front-end should POST to this endpoint (CSRF-protected). Returns JSON
+# { 'status': 'ok', 'summary': '<html...>' } on success.
+
+@login_required
+@require_POST
+def generate_summary(request, congress_num, bill_type, bill_num):
+    
+    assert isinstance(request, HttpRequest)
+    # Compute bill id same way as used in other views
+    mult = 10 if int(bill_num) > 9999 else 1
+    bill_id = (int(congress_num) * 1_0_0000 * mult) + (utils.types[bill_type] * 1_0000 * mult) + int(bill_num)
+
+    # verify bill exists
+    try:
+        Bill.objects.get(id=bill_id)
+    except Bill.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Bill not found'}, status=404)
+    apiURL = settings.CONGRESS_DIR + "bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num)
+    header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
+
+    async def _generate():
+        session = aiohttp.ClientSession()
+        try:
+            summary = await utils.getSummaryAI(session, apiURL + "/text", header_str, bill_id)
+            return summary
+        finally:
+            await session.close()
+
+    try:
+        summary = asyncio.run(_generate())
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': f'Generation failed: {e}'}, status=500)
+
+    return JsonResponse({'status': 'ok', 'summary': summary})

@@ -11,6 +11,7 @@ from xml.etree import cElementTree as ET
 from google import genai
 from django.db.models import Q, Count, Prefetch
 from bs4 import BeautifulSoup
+from google.genai import types as genaiTypes
 
 ## helpful objects that map state related data
 timeout_day = 60 * 60 * 24
@@ -971,14 +972,37 @@ async def billHtml(bill, congress_id, bill_type, num):
             _id = int(congress_id) * 100000 + types[bill_type] * 10000 + int(num)
         else :
             _id = int(congress_id) * 1000000 + types[bill_type] * 100000 + int(num)
-        if (len(API_data[2]['summaries']) < 1):
-            context['AI_generated_content'] = "T"
-            context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, _id)
-        else :
-            context['AI_generated_content'] = "F"
-            context['summary'] = API_data[2]['summaries'][0]['text']
-            # if summary exists, delete any generated ai summary
-            await BillSummary.objects.filter(id=_id).adelete()
+
+    # Prefer Congress-provided summary. If none, fall back to DB-stored BillSummary.
+    # Only show a "Generate AI summary" button when there's neither a Congress summary nor a stored BillSummary.
+    api_summaries = None
+    if (API_data[2] != ''):
+        api_summaries = API_data[2].get('summaries', [])
+
+    if api_summaries and len(api_summaries) > 0:
+        # Use official Congress API summary and remove any stored/generated summary
+        context['AI_generated_content'] = "CONGRESS"
+        context['summary'] = api_summaries[0]['text']
+        await BillSummary.objects.filter(id=_id).adelete()
+    else:
+        # No Congress summary: check for an existing stored BillSummary
+        try:
+            bill_summary = await BillSummary.objects.aget(id=_id)
+            # If DB summary exists and is non-empty, use it; otherwise treat as absent
+            if bill_summary.summary and bill_summary.summary.strip():
+                context['AI_generated_content'] = "STORED"
+                context['summary'] = bill_summary.summary
+            else:
+                # DB record exists but no usable summary -> allow user to generate
+                context['AI_generated_content'] = "NONE"
+                context['summary'] = ""
+                context['show_generate_button'] = True
+        except BillSummary.DoesNotExist:
+            # No DB summary -> do not auto-generate; show button to let user request AI generation
+            context['AI_generated_content'] = "NONE"
+            context['summary'] = ""
+            context['show_generate_button'] = True
+
     await session.close()
     return context
 
@@ -1016,29 +1040,53 @@ async def getSummaryAI(session, url, header_str, _id):
     html = await connectASYNC(new_session, text_url, '', False)
     soup = BeautifulSoup(html)
     text = soup.get_text()
-    ## generate summary from text:
-    try: 
+
+    ## generate summary from text using Google Generative API (Gemini).
+    try:
         client = genai.Client(api_key=settings.GEMINI_KEY)
     except KeyError:
         print("Error: GOOGLE_API_KEY environment variable not set.")
-        exit()
+        await new_session.close()
+        return bill_summary.summary
+    except Exception as e:
+        print(f"GENAI CLIENT ERROR: {e}")
+        await new_session.close()
+        return bill_summary.summary
+
     prompt = """You are the interface for a web app that summarizes US legislation.
         Your raw response will be inserted into a html document,
         so the response should be raw html inside a <p> div using lists when appropriate.
         Write a summary for this US legislation.
         The tone should be formal, concise, and easy to understand for the average voter.
         Refer to the legislation by its title or the bill type and number if there is no title."""
+
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[text, prompt]
+        # Request HTML response from the model and run the blocking SDK call in a thread to avoid blocking the event loop.
+        generate_content_config = genaiTypes.GenerateContentConfig(response_mime_type='text/html')
+        response = await asyncio.to_thread(
+            lambda: client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[text, prompt],
+                config=generate_content_config
             )
+        )
     except Exception as e:
         print(f"GENAI ERROR during generate_content: {e}")
         await new_session.close()
         return bill_summary.summary
-    summary = response.text
-    summary = summary.removeprefix("```html").removesuffix("```")
+
+    # Normalize returned text and strip common fenced blocks
+    summary = getattr(response, "text", None)
+    if summary is None:
+        # fallback: try structured outputs
+        try:
+            # some SDK responses include output[0].content
+            summary = response.output[0].content if getattr(response, "output", None) else ""
+        except Exception:
+            summary = ""
+
+    summary = summary.removeprefix("```html").removesuffix("```").strip()
+
     bill_summary.source_date = latest_date
     bill_summary.summary = summary
     async with asyncio.TaskGroup() as tg:
@@ -1098,8 +1146,7 @@ def voteHtml(vote):
                 values[i][indx] += 1
                 chamber = 'Senate'
             html_lists[i] += '<tr class="' + list_color[membership.party]  + ' border"><td class="border-0"><a href="/member-query/results/?congress=' 
-            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.getStr() + '</a></td></tr>'
-                
+            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.getStr() + '</a></td></tr>'                
         
     context = {'title': str(vote.id),
             'bill' : vote.bill.__str__(),
@@ -1248,4 +1295,3 @@ def get_client_ip(request):
     if x_forwarded_for:
         return x_forwarded_for.split(",")[0]
     return request.META.get("REMOTE_ADDR")
-    
