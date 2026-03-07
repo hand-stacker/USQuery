@@ -90,6 +90,7 @@ urlpatterns += [
     path("api/notif/star-membership/", NViews.StarMembership.as_view()),
     path("api/notif/unstar-membership/", NViews.UnstarMembership.as_view()),
     path("api/notif/update-favorites/", NViews.UpdateFavoriteSubjects.as_view()),
+    path("api/notif/update-preferences/", NViews.UpdateNotifPreferences.as_view()),
     path("api/notif/get-preferences/", NViews.getUserPreferences),
     # Admin-only test endpoint to trigger a mock push notification
     path("api/notif/send-test/", NViews.send_test_bill_notification),

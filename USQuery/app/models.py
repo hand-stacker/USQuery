@@ -39,6 +39,9 @@ class UserProfile(models.Model):
     id = models.BigAutoField(primary_key=True)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     user_type = models.IntegerField(choices=SubType, default=0)
+    enabled_bill_notif = models.BooleanField(default=True)
+    enabled_subject_notif = models.BooleanField(default=True)
+    scheduled_for_deletion = models.BooleanField(default=False, db_index=True)
 
     def get_active_devices(self):
         return self.devices.filter(is_active=True)

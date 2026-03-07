@@ -10,6 +10,7 @@ from .push import send_bill_notification
 from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
+import asyncio
 
 def _validation_error_detail(e: ValidationError):
     if hasattr(e, "message_dict"):
@@ -61,6 +62,26 @@ class UnregisterDevice(APIView):
         user_profile.get_active_devices().filter(device_token=token).update(is_active=False)
 
         return Response({"status" : "device unregistered"}, status=202)
+
+# userwide enabling/blocking of either starred bill updates or updates on bills with users' favorite subjects
+# expects an access_token for verification
+# optional 'bill' and 'subject' fields which are boolean values that update user's preference if exists
+class UpdateNotifPreferences(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error" :"Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        bill_pref = request.data.get("bill")
+        if  bill_pref != None:
+            user_profile.update(enabled_bill_notif=bool(bill_pref))
+        sub_pref = request.data.get("subject")
+        if  sub_pref != None:
+            user_profile.update(enabled_subject_notif=bool(sub_pref))
+
+        return Response({"status" : "updated preferences"}, status=202)
 
 # Stars a bill for all devices of a user
 # expects acces_token for verification
@@ -227,7 +248,7 @@ def send_test_bill_notification(request):
     body = "This is a mock notification sent from admin test endpoint."
 
     # Call the push utility; it will look up devices that starred this bill_id
-    send_bill_notification(bill_id, title, body)
+    asyncio.run(send_bill_notification(bill_id, title, body))
 
     return JsonResponse({
         "status": "sent",
@@ -235,6 +256,7 @@ def send_test_bill_notification(request):
         "title": title,
         "body": body
     })
+
 @staff_member_required
 def send_test_bill_notification_exclusion_test(request):
     """
@@ -248,7 +270,7 @@ def send_test_bill_notification_exclusion_test(request):
             registered as a device's starred bills and thus no notification recieved."""
 
     # Call the push utility; it will look up devices that starred this bill_id
-    send_bill_notification(bill_id, title, body)
+    asyncio.run(send_bill_notification(bill_id, title, body))
 
     return JsonResponse({
         "status": "sent",
@@ -257,12 +279,12 @@ def send_test_bill_notification_exclusion_test(request):
         "body": body
     })
 
+# Admin-only endpoint to delete all StarredBill entries whose bill_id starts
+# with the provided congress_num.
+# Useful for when new congress starts and we delete old ones from users.
 @staff_member_required
 def MassUnstar(request, congress_num):
-    """
-    Admin-only endpoint to delete all StarredBill entries whose bill_id starts
-    with the provided congress_num.
-    """
+
     prefix = str(congress_num)
     qs = StarredBill.objects.filter(bill_id__startswith=prefix)
     deleted_count, _ = qs.delete()

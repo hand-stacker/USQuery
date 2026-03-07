@@ -208,6 +208,12 @@ async def run_concurrent_connect_and_cache(session, requests, header_str, timeou
         tasks.append(ret)
     return await asyncio.gather(*tasks, return_exceptions=True)
 
+# function that adds new_subjects to a unique set of subjects stored on redis cache
+def add_subjects(new_subjects):
+    subjects = cache.get("bill_subjects", set())
+    subjects.update(new_subjects)
+    cache.set("bill_subjects", subjects, timeout=None)
+
 ## mega function to add members for a given congress
 ## to fully load a member we need to make an updateMember call adding image and other info
 def addMembersCongressAPILazy(congress_num):
@@ -587,6 +593,8 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
     # Normalize prev_latest_action to a date object if present
     if prev_latest_action is not None and isinstance(prev_latest_action, datetime):
         prev_latest_action = prev_latest_action.date()
+    new_action = False
+    new_vote = False
 
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
@@ -600,7 +608,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                 # stop processing further actions (they are older)
                 API_response_actions = None
                 break
-
+            new_action = True
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
@@ -671,18 +679,33 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                         tg.create_task(vote.nays.aset(nays))
                         tg.create_task(vote.pres.aset(pres))
                         tg.create_task(vote.novt.aset(novt))
-                    # print('Added Vote : ' + str(vote_id))
                     if created:
+                        new_vote = True
                         await send_bill_notification(
                             bill_id=bill.id,
                             title="New Vote",
-                            body="A new vote was taken on " + bill.__str__()
+                            body="A new vote was taken on Bill " + bill.__str__() + "."
                         )
 
         if API_response_actions is not None and 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
+    if new_action and not new_vote:
+        await send_bill_notification(
+            bill_id=bill.id,
+            title="New Action",
+            body="New action(s) were taken on Bill " + bill.__str__() + "."
+        )
+        # if new actions were added to bill, first update bill subjects and then add subjects to redis set for notifs
+        subjects_response = await connectASYNC(session, b['url'], header_str)
+        subjects = Subject.objects.none()
+        for s in subjects_response['subjects']['legislativeSubjects']:
+            subjects |= Subject.objects.filter(name=s['name'])
+        await bill.subjects.aset(subjects)
+        bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in subjects_response['subjects']) else subjects_response['subjects']['policyArea']['name'])
+        await bill.asave()
+        add_subjects(bill.subjects.all())
     return 1
 
 # runs through existing votes up to limit, and adds memberships that were missing
