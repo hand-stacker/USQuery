@@ -5,11 +5,13 @@ from django.db.models import Q
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.core.cache import cache
 from django.http import HttpRequest, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
 from datetime import date
+from notifications.push import send_subject_notification
 
 
 def home(request):
@@ -196,6 +198,13 @@ def update_votes(request, congress_num, date):
     assert isinstance(request, HttpRequest)
     for t in utils.types :
         asyncio.run(utils.updateRecentBills(congress_num, date, t))
+    subjects = cache.get("bill_subjects", set())
+    asyncio.run(send_subject_notification(
+        subjects=subjects,
+        title="New actions on bills you might be interested in.",
+        body="New actions were made on bills related to your favorite subjects."
+    ))
+    cache.delete("bill_subjects")
     return HttpResponseRedirect("/bill-query")
 
 def daily_task(request):
