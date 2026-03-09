@@ -1,4 +1,5 @@
 from datetime import datetime, date, timedelta
+from asgiref.sync import sync_to_async
 from django.core.cache import cache
 import requests, asyncio, json, aiohttp, hashlib
 from requests.exceptions import HTTPError
@@ -209,9 +210,10 @@ async def run_concurrent_connect_and_cache(session, requests, header_str, timeou
     return await asyncio.gather(*tasks, return_exceptions=True)
 
 # function that adds new_subjects to a unique set of subjects stored on redis cache
-def add_subjects(new_subjects):
+async def add_subjects(new_subjects):
     subjects = cache.get("bill_subjects", set())
-    subjects.update(new_subjects)
+    new_ids = await sync_to_async(list)(new_subjects.values_list("id", flat=True))
+    await sync_to_async(subjects.update)(new_ids)
     cache.set("bill_subjects", subjects, timeout=None)
 
 ## mega function to add members for a given congress
@@ -689,14 +691,15 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
             body="New action(s) were taken on Bill " + bill.__str__() + "."
         )
         # if new actions were added to bill, first update bill subjects and then add subjects to redis set for notifs
-        subjects_response = await connectASYNC(session, b['url'], header_str)
-        subjects = Subject.objects.none()
-        for s in subjects_response['subjects']['legislativeSubjects']:
-            subjects |= Subject.objects.filter(name=s['name'])
-        await bill.subjects.aset(subjects)
-        bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in subjects_response['subjects']) else subjects_response['subjects']['policyArea']['name'])
-        await bill.asave()
-        add_subjects(bill.subjects.all())
+        if 'subjects' in API_response_bill['bill']:
+            subjects_response = await connectASYNC(session, API_response_bill['bill']['subjects']['url'], header_str)
+            subjects = Subject.objects.none()
+            for s in subjects_response['subjects']['legislativeSubjects']:
+                subjects |= Subject.objects.filter(name=s['name'])
+            await bill.subjects.aset(subjects)
+            bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in subjects_response['subjects']) else subjects_response['subjects']['policyArea']['name'])
+            await bill.asave()
+            await add_subjects(bill.subjects.all())
     return 1
 
 # runs through existing votes up to limit, and adds memberships that were missing
