@@ -1300,20 +1300,40 @@ def termList(terms, bioguideID, congress_num):
     term_list = ''
     for term in reversed(terms):
         num = term['congress']
+        # build common pieces
         link = '/member-query/results/?congress=' + str(num) + '&member=' + bioguideID + '&chamber='
         district = ''
-        if ('district' in term):
-            district = ', '  + str(term['district']) + getNumSuffix(term['district']) + ' District' 
-            
+        if 'district' in term:
+            district = ', ' + str(term['district']) + getNumSuffix(term['district']) + ' District'
+
+        # list item and highlight current congress
         term_list += '<li class="list-group-item darkmode'
-        if (term['congress'] == congress_num): term_list += ' dark-2' 
-        else : term_list += ' bg-trans'
-        term_list += '">'  + str(num) + getNumSuffix(num) + ' Congress : '
-        term_list += '<a href="' + link + link_dict[term['memberType']] + '" >' + term['memberType'] + ' of ' + term['stateName'] + district + '</a>'
+        term_list += ' dark-2' if int(num) == int(congress_num) else ' bg-trans'
+        term_list += '">'
+
+        # heading (Congress n)
+        term_list += str(num) + getNumSuffix(int(num)) + ' Congress : '
+
+        # text for member/office + optional link (no link for terms < 112)
+        inner_text = term['memberType'] + ' of ' + term['stateName'] + district
+        try:
+            has_link = int(num) >= 112
+        except Exception:
+            has_link = False
+
+        if has_link:
+            term_list += '<a href="' + link + link_dict[term['memberType']] + '" >' + inner_text + '</a>'
+        else:
+            # show same text but without a hyperlink
+            term_list += inner_text
+
+        # years
         term_list += ' (' + str(term['startYear']) + '-'
-        if ('endYear' in term) : term_list += str(term['endYear'])
-        else : term_list += 'Present'
-        term_list += ')</a></li>'
+        if 'endYear' in term:
+            term_list += str(term['endYear'])
+        else:
+            term_list += 'Present'
+        term_list += ')</li>'
     return term_list
 
 def get_client_ip(request):
