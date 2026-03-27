@@ -142,7 +142,7 @@ def verify_email(request, email):
                 user.is_active = True
                 user.save()
                 verification.delete()
-                user_profile = UserProfile.objects.get_or_create(user=request.user)
+                user_profile, _ = UserProfile.objects.get_or_create(user=user)
 
                 messages.success(
                     request,
