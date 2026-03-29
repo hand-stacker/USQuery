@@ -7,6 +7,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpResponseForbidden
 from django.views.decorators.http import require_GET
+from rest_framework.decorators import api_view
+from rest_framework.views import Response
 from SenateQuery.models import Congress
 from BillQuery.models import Vote
 from notifications.models import UserProfile
@@ -285,3 +287,13 @@ def manage_account_deletion(request):
 
     return render(request, "app/account_delete.html", {"profile": profile})
 
+# shows account details (subscrition type and limits)
+@api_view(['GET'])
+def view_details(request):
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+    user_type = user_profile.user_type()
+    device_limit = user_profile.get_device_limit()
+    bill_limit = user_profile.get_starred_bills_limit()
+    member_limit = user_profile.get_starred_memberships_limit()
+
+    return Response({"user_type": user_type, "device_limit" : device_limit, "bill_limit" : bill_limit, "member_limit" : member_limit}, status=202)

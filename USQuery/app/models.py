@@ -6,7 +6,7 @@ from datetime import timedelta
 
 
 DEVICE_LIMITS = {
-    0:3,
+    0:20, # this is just for my alpha test, update later
     1:10,
     2:10,
     3:1000}
