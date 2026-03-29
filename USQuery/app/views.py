@@ -291,7 +291,7 @@ def manage_account_deletion(request):
 @api_view(['GET'])
 def view_details(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
-    user_type = user_profile.user_type()
+    user_type = user_profile.user_type
     device_limit = user_profile.get_device_limit()
     bill_limit = user_profile.get_starred_bills_limit()
     member_limit = user_profile.get_starred_memberships_limit()
