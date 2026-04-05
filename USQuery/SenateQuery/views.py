@@ -1,6 +1,6 @@
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render
-from django.http import HttpRequest, HttpResponseRedirect
+from django.http import HttpRequest, HttpResponseRedirect, HttpResponseBadRequest
 from django.core.paginator import Paginator
 from datetime import datetime
 from app import utils, forms
@@ -31,19 +31,29 @@ def home(request):
 
 def search(request, congress_num, bioguide_id, in_house):
     assert isinstance(request, HttpRequest)
+    # find senator given member id and congress num
+    if int(congress_num) < 112:
+        return render(request, 'SenateQuery/search_failed.html', {
+            'title': 'Search failed',
+            'return_url': '/member-query/'
+        })
+    try:
+        congress = Congress.objects.get(congress_num = congress_num)
+        member = Member.objects.get(id = bioguide_id)
+        membership = Membership.objects.get(congress = congress, member = member, house = in_house)
+    except:
+        return render(request, 'SenateQuery/search_failed.html', {
+            'title': 'Search failed',
+            'return_url': '/member-query/'
+        })
+
     API_response = utils.updateMember(congress_num, bioguide_id)
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
         urlPath += key + "=" + past_context[key] + "&"
         
-    # find senator given member id and congress num
-    try:
-        congress = Congress.objects.get(congress_num = congress_num)
-        member = Member.objects.get(id = bioguide_id)
-        membership = Membership.objects.get(congress = congress, member = member, house = in_house)
-    except:
-        return HttpResponseRedirect('/member-query')
+    
     start = membership.start_date.split('-')
     
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
@@ -96,15 +106,25 @@ def search(request, congress_num, bioguide_id, in_house):
         context
     )
 
+def search_failed(request):
+    """
+    Simple view to render the search_failed template.
+    """
+    assert isinstance(request, HttpRequest)
+    return render(request, 'SenateQuery/search_failed.html', {
+        'title': 'Search failed',
+        'return_url': '/member-query/'
+    })
+
 def query(request):
     assert isinstance(request, HttpRequest)
     member_form = forms.MemberForm(request.GET)
     try:
         congress_num = int(member_form.data["congress"])
         in_house = member_form.data["chamber"] != 'Senate'
-    except:
-        print("FATAL ERR0R")
-        return HttpResponseRedirect('/member-query/')        
+    except (KeyError, ValueError):
+        # form data is malformed or missing required fields -> return 400 Bad Request
+        return HttpResponseBadRequest("Malformed member query form.")
     return search(request, congress_num, member_form.data["member"], in_house)
     
 

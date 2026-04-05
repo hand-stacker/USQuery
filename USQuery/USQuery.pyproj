@@ -68,6 +68,9 @@
     <Compile Include="BillQuery\serializers.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="BillQuery\templates\BillQuery\search_failed.html">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="BillQuery\tests.py" />
     <Compile Include="BillQuery\views.py" />
     <Compile Include="BillQuery\__init__.py" />
@@ -247,6 +250,7 @@
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\member-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
+    <Content Include="SenateQuery\templates\SenateQuery\search_failed.html" />
   </ItemGroup>
   <ItemGroup>
     <None Include="readme.html">
