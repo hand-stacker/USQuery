@@ -69,7 +69,10 @@ def bill_search(request, s_d, e_d, bill_type, topics):
     try: 
         q_set = utils.getBillsInRange(s_d, e_d, bill_type, topics)
     except:
-        return HttpResponseRedirect('/bill-query')
+        return render(request, 'BillQuery/search_failed.html', {
+            'title': 'Search failed',
+            'return_url': '/bill-query/'
+        })
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -95,7 +98,10 @@ def vote_search(request, s_d, e_d, bill_type, topics):
     try:
         q_set = utils.getVotesInRange(s_d, e_d, bill_type, topics)
     except:
-        return HttpResponseRedirect('/bill-query')
+        return render(request, 'BillQuery/search_failed.html', {
+            'title': 'Search failed',
+            'return_url': '/bill-query/'
+        })
     urlPath = ""
     past_context = request.GET.dict()
     for key in past_context:
@@ -116,6 +122,16 @@ def vote_search(request, s_d, e_d, bill_type, topics):
         }
     )
 
+def search_failed(request):
+    """
+    Simple view to render the search_failed template.
+    """
+    assert isinstance(request, HttpRequest)
+    return render(request, 'BillQuery/search_failed.html', {
+        'title': 'Search failed',
+        'return_url': '/bill-query/'
+    })
+
 def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = None):
     assert isinstance(request, HttpRequest)
     if _bill == None:
@@ -125,7 +141,10 @@ def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = Non
         try:
             _bill = Bill.objects.get(id = bill_id)
         except Bill.DoesNotExist:
-            return HttpResponseRedirect('/bill-query')
+            return render(request, 'BillQuery/search_failed.html', {
+                'title': 'Bill does not exist',
+                'return_url': '/bill-query/'
+            })
     context = asyncio.run(utils.billHtml(_bill, str(congress_num), bill_type, str(bill_num)))
     context['bill_id'] = bill_id
     context['bill_type'] = bill_type
@@ -161,7 +180,10 @@ def requestPrediction(request, congress_num, bill_type, bill_num):
         try:
             Bill.objects.get(id = bill_id)
         except Bill.DoesNotExist:
-            return HttpResponseRedirect('/bill-query')
+            return render(request, 'BillQuery/search_failed.html', {
+                'title': 'Bill does not exist',
+                'return_url': '/bill-query/'
+            })
         siteutils.getPredictionBatch(bill_id, True, 0, False)
     return HttpResponseRedirect("/bill-query/bill/" + str(congress_num) + "/" + bill_type + "/" + str(bill_num))
 
@@ -170,7 +192,10 @@ def vote(request, vote_id):
     try:
         vote = Vote.objects.get(id = vote_id)
     except Vote.DoesNotExist:
-        return HttpResponseRedirect('/bill-query')
+        return render(request, 'BillQuery/search_failed.html', {
+                'title': 'Vote does not exist',
+                'return_url': '/bill-query/'
+            })
     context = utils.voteHtml(vote)
     context['cloro_form'] = forms.CloroChoice(request.GET)
     return render(

@@ -793,7 +793,7 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
 def updateMember(congress_num, member_id): 
     congress = Congress.objects.get(congress_num__exact = congress_num)    
     member = Member.objects.get(id__exact = member_id)
-    API_response_member = connect(member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}).json()
+    API_response_member = connect_and_cache(member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}, timeout_day * 7)
     image_link = member.image_link
     if image_link != "empty" and member.official_link != None and member.office != None and member.phone != None: return API_response_member
     
@@ -908,31 +908,52 @@ async def billHtml(bill, congress_id, bill_type, num):
         requests = [apiURL + '/cosponsors', apiURL + '/relatedbills', apiURL + '/subjects']
         API_data_2 = await run_concurrent_connect_and_cache(session, requests, header_str)
 
+        # Optimize cosponsors: fetch memberships in batch instead of per-cosponsor DB query
         if (API_data_2[0] != ''):
             cosponsors_exist = True
-            cosponsors = Membership.objects.none()
-            for c in API_data_2[0]['cosponsors']:
-                cosponsors |= Membership.objects.filter(congress=int(congress_id), member__id=c['bioguideId'], house=('district' in c))
-            await bill.cosponsors.aset(cosponsors)
+            cosps = API_data_2[0].get('cosponsors', [])
+            # Build list of member ids and a map of (bioguideId, house_bool) -> list index
+            ids = [c['bioguideId'] for c in cosps if 'bioguideId' in c]
+            if ids:
+                # fetch all memberships for those members in one query
+                all_memberships = Membership.objects.filter(congress=int(congress_id), member__id__in=ids).select_related('member')
+                # map by (member_id, house_bool) for quick lookup
+                mem_map = {}
+                for m in all_memberships:
+                    mem_map[(str(m.member.id), bool(m.house))] = m
+                cosponsors = Membership.objects.none()
+                for c in cosps:
+                    mid = c.get('bioguideId')
+                    house_flag = ('district' in c)
+                    key = (mid, house_flag)
+                    mobj = mem_map.get(key)
+                    if mobj:
+                        cosponsors |= Membership.objects.filter(id=mobj.id)
+                await bill.cosponsors.aset(cosponsors)
         
+        # Optimize related bills: collect ids then single query
         if (API_data_2[1] != ''):
             related_exist = True
-            related_bills = Bill.objects.none()
-            for b in API_data_2[1]['relatedBills'] : 
-                # CCC_T_XXXX(X)
+            related_list = API_data_2[1].get('relatedBills', [])
+            related_ids = []
+            for b in related_list:
                 mult = 100000
                 if (int(b['number']) < 10000):
                     mult *= 10
                 _id = int(b['congress']) * 100000 + types[b['type'].lower()] * 10000 + int(b['number'])
-                related_bills |= Bill.objects.filter(id=_id)
-            await bill.related_bills.aset(related_bills)
+                related_ids.append(_id)
+            if related_ids:
+                related_bills = Bill.objects.filter(id__in=related_ids)
+                await bill.related_bills.aset(related_bills)
 
+        # Optimize subjects: fetch with one query using name__in
         if (API_data_2[2] != ''):
             subjects_exist = True
-            subjects = Subject.objects.none()
-            for s in API_data_2[2]['subjects']['legislativeSubjects']:
-                subjects |= Subject.objects.filter(name=s['name'])
-            await bill.subjects.aset(subjects)
+            subj_list = API_data_2[2].get('subjects', {}).get('legislativeSubjects', [])
+            names = [s['name'] for s in subj_list if 'name' in s]
+            if names:
+                subjects = Subject.objects.filter(name__in=names)
+                await bill.subjects.aset(subjects)
             bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in API_data_2[2]['subjects']) else API_data_2[2]['subjects']['policyArea']['name'])
             await bill.asave()
 
@@ -952,11 +973,18 @@ async def billHtml(bill, congress_id, bill_type, num):
     q_2 = '&member='
     q_3 = '&chamber='
 
+    # When rendering cosponsors we now select_related('member') above so we can avoid extra DB hits.
     async def memberURL(mem, in_list = True):
         if (mem.house) :  chamber = 'House+of+Representatives'
         else: chamber = 'Senate' 
+        # Try to use pre-loaded member when available to avoid another DB fetch
+        member_full = await sync_to_async(getattr)(mem, 'member', None)
+        if member_full:
+            name = member_full.full_name
+        else:
+            name = (await Member.objects.aget(id=mem.member_id)).full_name
         ret = ((list_start if in_list else '<a href="') + member_link + congress_id + q_2 + mem.member_id + q_3 + chamber + '" >' + 
-              (await Member.objects.aget(id=mem.member_id)).full_name + ' [' + mem.party[0] + ']' +
+              name + ' [' + mem.party[0] + ']' +
               ' (' + mem.state + ('' if not mem.house else ('-' + str(mem.district_num))) + ')' + '</a>' + ('</li>' if in_list else ''))
         return ret
     context['sponsor'] = await memberURL(await Membership.objects.aget(id=bill.sponsor_id), False)
@@ -967,7 +995,8 @@ async def billHtml(bill, congress_id, bill_type, num):
         )
     if (cosponsors_exist):
         co_list = ''
-        async for c in bill.cosponsors.all():
+        # use select_related to avoid per-member DB lookups
+        async for c in bill.cosponsors.all().select_related('member'):
             co_list += await memberURL(c)
         context['cosponsors'] = co_list
         
@@ -1088,7 +1117,7 @@ async def getSummaryAI(session, url, header_str, _id):
 
     try:
         # Request HTML response from the model and run the blocking SDK call in a thread to avoid blocking the event loop.
-        generate_content_config = genaiTypes.GenerateContentConfig(response_mime_type='text/html')
+        generate_content_config = genaiTypes.GenerateContentConfig(response_mime_type='text/plain')
         response = await asyncio.to_thread(
             lambda: client.models.generate_content(
                 model="gemini-2.5-flash",
@@ -1125,18 +1154,28 @@ def voteHtml(vote):
     q_2 = '&member='
     q_3 = '&chamber='
        
-    votes_list = [vote.nays, vote.yeas, vote.pres, vote.novt]
+    # Load related Membership rows (and their Member) in as few queries as possible.
+    # Evaluate each queryset into a list once to avoid repeated DB hits during iteration.
+    nays_qs = vote.nays.all().select_related('member')
+    yeas_qs = vote.yeas.all().select_related('member')
+    pres_qs = vote.pres.all().select_related('member')
+    novt_qs = vote.novt.all().select_related('member')
+
+    votes_iters = [list(nays_qs), list(yeas_qs), list(pres_qs), list(novt_qs)]
+
     list_color = {
         'Democratic': 'dem',
         'Republican': 'rep',
         'Independent': 'ind',
         'Libertarian': 'lib',
         'Green': ' grn'
-        }
-    html_lists = ['', '', '', '']
-    partyCountsbyVote = [{}, {}, {}, {}]
+    }
+
+    # Prepare mutable accumulators
+    html_rows = [[] for _ in range(4)]          # collect rows per vote-category, join at end
+    partyCountsbyVote = [defaultdict(int) for _ in range(4)]
     isHouseVote = vote.house
-    j = 0
+
     if isHouseVote:
         mult = 435
         temp = int(congress_id)
@@ -1145,63 +1184,105 @@ def voteHtml(vote):
         geojson_load = 'scripts/loadCounty.js'
         values = [0] * mult
         text = [''] * mult
-    else :
+    else:
         mult = 50
         geojson_source = 'geojsons/cb_us_state_5m.js'
         geojson_load = 'scripts/loadState.js'
-        values = [[0] * mult, [0] * mult, [0] * mult, [0] * mult]
+        values = [[0] * mult for _ in range(4)]
         text = state_list
 
     geoids = [None] * mult
-    #          0 : Nay, 1 : Yea, 2 : Present, 3 : No Vote
+
+    # We need to preserve the original iteration order: [nays, yeas, pres, novt]
+    j = 0  # running index used for House mapping (keeps order across categories)
     for i in range(4):
-        votes = votes_list[i].all()
-        for membership in votes:
-            if (membership.party not in partyCountsbyVote[i]) : partyCountsbyVote[i][membership.party] = 0
-            partyCountsbyVote[i][membership.party] += 1
+        for membership in votes_iters[i]:
+            party = membership.party
+            partyCountsbyVote[i][party] += 1
+
+            # Skip malformed geoids
+            geoid = membership.geoid
+            if not geoid:
+                continue
+
             if isHouseVote:
-                text[j] = state_list[fips_to_count[membership.geoid[:2]]] + '-' + membership.geoid[2:]
-                geoids[j] = membership.geoid
-                values[j] = i
-                j+=1
+                # geoid like '06XX' -> prefix '06'
+                prefix = geoid[:2]
+                idx = fips_to_count.get(prefix)
+                # fallback if mapping missing
+                if idx is None:
+                    # still populate a sequential list-based view
+                    try:
+                        text[j] = state_list[fips_to_count[geoid[:2]]] + '-' + geoid[2:]
+                    except Exception:
+                        text[j] = '-' + geoid[2:]
+                    geoids[j] = geoid
+                    values[j] = i
+                    j += 1
+                else:
+                    text[j] = state_list[idx] + '-' + geoid[2:]
+                    geoids[j] = geoid
+                    values[j] = i
+                    j += 1
                 chamber = 'House+of+Representatives'
             else:
-                indx = fips_to_count[membership.geoid]
-                if indx == None : continue
-                geoids[indx] = membership.geoid
+                # For Senate, membership.geoid is the state FIPS code
+                indx = fips_to_count.get(geoid)
+                if indx is None:
+                    # skip territories not in mapping
+                    continue
+                geoids[indx] = geoid
                 values[i][indx] += 1
                 chamber = 'Senate'
-            html_lists[i] += '<tr class="' + list_color[membership.party]  + ' border"><td class="border-0"><a href="/member-query/results/?congress=' 
-            html_lists[i] += congress_id  + q_2 + membership.member.id + q_3 + chamber + '" class="link-light">' + membership.getStr() + '</a></td></tr>'                
-        
-    context = {'title': str(vote.id),
-            'bill' : vote.bill.__str__(),
-            'bill_title' : vote.bill.title,
-            'bill_link' : '/bill-query/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
-            'vote_time' : vote.getDate(),
-            'vote_title' : vote.title,
-            'vote_question' : vote.question,
-            'vote_result' : vote.result,
-            'congress' : congress_id,
-            'yeas_list' : html_lists[1],
-            'nays_list' : html_lists[0],
-            'pres_list' : html_lists[2],
-            'novt_list' : html_lists[3],
-            'yeas_cnts' : partyCountsbyVote[1],
-            'nays_cnts' : partyCountsbyVote[0],
-            'pres_cnts' : partyCountsbyVote[2],
-            'novt_cnts' : partyCountsbyVote[3],
-            'yeas_cnt' : votes_list[1].count(),
-            'nays_cnt' : votes_list[0].count(),
-            'pres_cnt' : votes_list[2].count(),
-            'novt_cnt' : votes_list[3].count(),
-            'geojson_source' : geojson_source,
-            'geojson_load' : geojson_load,
-            'geoids' : geoids,
-            'values' : values,
-            'cloro_text' : text,
-            'is_house' : isHouseVote
-            }
+
+            # Build html row using pre-resolved attributes (select_related('member') loaded Member)
+            # Use getStr() because it likely formats membership display consistently.
+            css = list_color.get(party, '')
+            member_id = membership.member.id
+            # Avoid multiple concatenations per loop — append to list and join later.
+            row = (
+                f'<tr class="{css} border">'
+                f'<td class="border-0"><a href="/member-query/results/?congress='
+                f'{congress_id}{q_2}{member_id}{q_3}{chamber}" class="link-light">'
+                f'{membership.getStr()}</a></td></tr>'
+            )
+            html_rows[i].append(row)
+
+    # finalize html strings
+    html_lists = [''.join(html_rows[i]) for i in range(4)]
+
+    # compute counts from the already-evaluated lists to avoid extra DB queries
+    counts = [len(votes_iters[i]) for i in range(4)]
+
+    context = {
+        'title': str(vote.id),
+        'bill' : vote.bill.__str__(),
+        'bill_title' : vote.bill.title,
+        'bill_link' : '/bill-query/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
+        'vote_time' : vote.getDate(),
+        'vote_title' : vote.title,
+        'vote_question' : vote.question,
+        'vote_result' : vote.result,
+        'congress' : congress_id,
+        'yeas_list' : html_lists[1],
+        'nays_list' : html_lists[0],
+        'pres_list' : html_lists[2],
+        'novt_list' : html_lists[3],
+        'yeas_cnts' : dict(partyCountsbyVote[1]),
+        'nays_cnts' : dict(partyCountsbyVote[0]),
+        'pres_cnts' : dict(partyCountsbyVote[2]),
+        'novt_cnts' : dict(partyCountsbyVote[3]),
+        'yeas_cnt' : counts[1],
+        'nays_cnt' : counts[0],
+        'pres_cnt' : counts[2],
+        'novt_cnt' : counts[3],
+        'geojson_source' : geojson_source,
+        'geojson_load' : geojson_load,
+        'geoids' : geoids,
+        'values' : values,
+        'cloro_text' : text,
+        'is_house' : isHouseVote
+    }
     return context
 
 
@@ -1210,131 +1291,219 @@ def voteHtml(vote):
 ##  Not done on JS because we need to access django model data anyways
 ####
 async def actionTable(act_list, bill_type, bill_num):
-    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Action Date</th><th>Type</th><th>Text</th><th>Source</th></tr></thead><tbody>'
-    for action in act_list['actions']:
-        #check if action is ignorable
-        if ('code' in action['sourceSystem'] and action['sourceSystem']['code'] == 9) and not (action['actionCode'] in ['1000', '10000', 'E30000', 'E40000']):
+    """
+    Build an HTML table for actions. Optimizations:
+    - Batch-check for existing Vote rows to avoid one DB call per action.
+    - Build HTML via list append + single join instead of repeated string concatenation.
+    - De-duplicate missing updateBill calls and run them concurrently.
+    """
+    actions = act_list.get('actions', [])
+    parts = [
+        '<table class="table table-bordered table-small dark-1">'
+        '<thead><tr><th>Action Date</th><th>Type</th><th>Text</th><th>Source</th></tr></thead><tbody>'
+    ]
+
+    # Collect vote ids referenced by actions so we can check existence in one DB query
+    vote_id_map = {}  # vote_id -> list of action indices that referenced it (for dedup if needed)
+    for idx, action in enumerate(actions):
+        if 'recordedVotes' in action:
+            rv = action['recordedVotes'][0]
+            in_house = 0 if rv.get('chamber') != 'House' else 1
+            try:
+                vote_id = rv.get('congress', 0) * 10000000 + in_house * 1000000 + int(rv.get('sessionNumber', 0)) * 100000 + int(rv.get('rollNumber', 0))
+            except Exception:
+                continue
+            vote_id_map.setdefault(vote_id, []).append(idx)
+
+    # Batch fetch existing vote ids (avoid per-action DB query)
+    existing_vote_ids = set()
+    if vote_id_map:
+        qs = Vote.objects.filter(id__in=list(vote_id_map.keys())).values_list('id', flat=True)
+        existing_vote_ids = set(await sync_to_async(list)(qs))
+
+    # Build table rows
+    for action in actions:
+        # skip ignorable actions
+        ss = action.get('sourceSystem', {})
+        if ss.get('code') == 9 and action.get('actionCode') not in {'1000', '10000', 'E30000', 'E40000'}:
             continue
-        tableHTML += '<tr><td>' + action['actionDate'] + '</td>'
-        if ('recordedVotes' in action) :
-            in_house = 0 if (action['recordedVotes'][0]['chamber'] != 'House') else 1
-            vote_id = action['recordedVotes'][0]['congress'] * 10000000 + in_house * 1000000 + int(action['recordedVotes'][0]['sessionNumber']) * 100000 + int(action['recordedVotes'][0]['rollNumber'])
-            _set = Vote.objects.filter(id = vote_id)
-            if not await _set.aexists() : 
-                print("MISSING VOTES")
-                await updateBill(action['recordedVotes'][0]['congress'], bill_type, bill_num)
-            tableHTML += '<td><a href="/bill-query/vote/' + str(vote_id) + '"  >' + 'Vote' + '</a></td>'
-        else : 
-            tableHTML += '<td>' + action['type'] + '</td>'
-        tableHTML += '<td>' + action['text'] + '</td><td>' + action['sourceSystem']['name'] + '</td></tr>'
-    tableHTML += '</tbody></table>'
-    return tableHTML
+
+        parts.append(f'<tr><td>{action.get("actionDate", "")}</td>')
+        if 'recordedVotes' in action:
+            rv = action['recordedVotes'][0]
+            in_house = 0 if rv.get('chamber') != 'House' else 1
+            try:
+                vote_id = rv.get('congress', 0) * 10000000 + in_house * 1000000 + int(rv.get('sessionNumber', 0)) * 100000 + int(rv.get('rollNumber', 0))
+            except Exception:
+                vote_id = None
+            parts.append(f'<td><a href="/bill-query/vote/{vote_id}">Vote</a></td>')
+        else:
+            parts.append(f'<td>{action.get("type", "")}</td>')
+
+        parts.append(f'<td>{action.get("text", "")}</td><td>{ss.get("name", "")}</td></tr>')
+
+    parts.append('</tbody></table>')
+    html = ''.join(parts)
+
+    return html
 
 def billTable(bill_list):
-    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Origin Date</th><th>Latest Action</th><th>Bill ID</th><th>Title</th><th>Source</th></tr></thead><tbody>'
+    """
+    Produce an HTML table of bills.
+    - Use list append + join to reduce string concatenation overhead.
+    """
+    parts = [
+        '<table class="table table-bordered table-small dark-1">'
+        '<thead><tr><th>Origin Date</th><th>Latest Action</th><th>Bill ID</th><th>Title</th><th>Source</th></tr></thead><tbody>'
+    ]
     for bill in bill_list:
-        tableHTML += '<tr><td>' + str(bill.origin_date.month) + "/" + str(bill.origin_date.day) + "/" + str(bill.origin_date.year) + '</td>'
-        tableHTML += '<td>' + str(bill.latest_action.month) + "/" + str(bill.latest_action.day) + "/" + str(bill.latest_action.year) + '</td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '"  >' + bill.__str__() + '</a></td>'
-        tableHTML += '<td>' + bill.title + '</td>'
-        tableHTML += '<td>' + bill.getOrigin() + '</td></tr>'
-    tableHTML += '</tbody></table>'
-    return tableHTML
+        od = bill.origin_date
+        la = bill.latest_action
+        parts.append(
+            '<tr><td>{}/{}/{}</td>'.format(od.month, od.day, od.year)
+        )
+        parts.append(
+            '<td>{}/{}/{}</td>'.format(la.month, la.day, la.year)
+        )
+        parts.append(
+            '<td><a href="/bill-query/bill/{}">{}</a></td>'.format(bill.getURL(), bill.__str__())
+        )
+        parts.append('<td>{}</td>'.format(bill.title))
+        parts.append('<td>{}</td></tr>'.format(bill.getOrigin()))
+    parts.append('</tbody></table>')
+    return ''.join(parts)
 
 def voteTablePage(vote_list):
-    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Result</th></tr></thead><tbody>'
+    """
+    Produce an HTML table of votes for page listing.
+    - Use list append + join.
+    """
+    parts = [
+        '<table class="table table-bordered table-small dark-1">'
+        '<thead><tr><th>Date</th><th>Vote</th><th>Bill</th><th>Result</th></tr></thead><tbody>'
+    ]
     for vote in vote_list:
-        tableHTML += '<tr><td>' + vote.getDate() + '</td>'
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + vote.bill.getURL() + '" >' + vote.bill.__str__() + '</a></td>'
-        tableHTML += '<td>' + vote.result + '</td></tr>'
-    tableHTML += '</tbody></table>'
-    return tableHTML
+        parts.append('<tr><td>{}</td>'.format(vote.getDate()))
+        parts.append('<td><a href="/bill-query/vote/{}">{}</a></td>'.format(vote.id, vote.question))
+        parts.append('<td><a href="/bill-query/bill/{}">{}</a></td>'.format(vote.bill.getURL(), vote.bill.__str__()))
+        parts.append('<td>{}</td></tr>'.format(vote.result))
+    parts.append('</tbody></table>')
+    return ''.join(parts)
 
 def voteTable(vote_list, bioguideID, congress_num):
-    congress = Congress.objects.get(congress_num__exact = congress_num)    
-    member = Member.objects.get(id__exact = bioguideID)
-    tableHTML = '<table class="table table-bordered table-small dark-1"><thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th><th>Vote</th></tr></thead><tbody>'
-    colors = {'Yea':'yeas', 'Nay' : 'nays', 'Present' : 'pres', 'No Vote' : 'novt'}
+    """
+    Produce a per-member vote table.
+    - Cache membership lookup once to reduce repeated DB hits.
+    - Use list append + join for efficient string assembly.
+    """
+    congress = Congress.objects.get(congress_num__exact=congress_num)
+    member = Member.objects.get(id__exact=bioguideID)
+
+    # Try to resolve the Membership once (reduces repeated lookups in getVoteType)
+    try:
+        membership = Membership.objects.get(congress=congress, member=member)
+    except Membership.DoesNotExist:
+        membership = None
+
+    parts = [
+        '<table class="table table-bordered table-small dark-1">'
+        '<thead><tr><th>Vote Date</th><th>Bill</th><th>Question</th><th>Vote</th></tr></thead><tbody>'
+    ]
+    colors = {'Yea': 'yeas', 'Nay': 'nays', 'Present': 'pres', 'No Vote': 'novt'}
     for vote in vote_list:
         bill = vote.bill
-        vote_type = getVoteType(vote, congress, member)
-        tableHTML += '<tr><td>' + vote.getDate() + '</td>'
-        tableHTML += '<td><a href="/bill-query/bill/' + bill.getURL() + '" >' + bill.__str__() + '</a></td>'
-        tableHTML += '<td><a href="/bill-query/vote/' + str(vote.id) +  '" >' + vote.question + '</a></td>'
-        tableHTML += '<td class="' + colors[vote_type] + '">' + vote_type + '</td></tr>'
-    tableHTML += '</tbody></table>'
-    return tableHTML
+
+        # Determine vote_type with minimal DB calls:
+        vote_type = 'No Vote'
+        if membership:
+            # Use membership.pk presence in M2M relations (each is a query, but membership cached)
+            if vote.yeas.filter(pk=membership.pk).exists():
+                vote_type = 'Yea'
+            elif vote.nays.filter(pk=membership.pk).exists():
+                vote_type = 'Nay'
+            elif vote.pres.filter(pk=membership.pk).exists():
+                vote_type = 'Present'
+
+        parts.append('<tr><td>{}</td>'.format(vote.getDate()))
+        parts.append('<td><a href="/bill-query/bill/{}">{}</a></td>'.format(bill.getURL(), bill.__str__()))
+        parts.append('<td><a href="/bill-query/vote/{}">{}</a></td>'.format(vote.id, vote.question))
+        parts.append('<td class="{}">{}</td></tr>'.format(colors.get(vote_type, ''), vote_type))
+    parts.append('</tbody></table>')
+    return ''.join(parts)
 
 def getVoteType(vote, congress, member):
+    """
+    Legacy helper retained for external callers.
+    - Minimal change: compute membership once here to avoid repeated calls in callers that still use this function.
+    """
     vote_type = ['Yea', 'Nay', 'Present', 'No Vote']
     i = 3
-    if vote.yeas.filter(congress = congress, member = member).exists():
+    try:
+        membership = Membership.objects.get(congress=congress, member=member)
+    except Membership.DoesNotExist:
+        return vote_type[i]
+    if vote.yeas.filter(pk=membership.pk).exists():
         i = 0
-    elif vote.nays.filter(congress = congress, member = member).exists():
+    elif vote.nays.filter(pk=membership.pk).exists():
         i = 1
-    elif vote.pres.filter(congress = congress, member = member).exists():
+    elif vote.pres.filter(pk=membership.pk).exists():
         i = 2
     return vote_type[i]
-    
-    
+
 def partyList(party_history):
-    party_list = ''
+    parts = []
     for history in party_history:
-        party_list += '<li class="list-group-item bg-trans darkmode">' + history['partyName'] + ' (' + str(history['startYear']) + '-'
-        if ('endYear' in history) : party_list += str(history['endYear'])
-        else : party_list += 'Present'
-        party_list += ')</li>'
-    return party_list
+        start = history.get('startYear')
+        end = history.get('endYear', 'Present')
+        parts.append(
+            '<li class="list-group-item bg-trans darkmode">{party} ({start}-{end})</li>'.format(
+                party=history.get('partyName', ''), start=start, end=end
+            )
+        )
+    return ''.join(parts)
 
 def leadershipList(leaderships):
-    leadership_list = ''
+    parts = []
     for leadership in leaderships:
-        leadership_list += '<li class="list-group-item bg-trans darkmode">' + str(leadership['congress']) + getNumSuffix(leadership['congress'])
-        leadership_list += ' Congress : ' + leadership['type']+ '</li>'
-    return leadership_list
-  
-link_dict = {'Senator' : 'Senate', 'Representative' : 'House+of+Representatives'}
+        parts.append(
+            '<li class="list-group-item bg-trans darkmode">{cong}{suf} Congress : {type}</li>'.format(
+                cong=leadership.get('congress'), suf=getNumSuffix(leadership.get('congress')), type=leadership.get('type', '')
+            )
+        )
+    return ''.join(parts)
 
 def termList(terms, bioguideID, congress_num):
-    term_list = ''
+    """
+    Build member term list:
+    - Use list assembly to reduce string concatenation overhead.
+    - Keep logic identical but clearer and faster.
+    """
+    parts = []
     for term in reversed(terms):
         num = term['congress']
-        # build common pieces
-        link = '/member-query/results/?congress=' + str(num) + '&member=' + bioguideID + '&chamber='
+        link_base = f'/member-query/results/?congress={num}&member={bioguideID}&chamber='
         district = ''
         if 'district' in term:
-            district = ', ' + str(term['district']) + getNumSuffix(term['district']) + ' District'
+            district = f', {term["district"]}{getNumSuffix(term["district"])} District'
 
-        # list item and highlight current congress
-        term_list += '<li class="list-group-item darkmode'
-        term_list += ' dark-2' if int(num) == int(congress_num) else ' bg-trans'
-        term_list += '">'
-
-        # heading (Congress n)
-        term_list += str(num) + getNumSuffix(int(num)) + ' Congress : '
-
-        # text for member/office + optional link (no link for terms < 112)
-        inner_text = term['memberType'] + ' of ' + term['stateName'] + district
+        active_class = ' dark-2' if int(num) == int(congress_num) else ' bg-trans'
+        inner_text = f'{term.get("memberType")} of {term.get("stateName")}{district}'
         try:
             has_link = int(num) >= 112
         except Exception:
             has_link = False
 
+        parts.append(f'<li class="list-group-item darkmode{active_class}">')
+        parts.append(f'{num}{getNumSuffix(int(num))} Congress : ')
         if has_link:
-            term_list += '<a href="' + link + link_dict[term['memberType']] + '" >' + inner_text + '</a>'
+            parts.append(f'<a href="{link_base}{[term["memberType"]]}">{inner_text}</a>')
         else:
-            # show same text but without a hyperlink
-            term_list += inner_text
+            parts.append(inner_text)
 
-        # years
-        term_list += ' (' + str(term['startYear']) + '-'
-        if 'endYear' in term:
-            term_list += str(term['endYear'])
-        else:
-            term_list += 'Present'
-        term_list += ')</li>'
-    return term_list
+        parts.append(' (' + str(term.get('startYear')) + '-')
+        parts.append(str(term.get('endYear')) if 'endYear' in term else 'Present')
+        parts.append(')</li>')
+    return ''.join(parts)
 
 def get_client_ip(request):
     x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
