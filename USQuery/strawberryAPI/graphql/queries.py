@@ -146,6 +146,7 @@ class Query:
         subjectList: Optional[List[int]] = None,
         first: int = 5,
         after: Optional[str] = None,
+        truncate: Optional[bool] = False,
         info: "strawberry.types.Info" = None,
     ) -> BillConnection:
         first = min(first, 30)
@@ -227,7 +228,7 @@ class Query:
         ## Run summary batch request only if the GraphQL selection requests the `summary` field
         # Traverses the AST for the current field to find any selection named "summary"
         if info is not None and selection_contains_field(info, "summary"):
-            summaries = await batch_load_summaries(items)
+            summaries = await batch_load_summaries(items, truncate)
             ## Attach summaries dynamically
             for i in items:
                 s = summaries.get(i.id)

@@ -4,8 +4,17 @@ from app.utils import make_cache_keyASYNC, connectASYNC, types, getSummaryAI
 from USQuery import settings
 
 timeout_day = 60 * 60 * 24
+def _truncate(text, max_len = 240):
+    s = str(text or "")
+    if len(s) <= max_len:
+        return s
+    cut = max_len - 3
+    idx = s.rfind(' ', 0, cut)
+    if idx == -1:
+        return s[:cut] + '...'
+    return s[:idx] + '...'
 ## ASYNC : Special async caching func for bill summaries, returns {"_id" : <int>, "AI_generated_content?" : <bool>, "summary" : <text> }
-async def fetch_summary(session, bill, try_AI_fetch=True):
+async def fetch_summary(session, bill, try_AI_fetch=True, truncate = False):
     context = {}
     _id = bill.id
     context["_id"] = _id
@@ -19,6 +28,8 @@ async def fetch_summary(session, bill, try_AI_fetch=True):
     cached = cache.get(key)
     if cached:
         context["summary"] = cached
+        if truncate:
+            context["summary"] = _truncate(context["summary"])
         return context
     data = await connectASYNC(session, fullpath, header_str)
     if (data != ''):
@@ -29,6 +40,8 @@ async def fetch_summary(session, bill, try_AI_fetch=True):
         else :
             context['summary'] = data['summaries'][0]['text']
     if not context["AI_generated_content?"]: cache.set(key, context["summary"], timeout_day)
+    if truncate:
+        context["summary"] = _truncate(context["summary"])
     return context
 
 async def fetch_actions(session, bill):
@@ -48,7 +61,7 @@ async def fetch_actions(session, bill):
     cache.set(key, context["actions"], timeout_day)
     return context
 
-async def batch_load_summaries(args):
+async def batch_load_summaries(args, truncate = False):
     n = len(args)
     results = [None] * n
     limit = 5
@@ -59,7 +72,7 @@ async def batch_load_summaries(args):
         async def _worker(idx, bill):
             async with sem:
                 ## fetch summary without calling AI API in order to limit token usage and make sure bandwith is fast
-                results[idx] = await fetch_summary(session, bill, False)
+                results[idx] = await fetch_summary(session, bill, False, truncate)
 
         async with asyncio.TaskGroup() as tg:
             for i, bill in enumerate(args):
