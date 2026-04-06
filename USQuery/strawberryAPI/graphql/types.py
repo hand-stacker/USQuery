@@ -30,7 +30,6 @@ class VoteType:
     pres : list["MembershipType"]
     novt : list["MembershipType"]
 
-
 ## Bill related types
 @strawberry.type
 class BillEdge:
