@@ -919,7 +919,7 @@ async def billHtml(bill, congress_id, bill_type, num):
                 all_memberships = Membership.objects.filter(congress=int(congress_id), member__id__in=ids).select_related('member')
                 # map by (member_id, house_bool) for quick lookup
                 mem_map = {}
-                for m in all_memberships:
+                for m in await sync_to_async(list)(all_memberships):
                     mem_map[(str(m.member.id), bool(m.house))] = m
                 cosponsors = Membership.objects.none()
                 for c in cosps:
