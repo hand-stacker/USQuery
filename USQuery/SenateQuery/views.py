@@ -158,7 +158,7 @@ def get_membership_by_id(request, membership_id):
     data = MembershipModelSerializer(membership).data | MemberModelSerializer(member).data
     start = membership.start_date.split('-')
     start_date = datetime(int(start[0]), int(start[1]), int(start[2]))
-    
+
     if (membership.end_date == None):
         votes_in_congress = Vote.objects.filter(congress = congress, house = membership.house, dateTime__gte = start_date)
     else:
@@ -174,10 +174,22 @@ def get_membership_by_id(request, membership_id):
     data['url_path'] = urlPath
     data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
 
+    vote_ids = [v.id for v in vote_list]
+    yea_ids = set(Vote.objects.filter(id__in=vote_ids, yeas=membership).values_list('id', flat=True))
+    nay_ids = set(Vote.objects.filter(id__in=vote_ids, nays=membership).values_list('id', flat=True))
+    pres_ids = set(Vote.objects.filter(id__in=vote_ids, pres=membership).values_list('id', flat=True))
+    vote_type_map = ['Yea', 'Nay', 'Present', 'No Vote']
     for i in range(len(vote_list)):
-        vote = vote_list[i]
-        vote_type = utils.getVoteType(vote, congress, member)
-        data['vote_list'][i]['mem_vote'] = vote_type
+        vid = vote_list[i].id
+        if vid in yea_ids:
+            vt = 'Yea'
+        elif vid in nay_ids:
+            vt = 'Nay'
+        elif vid in pres_ids:
+            vt = 'Present'
+        else:
+            vt = 'No Vote'
+        data['vote_list'][i]['mem_vote'] = vt
 
     if 'member' in api_response:
         member_data = api_response['member']
@@ -232,10 +244,21 @@ def get_membership(request, congress_num, bioguide_id, in_house):
     data['url_path'] = urlPath
     data["vote_list"] = VoteModelSerializerSimple(vote_list, many=True).data
 
+    vote_ids = [v.id for v in vote_list]
+    yea_ids = set(Vote.objects.filter(id__in=vote_ids, yeas=membership).values_list('id', flat=True))
+    nay_ids = set(Vote.objects.filter(id__in=vote_ids, nays=membership).values_list('id', flat=True))
+    pres_ids = set(Vote.objects.filter(id__in=vote_ids, pres=membership).values_list('id', flat=True))
     for i in range(len(vote_list)):
-        vote = vote_list[i]
-        vote_type = utils.getVoteType(vote, congress, member)
-        data['vote_list'][i]['mem_vote'] = vote_type
+        vid = vote_list[i].id
+        if vid in yea_ids:
+            vt = 'Yea'
+        elif vid in nay_ids:
+            vt = 'Nay'
+        elif vid in pres_ids:
+            vt = 'Present'
+        else:
+            vt = 'No Vote'
+        data['vote_list'][i]['mem_vote'] = vt
 
     if 'member' in api_response:
         member_data = api_response['member']

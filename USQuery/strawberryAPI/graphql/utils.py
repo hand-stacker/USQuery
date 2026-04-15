@@ -25,7 +25,7 @@ async def fetch_summary(session, bill, try_AI_fetch=True, truncate = False):
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     fullpath = apiURL + '/summaries'
     key = await make_cache_keyASYNC(fullpath, header_str)
-    cached = cache.get(key)
+    cached = await cache.aget(key)
     if cached:
         context["summary"] = cached
         if truncate:
@@ -39,7 +39,7 @@ async def fetch_summary(session, bill, try_AI_fetch=True, truncate = False):
                 context['summary'] = await getSummaryAI(session, apiURL + "/text", header_str, _id)
         else :
             context['summary'] = data['summaries'][0]['text']
-    if not context["AI_generated_content?"]: cache.set(key, context["summary"], timeout_day)
+    if not context["AI_generated_content?"]: await cache.aset(key, context["summary"], timeout_day)
     if truncate:
         context["summary"] = _truncate(context["summary"])
     return context
@@ -52,13 +52,13 @@ async def fetch_actions(session, bill):
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
     fullpath = apiURL + '/actions'
     key = await make_cache_keyASYNC(fullpath, header_str)
-    cached = cache.get(key)
+    cached = await cache.aget(key)
     if cached:
         context["actions"] = cached
         return context
     data = await connectASYNC(session, fullpath, header_str)
     context['actions'] = data['actions']
-    cache.set(key, context["actions"], timeout_day)
+    await cache.aset(key, context["actions"], timeout_day)
     return context
 
 async def batch_load_summaries(args, truncate = False):
