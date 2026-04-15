@@ -115,22 +115,23 @@ class Query:
             qs = (
                 Vote.objects
                 .filter(id=vote_id)
+                .select_related("bill", "congress")
                 .prefetch_related(
                     Prefetch(
                         "yeas",
-                        queryset=Membership.objects.select_related("member")
+                        queryset=Membership.objects.select_related("member", "congress")
                     ),
                     Prefetch(
                         "nays",
-                        queryset=Membership.objects.select_related("member")
+                        queryset=Membership.objects.select_related("member", "congress")
                     ),
                     Prefetch(
                         "pres",
-                        queryset=Membership.objects.select_related("member")
+                        queryset=Membership.objects.select_related("member", "congress")
                     ),
                     Prefetch(
                         "novt",
-                        queryset=Membership.objects.select_related("member")
+                        queryset=Membership.objects.select_related("member", "congress")
                     )
                 )
             )
@@ -283,7 +284,7 @@ class Query:
         raw_key = json.dumps(search_params, sort_keys=True)
         search_hash = hashlib.md5(raw_key.encode()).hexdigest()
         cache_key = f"bill_search_ids:{search_hash}"
-        cached_ids = cache.get(cache_key)
+        cached_ids = await cache.aget(cache_key)
 
         if not cached_ids:
             qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
@@ -323,7 +324,7 @@ class Query:
                 qs.values_list("id", flat=True)
             )
 
-            cache.set(cache_key, cached_ids, timeout=600) 
+            await cache.aset(cache_key, cached_ids, timeout=600)
 
         start_indx = 0
         # Cursor pagination (rank + latest_action + id)
@@ -494,7 +495,7 @@ class Query:
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
         end_date = date(_congress.end_year + 1, 1, 3)
-        qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date)
+        qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date).select_related("bill", "congress")
 
         ## When subjectList provided we annotate match_count based on the vote's bill subjects,
         ## require match_count > 0, and order by relevance (match_count) then recency (dateTime) then id.

@@ -186,11 +186,11 @@ def connect_and_cache(fullpath, headers, timeout = timeout_day):
 ## ASYNC : Caches external API requests, returns a json object
 async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = timeout_day):
     key = make_cache_key(fullpath, header_str)
-    cached = cache.get(key)
+    cached = await cache.aget(key)
     if cached:
         return cached
     data = await connectASYNC(session, fullpath, header_str)
-    cache.set(key, data, timeout)
+    await cache.aset(key, data, timeout)
     return data
 
 ## returns a list of responses from a list of requests asynchronously
@@ -211,10 +211,10 @@ async def run_concurrent_connect_and_cache(session, requests, header_str, timeou
 
 # function that adds new_subjects to a unique set of subjects stored on redis cache
 async def add_subjects(new_subjects):
-    subjects = cache.get("bill_subjects", set())
+    subjects = await cache.aget("bill_subjects", set())
     new_ids = await sync_to_async(list)(new_subjects.values_list("id", flat=True))
-    await sync_to_async(subjects.update)(new_ids)
-    cache.set("bill_subjects", subjects, timeout=None)
+    subjects.update(new_ids)
+    await cache.aset("bill_subjects", subjects, timeout=None)
 
 ## mega function to add members for a given congress
 ## to fully load a member we need to make an updateMember call adding image and other info
@@ -368,10 +368,10 @@ async def updateRecentBills(congress_num, date_str, bill_type):
     key = await make_cache_keyASYNC('last_processed_action_date?', bill_type)
     # if no date_str provided, we take the last_processed_action_date?{bill_type} date and use it as our limit
     if date_str == "!":
-        cached = cache.get(key)
+        cached = await cache.aget(key)
         if cached:
             date_str = cached
-        else: 
+        else:
             print ("Fatal error for updateRecentBills: no cached last_processed_action_date")
             return
 
@@ -405,7 +405,7 @@ async def updateRecentBills(congress_num, date_str, bill_type):
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
-    cache.set(key, tracked_latest_date.strftime('%Y-%m-%d'), 60 * 60 * 24)
+    await cache.aset(key, tracked_latest_date.strftime('%Y-%m-%d'), 60 * 60 * 24)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
         tg.create_task(vote_session.close())
@@ -1399,11 +1399,18 @@ def voteTable(vote_list, bioguideID, congress_num):
     congress = Congress.objects.get(congress_num__exact=congress_num)
     member = Member.objects.get(id__exact=bioguideID)
 
-    # Try to resolve the Membership once (reduces repeated lookups in getVoteType)
     try:
         membership = Membership.objects.get(congress=congress, member=member)
     except Membership.DoesNotExist:
         membership = None
+
+    vote_ids = [v.id for v in vote_list]
+    if membership and vote_ids:
+        yea_ids = set(Vote.objects.filter(id__in=vote_ids, yeas=membership).values_list('id', flat=True))
+        nay_ids = set(Vote.objects.filter(id__in=vote_ids, nays=membership).values_list('id', flat=True))
+        pres_ids = set(Vote.objects.filter(id__in=vote_ids, pres=membership).values_list('id', flat=True))
+    else:
+        yea_ids = nay_ids = pres_ids = set()
 
     parts = [
         '<table class="table table-bordered table-small dark-1">'
@@ -1413,16 +1420,14 @@ def voteTable(vote_list, bioguideID, congress_num):
     for vote in vote_list:
         bill = vote.bill
 
-        # Determine vote_type with minimal DB calls:
-        vote_type = 'No Vote'
-        if membership:
-            # Use membership.pk presence in M2M relations (each is a query, but membership cached)
-            if vote.yeas.filter(pk=membership.pk).exists():
-                vote_type = 'Yea'
-            elif vote.nays.filter(pk=membership.pk).exists():
-                vote_type = 'Nay'
-            elif vote.pres.filter(pk=membership.pk).exists():
-                vote_type = 'Present'
+        if vote.id in yea_ids:
+            vote_type = 'Yea'
+        elif vote.id in nay_ids:
+            vote_type = 'Nay'
+        elif vote.id in pres_ids:
+            vote_type = 'Present'
+        else:
+            vote_type = 'No Vote'
 
         parts.append('<tr><td>{}</td>'.format(vote.getDate()))
         parts.append('<td><a href="/bill-query/bill/{}">{}</a></td>'.format(bill.getURL(), bill.__str__()))
