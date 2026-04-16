@@ -10,10 +10,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.forms import PasswordResetForm
-from app.models import EmailVerification
+from app.models import EmailVerification, UserProfile
 from django.contrib.auth.views import PasswordResetView
-from .serializers import RegisterSerializer, VerifySerializer, ResendSerializer, LoginSerializer
+from .serializers import RegisterSerializer, VerifySerializer, ResendSerializer, LoginSerializer, GoogleOAuthSerializer, AppleOAuthSerializer
 from django.http import JsonResponse
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+import jwt
+import requests as http_requests
 
 
 
@@ -136,3 +140,157 @@ def api_reset_password(request):
         {"detail": "If the email exists, a reset link was sent."},
         status=status.HTTP_200_OK,
     )
+
+
+def _issue_tokens(user):
+    """Return a dict with JWT access/refresh tokens for the given user."""
+    refresh = RefreshToken.for_user(user)
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+        "user_id": user.id,
+        "email": user.email,
+    }
+
+
+def _find_or_create_oauth_user(provider, provider_id, email):
+    """
+    Resolve an OAuth identity to a Django User + UserProfile.
+
+    Resolution order:
+      1. Existing UserProfile with matching provider + provider_id  → return it
+      2. Existing User with matching email                          → link OAuth to it
+      3. No match                                                    → create new User + UserProfile
+
+    Returns (user, is_new_user).
+    """
+    # 1. Already linked to this OAuth identity
+    try:
+        profile = UserProfile.objects.select_related('user').get(
+            oauth_provider=provider,
+            oauth_provider_id=provider_id,
+        )
+        return profile.user, False
+    except UserProfile.DoesNotExist:
+        pass
+
+    # 2. Email matches an existing account → link
+    try:
+        user = User.objects.get(email=email)
+        profile = user.userprofile
+        profile.oauth_provider = provider
+        profile.oauth_provider_id = provider_id
+        profile.save(update_fields=['oauth_provider', 'oauth_provider_id'])
+        return user, False
+    except User.DoesNotExist:
+        pass
+
+    # 3. Brand-new user
+    user = User.objects.create(
+        username=email,
+        email=email,
+        is_active=True,  # OAuth users are pre-verified by the provider
+    )
+    UserProfile.objects.create(
+        user=user,
+        user_type=UserProfile.SubType.Free,
+        oauth_provider=provider,
+        oauth_provider_id=provider_id,
+    )
+    return user, True
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def api_google_oauth(request):
+    s = GoogleOAuthSerializer(data=request.data)
+    s.is_valid(raise_exception=True)
+    token = s.validated_data['id_token']
+
+    google_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
+    if not google_client_id:
+        return Response({"detail": "Google OAuth is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    try:
+        payload = google_id_token.verify_oauth2_token(
+            token,
+            google_requests.Request(),
+            google_client_id,
+        )
+    except ValueError as exc:
+        return Response({"detail": f"Invalid Google token: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    provider_id = payload['sub']
+    email = payload.get('email', '').lower()
+
+    if not email:
+        return Response({"detail": "Google token does not contain an email address."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user, is_new = _find_or_create_oauth_user(UserProfile.OAuthProvider.GOOGLE, provider_id, email)
+    data = _issue_tokens(user)
+    data['is_new_user'] = is_new
+    return Response(data, status=status.HTTP_200_OK)
+
+
+# Cache for Apple's public JWKS to avoid fetching on every request
+_apple_jwks_cache = {}
+
+def _get_apple_public_key(kid):
+    """Fetch Apple's current JWKS and return the key matching `kid`."""
+    if kid not in _apple_jwks_cache:
+        resp = http_requests.get("https://appleid.apple.com/auth/keys", timeout=5)
+        resp.raise_for_status()
+        keys = resp.json().get('keys', [])
+        _apple_jwks_cache.clear()
+        for k in keys:
+            _apple_jwks_cache[k['kid']] = jwt.algorithms.RSAAlgorithm.from_jwk(k)
+    return _apple_jwks_cache.get(kid)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def api_apple_oauth(request):
+    s = AppleOAuthSerializer(data=request.data)
+    s.is_valid(raise_exception=True)
+    token = s.validated_data['identity_token']
+    client_email = s.validated_data.get('email', '').lower()
+
+    apple_client_id = getattr(settings, 'APPLE_CLIENT_ID', None)
+    if not apple_client_id:
+        return Response({"detail": "Apple OAuth is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    # Decode header to get kid without verifying signature yet
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except jwt.exceptions.DecodeError as exc:
+        return Response({"detail": f"Invalid Apple token: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    kid = unverified_header.get('kid')
+    public_key = _get_apple_public_key(kid)
+    if not public_key:
+        return Response({"detail": "Unable to retrieve Apple public key."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=['RS256'],
+            audience=apple_client_id,
+            issuer='https://appleid.apple.com',
+        )
+    except jwt.ExpiredSignatureError:
+        return Response({"detail": "Apple token has expired."}, status=status.HTTP_400_BAD_REQUEST)
+    except jwt.InvalidTokenError as exc:
+        return Response({"detail": f"Invalid Apple token: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
+
+    provider_id = payload['sub']
+    # Apple only sends email on first sign-in; fall back to client-supplied value
+    email = payload.get('email', '').lower() or client_email
+
+    if not email:
+        return Response({"detail": "Email is required for first-time Apple sign-in."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user, is_new = _find_or_create_oauth_user(UserProfile.OAuthProvider.APPLE, provider_id, email)
+    data = _issue_tokens(user)
+    data['is_new_user'] = is_new
+    return Response(data, status=status.HTTP_200_OK)

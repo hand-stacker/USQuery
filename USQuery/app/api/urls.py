@@ -7,5 +7,6 @@ urlpatterns = [
     path('resend-verification/', views.api_resend_verification, name='api-resend-verification'),
     path('login/', views.api_login, name='api-login'),
     path("password-reset-api/", views.api_reset_password, name="api-password-reset"),
-
+    path('oauth/google/', views.api_google_oauth, name='api-oauth-google'),
+    path('oauth/apple/', views.api_apple_oauth, name='api-oauth-apple'),
 ]
