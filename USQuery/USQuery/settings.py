@@ -19,6 +19,8 @@ PROMPT = os.environ.get('PROMPT')
 COLUMN_LIST = os.environ.get("COLUMN_LIST").split(',')
 CONGRESS_KEY = os.environ.get('CONGRESS_KEY')
 GEMINI_KEY = os.environ.get('GEMINI_KEY')
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+APPLE_CLIENT_ID = os.environ.get('APPLE_CLIENT_ID')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'

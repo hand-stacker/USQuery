@@ -25,3 +25,11 @@ class ResendSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    id_token = serializers.CharField()
+
+class AppleOAuthSerializer(serializers.Serializer):
+    identity_token = serializers.CharField()
+    # Apple only sends email on the first sign-in; clients must cache and re-send it
+    email = serializers.EmailField(required=False, allow_blank=True)

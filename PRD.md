@@ -86,6 +86,8 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 
 **Out of scope:** OAuth login for admin/staff accounts.
 
+**Progress:** Created the backend for creating an account with oauth. Need to edit code so it works for multiple GOOGLE_CLIENT_IDs (since google has us separate web Client ID and mobile Client IDs) 
+
 ---
 
 #### 6.2 Starred Bills & Members on Web
