@@ -62,7 +62,7 @@
     function initGoogle(config) {
         if (!config.googleClientId || !config.googleUrl) return;
         var googleClientId = config.googleClientId;
-
+        var blob = 0;
         var host = document.getElementById("googleBtnHost");
         var fallback = document.getElementById("googleFallbackBtn");
         var maxAttempts = 40; // ~10 seconds at 250ms interval
