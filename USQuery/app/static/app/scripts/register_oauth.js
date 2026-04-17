@@ -1,13 +1,34 @@
 (function () {
+    // Fallback client IDs (override with your production web client id if needed)
+    const FALLBACK_GOOGLE_CLIENT_ID = '1069290177302-8u4ljfiouf9pkiffe8okobr75dbi13lc.apps.googleusercontent.com';
+    const FALLBACK_APPLE_CLIENT_ID = '';
+
     function getConfig() {
         var el = document.getElementById("registerOAuthConfig");
-        if (!el) return null;
+        var googleClientId = "";
+        var appleClientId = "";
+        var googleUrl = "";
+        var appleUrl = "";
+        var registerUrl = "/register/";
+
+        if (el) {
+            googleClientId = el.dataset.googleClientId || "";
+            appleClientId = el.dataset.appleClientId || "";
+            googleUrl = el.dataset.googleUrl || "";
+            appleUrl = el.dataset.appleUrl || "";
+            registerUrl = el.dataset.registerUrl || "/register/";
+        }
+
+        // Use fallback if template didn't provide a client id
+        if (!googleClientId) googleClientId = FALLBACK_GOOGLE_CLIENT_ID;
+        if (!appleClientId) appleClientId = FALLBACK_APPLE_CLIENT_ID;
+
         return {
-            googleClientId: el.dataset.googleClientId || "",
-            appleClientId: el.dataset.appleClientId || "",
-            googleUrl: el.dataset.googleUrl || "",
-            appleUrl: el.dataset.appleUrl || "",
-            registerUrl: el.dataset.registerUrl || "/register/"
+            googleClientId: googleClientId,
+            appleClientId: appleClientId,
+            googleUrl: googleUrl,
+            appleUrl: appleUrl,
+            registerUrl: registerUrl
         };
     }
 
@@ -62,7 +83,6 @@
     function initGoogle(config) {
         if (!config.googleClientId || !config.googleUrl) return;
         var googleClientId = config.googleClientId;
-        var blob = 0;
         var host = document.getElementById("googleBtnHost");
         var fallback = document.getElementById("googleFallbackBtn");
         var maxAttempts = 40; // ~10 seconds at 250ms interval
@@ -173,7 +193,15 @@
 
     function boot() {
         var config = getConfig();
-        if (!config) return;
+        try {
+            console.debug('OAuth config:', {
+                googleClientId: config.googleClientId,
+                appleClientId: config.appleClientId,
+                googleUrl: config.googleUrl,
+                registerUrl: config.registerUrl,
+                pageOrigin: window.location.origin
+            });
+        } catch (e) { /* ignore */ }
 
         initGoogle(config);
         initApple(config);
