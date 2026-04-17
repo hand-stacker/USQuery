@@ -1,7 +1,10 @@
 (function () {
-    // Fallback client IDs (override with your production web client id if needed)
+    // Fallback client IDs and endpoints (override with your production values if needed)
     const FALLBACK_GOOGLE_CLIENT_ID = '1069290177302-8u4ljfiouf9pkiffe8okobr75dbi13lc.apps.googleusercontent.com';
     const FALLBACK_APPLE_CLIENT_ID = '';
+    const FALLBACK_GOOGLE_URL = '/oauth/google/';
+    const FALLBACK_APPLE_URL = '/oauth/apple/';
+    const FALLBACK_REGISTER_URL = '/register/';
 
     function getConfig() {
         var el = document.getElementById("registerOAuthConfig");
@@ -19,9 +22,12 @@
             registerUrl = el.dataset.registerUrl || "/register/";
         }
 
-        // Use fallback if template didn't provide a client id
+        // Use fallback if template didn't provide values
         if (!googleClientId) googleClientId = FALLBACK_GOOGLE_CLIENT_ID;
         if (!appleClientId) appleClientId = FALLBACK_APPLE_CLIENT_ID;
+        if (!googleUrl) googleUrl = FALLBACK_GOOGLE_URL;
+        if (!appleUrl) appleUrl = FALLBACK_APPLE_URL;
+        if (!registerUrl) registerUrl = FALLBACK_REGISTER_URL;
 
         return {
             googleClientId: googleClientId,
