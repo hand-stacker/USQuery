@@ -20,6 +20,39 @@ import jwt
 import requests as http_requests
 
 
+def _get_google_allowed_client_ids():
+    """
+    Prefer GOOGLE_CLIENT_IDS (comma-separated) when set,
+    otherwise fall back to GOOGLE_CLIENT_ID.
+    """
+    multi = getattr(settings, "GOOGLE_CLIENT_IDS", None)
+    if multi:
+        ids = [s.strip() for s in str(multi).split(",") if s.strip()]
+        if ids:
+            return ids
+    single = getattr(settings, "GOOGLE_CLIENT_ID", None)
+    return [single] if single else []
+
+
+def _verify_google_id_token(token: str):
+    allowed = _get_google_allowed_client_ids()
+    if not allowed:
+        raise ValueError("Google OAuth is not configured.")
+
+    last_exc = None
+    for aud in allowed:
+        try:
+            return google_id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                aud,
+            )
+        except ValueError as exc:
+            last_exc = exc
+            continue
+    raise ValueError(str(last_exc or "Invalid Google token"))
+
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -207,16 +240,8 @@ def api_google_oauth(request):
     s.is_valid(raise_exception=True)
     token = s.validated_data['id_token']
 
-    google_client_id = getattr(settings, 'GOOGLE_CLIENT_ID', None)
-    if not google_client_id:
-        return Response({"detail": "Google OAuth is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-
     try:
-        payload = google_id_token.verify_oauth2_token(
-            token,
-            google_requests.Request(),
-            google_client_id,
-        )
+        payload = _verify_google_id_token(token)
     except ValueError as exc:
         return Response({"detail": f"Invalid Google token: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
 

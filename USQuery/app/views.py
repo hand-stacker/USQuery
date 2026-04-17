@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect, get_object_or_404
-from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpResponseForbidden
+from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view
 from rest_framework.views import Response
@@ -18,11 +18,18 @@ from app.models import EmailVerification
 from django.core.mail import send_mail
 from django.conf import settings
 from django.contrib.auth import authenticate
+from django.contrib.auth import login as django_login
 from django.contrib.auth.views import LoginView
+from django.views.decorators.http import require_POST
 
 # New imports for account deletion management
 from django.urls import reverse
 from app.models import UserProfile as AppUserProfile
+
+# OAuth helpers (shared with mobile via REST endpoints)
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
+import jwt
 
 
 def home(request):
@@ -129,7 +136,141 @@ def register(request):
     else:
         form = RegisterForm()
 
-    return render(request, "app/register.html", {"form": form})
+    return render(
+        request,
+        "app/register.html",
+        {
+            "form": form,
+            "google_client_id": _get_google_web_client_id(),
+            "apple_client_id": getattr(settings, "APPLE_CLIENT_ID", None),
+        },
+    )
+
+
+def _get_google_web_client_id():
+    """
+    Client ID used by browser Google Sign-In.
+    Prefer GOOGLE_WEB_CLIENT_ID, then fall back to GOOGLE_CLIENT_ID.
+    """
+    return (
+        getattr(settings, "GOOGLE_WEB_CLIENT_ID", None)
+        or getattr(settings, "GOOGLE_CLIENT_ID", None)
+    )
+
+
+def _get_google_allowed_client_ids():
+    """
+    Prefer GOOGLE_CLIENT_IDS (comma-separated) when set,
+    otherwise fall back to GOOGLE_CLIENT_ID.
+    """
+    multi = getattr(settings, "GOOGLE_CLIENT_IDS", None)
+    if multi:
+        ids = [s.strip() for s in str(multi).split(",") if s.strip()]
+        if ids:
+            return ids
+    single = getattr(settings, "GOOGLE_CLIENT_ID", None)
+    return [single] if single else []
+
+
+def _verify_google_id_token(token: str):
+    allowed = _get_google_allowed_client_ids()
+    if not allowed:
+        raise ValueError("Google OAuth is not configured.")
+
+    last_exc = None
+    for aud in allowed:
+        try:
+            return google_id_token.verify_oauth2_token(
+                token,
+                google_requests.Request(),
+                aud,
+            )
+        except ValueError as exc:
+            last_exc = exc
+            continue
+    raise ValueError(str(last_exc or "Invalid Google token"))
+
+
+@require_POST
+def oauth_google_web(request):
+    """
+    Web-only endpoint: accepts a Google ID token, creates/links the user,
+    and establishes a Django session (so templates see user.is_authenticated).
+    """
+    token = request.POST.get("id_token") or ""
+    if not token:
+        return JsonResponse({"detail": "Missing id_token."}, status=400)
+
+    try:
+        payload = _verify_google_id_token(token)
+    except ValueError as exc:
+        return JsonResponse({"detail": f"Invalid Google token: {exc}"}, status=400)
+
+    provider_id = payload.get("sub")
+    email = (payload.get("email") or "").lower()
+    if not provider_id or not email:
+        return JsonResponse({"detail": "Google token did not contain required fields."}, status=400)
+
+    # reuse the same linking logic as the mobile/web API
+    from app.api.views import _find_or_create_oauth_user
+
+    user, _is_new = _find_or_create_oauth_user(AppUserProfile.OAuthProvider.GOOGLE, provider_id, email)
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return JsonResponse({"detail": "ok", "redirect": "/"}, status=200)
+
+
+@require_POST
+def oauth_apple_web(request):
+    """
+    Web-only endpoint: accepts an Apple identity token (+ optional email),
+    creates/links the user, and establishes a Django session.
+    """
+    token = request.POST.get("identity_token") or ""
+    client_email = (request.POST.get("email") or "").lower()
+    apple_client_id = getattr(settings, "APPLE_CLIENT_ID", None)
+    if not apple_client_id:
+        return JsonResponse({"detail": "Apple OAuth is not configured."}, status=503)
+    if not token:
+        return JsonResponse({"detail": "Missing identity_token."}, status=400)
+
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except jwt.exceptions.DecodeError as exc:
+        return JsonResponse({"detail": f"Invalid Apple token: {exc}"}, status=400)
+
+    kid = unverified_header.get("kid")
+    if not kid:
+        return JsonResponse({"detail": "Invalid Apple token header."}, status=400)
+
+    from app.api.views import _get_apple_public_key, _find_or_create_oauth_user
+
+    public_key = _get_apple_public_key(kid)
+    if not public_key:
+        return JsonResponse({"detail": "Unable to retrieve Apple public key."}, status=400)
+
+    try:
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=["RS256"],
+            audience=apple_client_id,
+            issuer="https://appleid.apple.com",
+        )
+    except jwt.ExpiredSignatureError:
+        return JsonResponse({"detail": "Apple token has expired."}, status=400)
+    except jwt.InvalidTokenError as exc:
+        return JsonResponse({"detail": f"Invalid Apple token: {exc}"}, status=400)
+
+    provider_id = payload.get("sub")
+    email = (payload.get("email") or "").lower() or client_email
+    if not provider_id:
+        return JsonResponse({"detail": "Apple token did not contain a subject."}, status=400)
+    if not email:
+        return JsonResponse({"detail": "Email is required for first-time Apple sign-in."}, status=400)
+
+    user, _is_new = _find_or_create_oauth_user(AppUserProfile.OAuthProvider.APPLE, provider_id, email)
+    django_login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return JsonResponse({"detail": "ok", "redirect": "/"}, status=200)
 
 def verify_email(request, email):
     user = get_object_or_404(User, username=email)

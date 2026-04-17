@@ -1,48 +1,57 @@
 {% extends "app/layout.html" %}
 
 {% block content %}
-<div class="row">
-    <div class="col-md-6">
-        <h2>Email Verification</h2>
-        <hr />
+<div class="auth-shell auth-shell--register">
+    <div class="auth-card dark-01">
+        <div class="auth-card-header dark-1">
+            <h2 class="m-0">Email Verification</h2>
+            <div class="auth-help">A verification code has been sent to <strong>{{ email }}</strong>. Please enter it below.</div>
+        </div>
 
-        <p>
-            A verification code has been sent to <strong>{{ email }}</strong>.
-            Please enter it below.
-        </p>
+        <div class="auth-card-body">
+            <div class="auth-grid">
+                <div>
+                    <form method="post" novalidate>
+                        {% csrf_token %}
 
-        <form method="post" novalidate>
-            {% csrf_token %}
+                        {% if messages %}
+                            {% for message in messages %}
+                                <p class="auth-help">{{ message }}</p>
+                            {% endfor %}
+                        {% endif %}
 
-            {% if messages %}
-            {% for message in messages %}
-            <p>{{ message }}</p>
-            {% endfor %}
-            {% endif %}
+                        <p>
+                            {{ form.code.label_tag }}<br>
+                            {{ form.code }}
+                            {{ form.code.errors }}
+                        </p>
 
-            <p>
-                {{ form.code.label_tag }}<br>
-                {{ form.code }}
-                {{ form.code.errors }}
-            </p>
+                        <div class="form-group">
+                            <div>
+                                <input type="submit" value="Verify" class="btn btn-primary px-5 mb-5 mt-5" />
+                            </div>
+                        </div>
+                    </form>
+                </div>
 
-            <button type="submit" class="btn btn-primary px-5 mb-5">Verify</button>
-        </form>
-    </div>
-    <div class="col-md-6">
-        <h2>Email Verification</h2>
-        <hr />
-        <p>
-            Didn't receive a code?
-        </p>
-        <a href="{% url 'resend-verification' email %}" class="btn btn-primary px-5 mb-5">Resend code</a>
+                <div>
+                    <div class="p-3 auth-side-card dark-1">
+                        <h4 class="mt-0">Didn't receive a code?</h4>
+                        <div class="auth-help mb-3">Request a new verification code to be sent to your email.</div>
+                        <a href="{% url 'resend-verification' email %}" class="btn btn-primary w-100 auth-login-btn">Resend code</a>
+                        <hr />
+                        <div class="auth-help">
+                            By continuing, you agree to USQuery's terms and acknowledge our <a href="{% url 'MCPrivPolicy' %}">privacy policy</a>.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
-
 {% load static %}
 <script src="{% static 'app/scripts/jquery.validate.min.js' %}"></script>
 {% endblock %}
