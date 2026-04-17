@@ -37,11 +37,15 @@ urlpatterns = [
              {
                  'title': 'Log in',
                  'year' : datetime.now().year,
+                 'google_client_id': views._get_google_web_client_id(),
+                 'apple_client_id': getattr(settings, 'APPLE_CLIENT_ID', None),
              }
          ),
          name='login'),
     path('logout/', LogoutView.as_view(next_page='/'), name='logout'),
     path('register/', views.register, name='register'),
+    path('oauth/google/', views.oauth_google_web, name='oauth-google-web'),
+    path('oauth/apple/', views.oauth_apple_web, name='oauth-apple-web'),
     path('verify-email/<str:email>/', views.verify_email, name='verify-email'),
     path('verify-email/<str:email>/resend/', views.resend_verification, name="resend-verification"),
     path("robots.txt", views.robots_txt),

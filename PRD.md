@@ -1,7 +1,7 @@
 # USQuery — Product Requirements Document
 
-**Version:** 1.0  
-**Date:** 2026-04-15  
+**Version:** 1.02
+**Date:** 2026-04-17 
 **Author:** Jeremy Lazo  
 **Status:** Draft
 
@@ -76,18 +76,18 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 **Estimated Difficulty:** 4
 
 **Requirements:**
-- Users can sign in with their Google account via OAuth 2.0.
-- Users can sign in with their Apple ID via Sign in with Apple.
-- On first OAuth login, a `User` and `UserProfile` are created automatically with Free tier defaults.
-- If an email from an OAuth provider matches an existing email/password account, the accounts are linked (or the user is prompted to link them).
-- JWT tokens are issued on successful OAuth login, consistent with the existing `simplejwt` flow.
-- OAuth login must work on both the web app and mobile (shared backend endpoint).
+- X | Users can sign in with their Google account via OAuth 2.0.
+- Users can sign in with their Apple ID via Sign in with Apple. (wip)
+- X | On first OAuth login, a `User` and `UserProfile` are created automatically with Free tier defaults.
+- X | If an email from an OAuth provider matches an existing email/password account, the accounts are linked (or the user is prompted to link them).
+- X | JWT tokens are issued on successful OAuth login, consistent with the existing `simplejwt` flow.
+-X |  OAuth login must work on both the web app and mobile (shared backend endpoint).
 - Password reset and email verification flows are not applicable to OAuth-only accounts.
 
 **Out of scope:** OAuth login for admin/staff accounts.
 
 **Progress:** Created the backend for creating an account with oauth. Need to edit code so it works for multiple GOOGLE_CLIENT_IDs (since google has us separate web Client ID and mobile Client IDs) 
-
+**Update(4/17):** Added web frontend and support for multiple google client ids
 ---
 
 #### 6.2 Starred Bills & Members on Web
