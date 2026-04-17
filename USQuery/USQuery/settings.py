@@ -168,7 +168,7 @@ USE_L10N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.1/howto/static-files/
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.ManifestStaticFilesStorage"
 STATIC_URL = '/static/'
 base_str = str(BASE_DIR)
 STATIC_ROOT = posixpath.join(*(base_str.split(os.path.sep) + ['static']))
