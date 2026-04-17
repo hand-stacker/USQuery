@@ -73,13 +73,13 @@ def about(request):
     )
 
 def my_congress_privacy_policy(request):
-    """Renders the about page.""" 
+    """Renders the privacy policy page."""
     assert isinstance(request, HttpRequest)
     return render(
         request,
         'app/my_congress_privacy_policy.html',
         {
-            'title':'About',
+            'title': 'Privacy Policy',
         }
     )
 
