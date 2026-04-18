@@ -58,7 +58,7 @@ async function toggleStarBill(billId) {
             btn.classList.remove('starred');
             btn.innerHTML = '<i class="far fa-star"></i><span>Star</span>';
         } else {
-            return;
+            throw new Error('Unexpected response from server. Please log in and try again.');
         }
 
     } catch (error) {
@@ -97,7 +97,7 @@ async function toggleStarMembership(membershipId) {
             btn.classList.remove('starred');
             btn.innerHTML = '<i class="far fa-star"></i><span>Star</span>';
         } else {
-            return;
+            throw new Error('Unexpected response from server. Please log in and try again.');
         }
 
     } catch (error) {
@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         starBtn.addEventListener('click', function() {
             if (!loggedIn) {
+                alert('You must be logged in to star bills. Redirecting to login...');
                 window.location.href = '/login/';
                 return;
             }
@@ -137,6 +138,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         starMemberBtn.addEventListener('click', function() {
             if (!loggedIn) {
+                alert('You must be logged in to star members. Redirecting to login...');
                 window.location.href = '/login/';
                 return;
             }
