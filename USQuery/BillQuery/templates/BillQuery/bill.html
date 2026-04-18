@@ -2,6 +2,7 @@
 {% block content %}
 {% load static %}
 {{ AI_generated_content | json_script:"AI_generated_content" }}
+{{ loggedIn | json_script:"loggedIn" }}
 {% if show_prediction == True %}
 {{ house_pred | json_script:"house_pred" }}
 {{ senate_pred | json_script:"senate_pred" }}
@@ -10,7 +11,15 @@
 <div class="row align-items-md-stretch">
     <div class="col-md-9">
         <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
-            <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
+                {% if True %}
+                <button id="star-bill-btn" class="star-btn {% if isStarred %}starred{% endif %}" data-bill-id="{{ bill_id }}">
+                    <i class="{% if isStarred %}fas{% else %}far{% endif %} fa-star"></i>
+                    <span>{% if isStarred %}Unstar{% else %}Star{% endif %}</span>
+                </button>
+                {% endif %}
+            </div>
             <hr />
             <div id="summary-container">
                 {% if summary %}
@@ -58,7 +67,7 @@
             {% endif %}
         </div>
         {% endif %}
-        
+
     </div>
     <div class="col-md-3">
         <div class="p-4 bg-body-tertiary rounded position-relative shadow-sm mb-4 glass-0" style="top: 0rem;">
@@ -132,4 +141,5 @@
 {% if show_generate_button %}
 <script src="{% static 'scripts/generate_summary.js' %}"></script>
 {% endif %}
+<script src="{% static 'app/scripts/starred.js' %}"></script>
 {% endblock %}

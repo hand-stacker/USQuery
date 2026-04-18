@@ -9,6 +9,7 @@ from django.db import transaction
 from .push import send_bill_notification
 from django.core.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication
 from rest_framework_simplejwt.authentication import JWTAuthentication
 import asyncio
 
@@ -166,6 +167,72 @@ class UnstarMembership(APIView):
         user_profile.get_starred_memberships().filter(membership_id=membership_id).update(is_active=False)
 
         return Response({"status": "unstarred"}, status = 202)
+
+# Stars a bill_id/membership_id for all devices of a user
+# for internal web use
+class StarItemInternal(APIView):
+    """Internal endpoint to star a bill_id or membership_id for the logged-in user.
+    Uses session authentication (CSRF cookie) and requires the user to be authenticated.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error": "Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        # Read from POST body (works for JSON or form-encoded requests)
+        bill_id = request.data.get("bill_id", None)
+        membership_id = request.data.get("membership_id", None)
+        if not bill_id and not membership_id:
+            return Response({"error": "Missing fields, please specify either a bill_id or membership_id to star."}, status=400)
+        if bill_id:
+            try:
+                StarredBill.objects.update_or_create(
+                    user_profile=user_profile,
+                    bill_id=bill_id,
+                    is_active=False,
+                    defaults={"is_active": True}
+                )
+            except ValidationError as e:
+                return Response({"error": _validation_error_detail(e)}, status=403)
+        if membership_id:
+            try:
+                StarredMembership.objects.update_or_create(
+                    user_profile=user_profile,
+                    membership_id=membership_id,
+                    is_active=False,
+                    defaults={"is_active": True}
+                )
+            except ValidationError as e:
+                return Response({"error": _validation_error_detail(e)}, status=403)
+
+        return Response({"status": "starred"}, status=201)
+
+# Unstars a bill_id/membership_id for all devices of a user
+# for internal web use
+class UnstarItemInternal(APIView):
+    """Internal endpoint to unstar a bill_id or membership_id for the logged-in user.
+    Uses session authentication (CSRF cookie) and requires the user to be authenticated.
+    """
+    authentication_classes = [SessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_active:
+            return Response({"error": "Verify your email."}, status=403)
+        user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+        # Read from POST body (works for JSON or form-encoded requests)
+        bill_id = request.data.get("bill_id", None)
+        membership_id = request.data.get("membership_id", None)
+        if not bill_id and not membership_id:
+            return Response({"error": "Missing fields"}, status=400)
+        if bill_id:
+            user_profile.get_starred_bills().filter(bill_id=bill_id).update(is_active=False)
+        if membership_id:
+            user_profile.get_starred_memberships().filter(membership_id=membership_id).update(is_active=False)
+
+        return Response({"status": "unstarred"}, status=202)
 
 class UpdateFavoriteSubjects(APIView):
     authentication_classes = [JWTAuthentication]

@@ -9,9 +9,10 @@ from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpRes
 from django.views.decorators.http import require_GET
 from rest_framework.decorators import api_view
 from rest_framework.views import Response
-from SenateQuery.models import Congress
-from BillQuery.models import Vote
+from SenateQuery.models import Congress, Membership
+from BillQuery.models import Vote, Bill
 from notifications.models import UserProfile
+from strawberryAPI.graphql.utils import batch_load_summaries
 from app import siteutils, utils
 from app.forms import RegisterForm, VerificationForm
 from app.models import EmailVerification
@@ -438,3 +439,74 @@ def view_details(request):
     member_limit = user_profile.get_starred_memberships_limit()
 
     return Response({"user_type": user_type, "device_limit" : device_limit, "bill_limit" : bill_limit, "member_limit" : member_limit}, status=202)
+
+def starred(request):
+    """Renders the starred bills and members page with JSON data."""
+    assert isinstance(request, HttpRequest)
+    if not request.user.is_authenticated:
+        return HttpResponseForbidden("Authentication required.")
+
+    user_profile = UserProfile.objects.get(user=request.user)
+    
+    # Get starred bills
+    sb_qs = user_profile.get_starred_bills()
+    raw_ids = list(sb_qs.values_list("bill_id", flat=True))
+    starred_bill_ids = []
+    for _id in raw_ids:
+        try:
+            starred_bill_ids.append(int(_id))
+        except Exception:
+            continue
+
+    # Get starred memberships
+    sm_qs = user_profile.get_starred_memberships()
+    raw_mem_ids = list(sm_qs.values_list("membership_id", flat=True))
+
+    # Fetch full bill objects
+    bills_qs = Bill.type_objects.filter(id__in=starred_bill_ids).order_by("-latest_action", "-id")
+    bills = list(bills_qs)
+    
+    # Get summaries for bills - batch_load_summaries is async, so we need to run it
+    import asyncio
+    summaries = asyncio.run(batch_load_summaries(bills, True))
+    
+    # Serialize bills
+    bills_data = []
+    for bill in bills:
+        s = summaries.get(bill.id)
+        summary_text = s["summary"] if s else ""
+        bills_data.append({
+            "bill_id": bill.id,
+            "title": bill.title,
+            "latest_action": bill.latest_action.isoformat() if bill.latest_action else "",
+            "summary": summary_text,
+        })
+    
+    # Fetch full membership objects
+    memberships_qs = Membership.objects.filter(id__in=raw_mem_ids).select_related("member")
+    memberships = list(memberships_qs)
+    
+    # Serialize memberships
+    members_data = []
+    for membership in memberships:
+        members_data.append({
+            "membership_id": membership.id,
+            "member_id": membership.member.id,
+            "name": membership.member.full_name,
+            "image_link": membership.member.image_link or "",
+            "state": membership.state,
+            "party": membership.party,
+            "district_num": membership.district_num,
+            "house": membership.house,
+        })
+
+    return render(
+        request,
+        'app/starred.html',
+        {
+            'title': 'My Starred',
+            'year': datetime.now().year,
+            'bills_json': bills_data,
+            'members_json': members_data,
+        }
+    )

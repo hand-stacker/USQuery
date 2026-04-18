@@ -14,6 +14,7 @@ from app import utils, forms, siteutils
 from SenateQuery.models import Congress
 from BillQuery.models import Vote, Bill, BillPrediction
 from datetime import date
+from app.models import UserProfile
 from notifications.push import send_subject_notification
 
 
@@ -146,6 +147,15 @@ def bill(request, congress_num, bill_type, bill_num, _bill = None, bill_id = Non
                 'return_url': '/bill-query/'
             })
     context = asyncio.run(utils.billHtml(_bill, str(congress_num), bill_type, str(bill_num)))
+    context['isStarred'] = False
+    context['loggedIn'] = False
+    if request.user.is_authenticated:
+        context['loggedIn'] = True
+        user_profile = UserProfile.objects.get(user=request.user)
+        sb_qs = user_profile.get_starred_bills()
+        raw_ids = list(sb_qs.values_list("bill_id", flat=True))
+        if str(bill_id) in raw_ids:
+            context['isStarred'] = True
     context['bill_id'] = bill_id
     context['bill_type'] = bill_type
     context['congress_num'] = congress_num
