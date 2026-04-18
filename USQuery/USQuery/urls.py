@@ -16,7 +16,7 @@ from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
 from strawberry.django.views import AsyncGraphQLView
 from strawberryAPI.graphql.schema import schema
-from notifications import views as NViews
+from notifications import views as Nviews
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -28,6 +28,9 @@ admin.autodiscover()
 urlpatterns = [
     path('', views.home, name='home'),
     path('about/', views.about, name='about'),
+    path('starred/', views.starred, name='starred'),
+    path('star-item/', Nviews.StarItemInternal.as_view(), name='star_item_internal'),
+    path('unstar-item/', Nviews.UnstarItemInternal.as_view(), name='unstar_item_internal'),
     path('login/',
          views.CustomLoginView.as_view
          (
@@ -91,19 +94,19 @@ urlpatterns = [
 
 #Notif api
 urlpatterns += [
-    path("api/notif/register-device/", NViews.RegisterDevice.as_view()),
-    path("api/notif/unregister-device/", NViews.UnregisterDevice.as_view()),
-    path("api/notif/star-bill/", NViews.StarBill.as_view()),
-    path("api/notif/unstar-bill/", NViews.UnstarBill.as_view()),
-    path("api/notif/star-membership/", NViews.StarMembership.as_view()),
-    path("api/notif/unstar-membership/", NViews.UnstarMembership.as_view()),
-    path("api/notif/update-favorites/", NViews.UpdateFavoriteSubjects.as_view()),
-    path("api/notif/update-preferences/", NViews.UpdateNotifPreferences.as_view()),
-    path("api/notif/get-preferences/", NViews.getUserPreferences),
+    path("api/notif/register-device/", Nviews.RegisterDevice.as_view()),
+    path("api/notif/unregister-device/", Nviews.UnregisterDevice.as_view()),
+    path("api/notif/star-bill/", Nviews.StarBill.as_view()),
+    path("api/notif/unstar-bill/", Nviews.UnstarBill.as_view()),
+    path("api/notif/star-membership/", Nviews.StarMembership.as_view()),
+    path("api/notif/unstar-membership/", Nviews.UnstarMembership.as_view()),
+    path("api/notif/update-favorites/", Nviews.UpdateFavoriteSubjects.as_view()),
+    path("api/notif/update-preferences/", Nviews.UpdateNotifPreferences.as_view()),
+    path("api/notif/get-preferences/", Nviews.getUserPreferences),
     # Admin-only test endpoint to trigger a mock push notification
-    path("api/notif/send-test/", NViews.send_test_bill_notification),
-    path("api/notif/send-test-null/", NViews.send_test_bill_notification_exclusion_test),
-    path("api/notif/mass-unstar/<int:congress_num>", NViews.MassUnstar)
+    path("api/notif/send-test/", Nviews.send_test_bill_notification),
+    path("api/notif/send-test-null/", Nviews.send_test_bill_notification_exclusion_test),
+    path("api/notif/mass-unstar/<int:congress_num>", Nviews.MassUnstar)
 ]
 
 #Auth api

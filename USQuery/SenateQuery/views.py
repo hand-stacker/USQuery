@@ -90,8 +90,17 @@ def search(request, congress_num, bioguide_id, in_house):
             "vote_table": vote_table,
             "vote_list" : vote_list,
             "urlPath" : urlPath,
+            'membership_id': membership.id,
         }
-    
+    context['isStarred'] = False
+    context['loggedIn'] = False
+    if request.user.is_authenticated:
+        context['loggedIn'] = True
+        user_profile = UserProfile.objects.get(user=request.user)
+        sb_qs = user_profile.get_starred_memberships()
+        raw_ids = list(sb_qs.values_list("membership_id", flat=True))
+        if membership.id in raw_ids:
+            context['isStarred'] = True
     if ('partyHistory' in API_response['member']):
         context['party_list'] = utils.partyList(API_response['member']['partyHistory'])
     if ('leadership' in API_response['member']):

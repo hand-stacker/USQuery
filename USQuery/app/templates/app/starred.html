@@ -1,0 +1,61 @@
+{% extends "app/layout.html" %}
+{% block content %}
+{% load static %}
+{{ bills_json | json_script:"bills_json" }}
+{{ members_json | json_script:"members_json" }}
+<div class="container mt-4">
+    <h1 class="mb-4">My Starred</h1>
+
+    <!-- Tabs for Bills and Members -->
+    <ul class="nav nav-tabs" id="starredTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="bills-tab" data-bs-toggle="tab" data-bs-target="#bills" type="button" role="tab" aria-controls="bills" aria-selected="true">Starred Bills</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="members-tab" data-bs-toggle="tab" data-bs-target="#members" type="button" role="tab" aria-controls="members" aria-selected="false">Starred Members</button>
+        </li>
+    </ul>
+
+    <div class="tab-content mt-4" id="starredTabContent">
+        <!-- Starred Bills Tab -->
+        <div class="tab-pane fade show active" id="bills" role="tabpanel" aria-labelledby="bills-tab">
+            <div id="bills-content">
+                <div id="bills-list" class="row">
+                    <!-- Bills will be loaded here -->
+                </div>
+                <div id="bills-empty" class="text-center text-muted d-none">
+                    <p>No starred bills yet. <a href="/bill-query/">Browse bills</a> to star some.</p>
+                </div>
+                <nav aria-label="Bills pagination" class="mt-4 d-none" id="bills-pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item"><button class="page-link" id="bills-prev">Previous</button></li>
+                        <li class="page-item"><span class="page-link" id="bills-page-info">Page 1</span></li>
+                        <li class="page-item"><button class="page-link" id="bills-next">Next</button></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Starred Members Tab -->
+        <div class="tab-pane fade" id="members" role="tabpanel" aria-labelledby="members-tab">
+            <div id="members-content">
+                <div id="members-list" class="row">
+                    <!-- Members will be loaded here -->
+                </div>
+                <div id="members-empty" class="text-center text-muted d-none">
+                    <p>No starred members yet. <a href="/member-query/">Browse members</a> to star some.</p>
+                </div>
+                <nav aria-label="Members pagination" class="mt-4 d-none" id="members-pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item"><button class="page-link" id="members-prev">Previous</button></li>
+                        <li class="page-item"><span class="page-link" id="members-page-info">Page 1</span></li>
+                        <li class="page-item"><button class="page-link" id="members-next">Next</button></li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'app/scripts/starred_page.js' %}"></script>
+{% endblock %}
