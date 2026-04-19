@@ -1,0 +1,46 @@
+{% extends "app/layout.html" %}
+{% block content %}
+{% load static %}
+{{ bills_json | json_script:"bills_json" }}
+{{ selected_subjects_json | json_script:"selected_subjects_json" }}
+<div class="container mt-4">
+    <h1 class="mb-4">Bill Search Results</h1>
+
+    <div id="search-results-content">
+        <div id="bills-list" class="row">
+            <!-- Bills will be loaded here -->
+        </div>
+        <div id="bills-empty" class="text-center text-muted d-none">
+            <p>No bills found matching your search criteria. <a href="/bill-query/">Try a new search</a>.</p>
+        </div>
+        <nav aria-label="Bills pagination" class="mt-4 d-none" id="bills-pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" id="bills-first-item">
+                    <button class="page-link" id="bills-first">&laquo; first</button>
+                </li>
+                <li class="page-item" id="bills-prev-item">
+                    <button class="page-link" id="bills-prev">previous</button>
+                </li>
+                
+                <li class="page-item"><span class="page-link" id="bills-page-info">Page 1 of 1</span></li>
+                
+                <li class="page-item" id="bills-next-item">
+                    <button class="page-link" id="bills-next">next</button>
+                </li>
+                <li class="page-item" id="bills-last-item">
+                    <button class="page-link" id="bills-last">last &raquo;</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<script>
+    // Pass pagination info to JavaScript
+    const CURRENT_SERVER_PAGE = {{ page_obj.number }};
+    const TOTAL_SERVER_PAGES = {{ page_obj.paginator.num_pages }};
+    const TOTAL_RESULTS = {{ page_obj.paginator.count }};
+    const URL_PARAMS = "{{ url_params }}";
+</script>
+<script src="{% static 'scripts/search_results.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,46 @@
+{% extends "app/layout.html" %}
+{% block content %}
+{% load static %}
+{{ votes_json | json_script:"votes_json" }}
+{{ selected_subjects_json | json_script:"selected_subjects_json" }}
+<div class="container mt-4">
+    <h1 class="mb-4">Vote Search Results</h1>
+
+    <div id="search-results-content">
+        <div id="votes-list" class="row">
+            <!-- Votes will be loaded here -->
+        </div>
+        <div id="votes-empty" class="text-center text-muted d-none">
+            <p>No votes found matching your search criteria. <a href="/bill-query/">Try a new search</a>.</p>
+        </div>
+        <nav aria-label="Votes pagination" class="mt-4 d-none" id="votes-pagination">
+            <ul class="pagination justify-content-center">
+                <li class="page-item" id="votes-first-item">
+                    <button class="page-link" id="votes-first">&laquo; first</button>
+                </li>
+                <li class="page-item" id="votes-prev-item">
+                    <button class="page-link" id="votes-prev">previous</button>
+                </li>
+
+                <li class="page-item"><span class="page-link" id="votes-page-info">Page 1 of 1</span></li>
+
+                <li class="page-item" id="votes-next-item">
+                    <button class="page-link" id="votes-next">next</button>
+                </li>
+                <li class="page-item" id="votes-last-item">
+                    <button class="page-link" id="votes-last">last &raquo;</button>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<script>
+    // Pass pagination info to JavaScript
+    const VOTES_CURRENT_SERVER_PAGE = {{ page_obj.number }};
+    const VOTES_TOTAL_SERVER_PAGES = {{ page_obj.paginator.num_pages }};
+    const VOTES_TOTAL_RESULTS = {{ page_obj.paginator.count }};
+    const VOTES_URL_PARAMS = "{{ url_params }}";
+</script>
+<script src="{% static 'scripts/search_vote_results.js' %}"></script>
+{% endblock %}
