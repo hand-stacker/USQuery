@@ -93,18 +93,21 @@ class MemberForm(forms.Form):
         choices=state_list,
         required=False
         )
-
-    member = forms.ModelChoiceField(
-        queryset=SQmodels.Member.objects.none(),
-        empty_label="Select a Member"
-        )
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["congress"].widget.attrs.update(classic_form)
         self.fields["chamber"].widget.attrs.update(classic_form)
         self.fields["state"].widget.attrs.update(classic_form)
-        self.fields["member"].widget.attrs.update(classic_form)
+        congress_119 = SQmodels.Congress.objects.get(congress_num=119)
+        self.fields["congress"].initial = congress_119
+        # Set default congress to 119 if no congress is provided in the data
+        if not self.data or 'congress' not in self.data:
+            try:
+                congress_119 = SQmodels.Congress.objects.get(congress_num=119)
+                self.fields["congress"].initial = congress_119
+            except SQmodels.Congress.DoesNotExist:
+                pass
    
 class CloroChoice(forms.Form): 
     cloro_choice = forms.ChoiceField(

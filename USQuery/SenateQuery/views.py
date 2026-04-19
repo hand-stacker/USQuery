@@ -135,7 +135,37 @@ def query(request):
         # form data is malformed or missing required fields -> return 400 Bad Request
         return HttpResponseBadRequest("Malformed member query form.")
     return search(request, congress_num, member_form.data["member"], in_house)
+
+def get_filtered_memberships(request, congress_num, chamber, state):
+    """
+    Returns a JSON list of memberships filtered by congress, chamber, and state.
+    Used for dynamic member search results display.
+    """
+    is_house = chamber != 'Senate'
+    try:
+        congress = Congress.objects.get(congress_num__exact=congress_num)
+    except Congress.DoesNotExist:
+        return JsonResponse({'members': []})
     
+    if state == 'All':
+        memberships = Membership.objects.filter(congress=congress, house=is_house).select_related('member')
+    else:
+        memberships = Membership.objects.filter(congress=congress, state=state, house=is_house).select_related('member')
+    
+    members_data = []
+    for membership in memberships:
+        members_data.append({
+            'membership_id': membership.id,
+            'member_id': membership.member.id,
+            'name': membership.member.full_name,
+            'image_link': membership.member.image_link or '',
+            'state': membership.state,
+            'party': membership.party,
+            'district_num': membership.district_num,
+            'house': membership.house,
+        })
+    
+    return JsonResponse({'members': members_data})
 
 def update_members(request, congress_num, chamber, state):
     is_house = chamber != 'Senate'
