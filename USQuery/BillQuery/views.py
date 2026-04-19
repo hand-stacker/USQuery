@@ -2,7 +2,7 @@ import asyncio
 import os
 import aiohttp
 from django.shortcuts import render
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 from app import utils, forms, siteutils
 from SenateQuery.models import Congress
-from BillQuery.models import Vote, Bill, BillPrediction
+from BillQuery.models import Vote, Bill, BillPrediction, Subject
 from datetime import date
 from app.models import UserProfile
 from notifications.push import send_subject_notification
@@ -50,13 +50,12 @@ def bill_query(request):
 def vote_query(request):
     assert isinstance(request, HttpRequest)
     vote_form = forms.VoteForm(request.GET)
-    # VoteForm uses the same field name 'bill_subjects' — use getlist here as well
+    # VoteForm uses the same field name 'bill_subjects' ï¿½ use getlist here as well
     raw_subject_ids = request.GET.get("vote_subjects", '')
     if raw_subject_ids == '':
         topics=[]
     else : 
         topics = list(map(int, raw_subject_ids.split(',')))
-    raw_subject_ids = list(map(int, raw_subject_ids))
     return vote_search(
         request,
         vote_form.data.get("start_date"),
@@ -74,23 +73,58 @@ def bill_search(request, s_d, e_d, bill_type, topics):
             'title': 'Search failed',
             'return_url': '/bill-query/'
         })
-    urlPath = ""
-    past_context = request.GET.dict()
-    for key in past_context:
-        urlPath += key + "=" + past_context[key] + "&"
+    
+    # Convert topics list to JSON for frontend
+    selected_subjects_json = []
+    if topics:
+        selected_subjects = Subject.objects.filter(id__in=topics)
+        selected_subjects_json = [{"id": s.id, "name": s.name} for s in selected_subjects]
+    
+    # Server-side pagination: 50 bills per page to keep JSON size manageable
+    BILLS_PER_PAGE = 50
+    paginator = Paginator(q_set, BILLS_PER_PAGE)
+    page_number = request.GET.get("page", 1)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except:
+        page_obj = paginator.page(1)
+    
+    # Serialize bills data for current page only
+    bills_data = []
+    for bill in page_obj:
+        bill_subjects = []
+        if topics:
+            # Get only subjects that match the selected filters
+            bill_subjects = [{"id": s.id, "name": s.name} for s in bill.subjects.filter(id__in=topics)]
         
-    paginator = Paginator(q_set, 25)
-    page_number = request.GET.get("page")
-    bill_list = paginator.get_page(page_number)
-    content = utils.billTable(bill_list)
+        bills_data.append({
+            "bill_id": bill.id,
+            "title": bill.title,
+            "latest_action": bill.latest_action.isoformat() if bill.latest_action else None,
+            "subjects": bill_subjects
+        })
+    
+    # Construct URL parameters for pagination links
+    url_params = ""
+    if s_d:
+        url_params += f"start_date={s_d}&"
+    if e_d:
+        url_params += f"end_date={e_d}&"
+    if bill_type:
+        url_params += f"bill_type={bill_type}&"
+    if topics:
+        url_params += f"bill_subjects={','.join(map(str, topics))}&"
+    
     return render(
         request,
-        'BillQuery/bill_list.html',
+        'BillQuery/bill_search_results.html',
         {
-            "content": content,
-            "bill_list" : bill_list,
-            "urlPath" : urlPath,
-            'title':"Results",
+            "bills_json": bills_data,
+            "selected_subjects_json": selected_subjects_json,
+            "page_obj": page_obj,
+            "url_params": url_params,
+            'title': "Results",
         }
     )
 
@@ -103,23 +137,85 @@ def vote_search(request, s_d, e_d, bill_type, topics):
             'title': 'Search failed',
             'return_url': '/bill-query/'
         })
-    urlPath = ""
-    past_context = request.GET.dict()
-    for key in past_context:
-        urlPath += key + "=" + past_context[key] + "&"
+    
+    # Convert topics list to JSON for frontend
+    selected_subjects_json = []
+    if topics:
+        selected_subjects = Subject.objects.filter(id__in=topics)
+        selected_subjects_json = [{"id": s.id, "name": s.name} for s in selected_subjects]
+    
+    # Server-side pagination: 50 votes per page to keep JSON size manageable
+    VOTES_PER_PAGE = 50
+    paginator = Paginator(q_set, VOTES_PER_PAGE)
+    page_number = request.GET.get("page", 1)
+    
+    try:
+        page_obj = paginator.page(page_number)
+    except:
+        page_obj = paginator.page(1)
+    
+    # Prefetch related bills and their subjects in bulk to avoid N+1 queries
+    votes_with_bills = list(page_obj.object_list)
+    
+    if votes_with_bills:
+        bill_ids = [v.bill_id for v in votes_with_bills if v.bill_id]
         
-    paginator = Paginator(q_set, 25)
-    page_number = request.GET.get("page")
-    vote_list = paginator.get_page(page_number)
-    content = utils.voteTablePage(vote_list)
+        # Prefetch bills with their subjects in one query
+        bills_with_subjects = Bill.objects.filter(
+            id__in=bill_ids
+        ).prefetch_related(
+            Prefetch(
+                'subjects',
+                queryset=Subject.objects.filter(id__in=topics) if topics else Subject.objects.all()
+            )
+        )
+        
+        # Create a map for quick lookup
+        bills_map = {bill.id: bill for bill in bills_with_subjects}
+        
+        # Serialize votes data for current page only
+        votes_data = []
+        for vote in votes_with_bills:
+            bill = bills_map.get(vote.bill_id) if vote.bill_id else None
+            
+            vote_subjects = []
+            if topics and bill:
+                vote_subjects = [{"id": s.id, "name": s.name} for s in bill.subjects.all()]
+            
+            votes_data.append({
+                "vote_id": vote.id,
+                "date": vote.dateTime.isoformat() if vote.dateTime else None,
+                "question": vote.question,
+                "result": vote.result,
+                "bill_id": bill.id if bill else None,
+                "bill_title": bill.title if bill else "Unknown Bill",
+                "bill_type_url": bill.getTypeURL() if bill else "",
+                "bill_number": bill.getNumStr() if bill else "",
+                "subjects": vote_subjects
+            })
+    else:
+        votes_data = []
+    
+    # Construct URL parameters for pagination links
+    url_params = ""
+    if s_d:
+        url_params += f"start_date={s_d}&"
+    if e_d:
+        url_params += f"end_date={e_d}&"
+    if bill_type:
+        url_params += f"bill_type={bill_type}&"
+    if topics:
+        url_params += f"vote_subjects={','.join(map(str, topics))}&"
+    
     return render(
         request,
-        'BillQuery/bill_list.html',
+        'BillQuery/vote_search_results.html',
         {
-            "content": content,
-            "bill_list" : vote_list,
-            "urlPath" : urlPath,
-            'title':"Results",
+            "votes_json": votes_data,
+            "selected_subjects_json": selected_subjects_json,
+            "page_obj": page_obj,
+            "url_params": url_params,
+            'title': "Results",
         }
     )
 
