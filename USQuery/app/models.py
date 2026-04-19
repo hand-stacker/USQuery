@@ -4,30 +4,54 @@ from django.db import models
 from django.utils import timezone
 from datetime import timedelta
 
+SUBSCRIPTION_TYPE = {
+    0:'Free', 
+    1:'Plus',
+    2:'Premium',
+    3:'Special'
+    }
 
 DEVICE_LIMITS = {
-    0:20, # this is just for my alpha test, update later
+    0:3, 
     1:10,
-    2:10,
+    2:20,
     3:1000}
 
 STARRED_BILLS_LIMITS = {
     0:10,
-    1:100,
-    2:1000,
+    1:50,
+    2:100,
     3:1000}
 
 STARRED_MEMBERSHIPS_LIMITS = {
-    0:5,
-    1:100,
-    2:1000,
+    0:3,
+    1:10,
+    2:100,
     3:1000}
 
 PREDICTION_LIMITS = {
-    0:5,
-    1:100,
-    2:1000,
+    0:0,
+    1:3,
+    2:100,
     3:1000000}
+
+DAILY_CHAT_LIMITS = {
+    0:0,
+    1:3,
+    2:10000,
+    3:1000000}
+
+DAILY_CHAT_TOKEN_LIMITS = {
+    0:0,
+    1:10000,
+    2:100000,
+    3:1000000}
+
+DAILY_OUTPUT_TOKEN_LIMITS = {
+    0:0,
+    1:5000,
+    2:50000,
+    3:500000}
 
 class UserProfile(models.Model):
     class SubType(models.IntegerChoices):
@@ -67,6 +91,10 @@ class UserProfile(models.Model):
     def get_favorite_subjects(self):
         return self.favorite_subjects.filter(is_active=True)
 
+    # gets subscription type
+    def get_subscription_type(self):
+        return SUBSCRIPTION_TYPE[self.user_type]
+
     # returns the device limit (int) for this user_profile
     def get_device_limit(self):
         return DEVICE_LIMITS[self.user_type]
@@ -82,6 +110,18 @@ class UserProfile(models.Model):
     # for future use, limits daily prediction views
     def get_predicton_limit(self):
         return PREDICTION_LIMITS[self.user_type]
+
+    # for future use, limits daily prediction views
+    def get_chat_limit(self):
+        return DAILY_CHAT_LIMITS[self.user_type]
+
+    # for future use, limits daily prediction views
+    def get_chat_token_limit(self):
+        return DAILY_CHAT_TOKEN_LIMITS[self.user_type]
+
+    # for future use, limits daily prediction views
+    def get_chat_output_limit(self):
+        return DAILY_OUTPUT_TOKEN_LIMITS[self.user_type]
 
 
 

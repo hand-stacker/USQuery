@@ -41,7 +41,7 @@ The web app is built on Django with a PostgreSQL backend, Redis caching, a RESTf
 | Search votes by subject and time frame | Y | N (need to add timeframe filtering) |
 | Congress member profiles (votes, term history, general info) | Y | Y |
 | Vote predictions for bills | Y | N (need to add gql query and UI)|
-| Starred bills / starred members | N (frontend only) | Y |
+| Starred bills / starred members | Y | Y |
 | User accounts (email/password) | Y | Y |
 | Push notifications for starred content | N/A | Y |
 | Public GraphQL API (unauthenticated queries) | Y | Y |
@@ -53,10 +53,10 @@ The web app is built on Django with a PostgreSQL backend, Redis caching, a RESTf
 
 | Feature | Free | Plus | Premium |
 |---|---|---|---|
-| Starred members | 5 | 10 | 20 |
+| Starred members | 3 | 10 | 20 |
 | Starred bills | 10 | 50 | 100 |
-| Vote predictions | Limited (rate-limited) to 3/day | Y | Y |
-| AI chatbot access (in development) | N | Limited (rate-limited) to 3/day | Unlimited |
+| Vote predictions | 3/day | 100/day | Y |
+| AI chatbot access (in development) | N | 3/day | A lot |
 | Price | $0 | TBD | TBD |
 
 Access control is enforced via the `UserProfile` model's subscription tier field. Feature gating is the primary mechanism; the chatbot additionally uses rate limiting for the Plus tier.
@@ -88,21 +88,25 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 
 **Progress:** Created the backend for creating an account with oauth. Need to edit code so it works for multiple GOOGLE_CLIENT_IDs (since google has us separate web Client ID and mobile Client IDs) 
 **Update(4/17):** Added web frontend and support for multiple google client ids
+**Update(4/18):** Mobile frontend made, just waiting for google client id to be available in production to fix bugs, rn we get unauthorized even after multiple steps made to correct this.
+**		- Correctly defined Javascript Origins in cloud console.
+		- ids are correct.
+		- Wait for production access, maybe this will fix our issue...**
 ---
 
-#### 6.2 Starred Bills & Members on Web
+#### 6.2 [Completed] Starred Bills & Members on Web
 **Scope:** Web frontend  
 **Goal:** Port the existing mobile starred content feature to the web app.
 **Estimated Difficulty:** 2
 
 **Requirements:**
-- Authenticated web users can star/unstar a bill from the bill detail page.
-- Authenticated web users can star/unstar a member from the member profile page.
-- A dedicated "My Starred" page (or dashboard section) lists the user's starred bills and starred members.
-- Starring is blocked with an upsell prompt when the user's tier limit is reached (e.g., Free user at 10 starred bills).
-- Starred state is synced with the existing `StarredBill` and `StarredMembership` models — no schema changes required.
-- The existing GraphQL API calls used by mobile should be reused or minimally refactored for the web frontend.
-- Unauthenticated users are prompted to log in when attempting to star content.
+- X | Authenticated web users can star/unstar a bill from the bill detail page.
+- X | Authenticated web users can star/unstar a member from the member profile page.
+- X | A dedicated "My Starred" page (or dashboard section) lists the user's starred bills and starred members.
+- X | Starring is blocked with an upsell prompt when the user's tier limit is reached (e.g., Free user at 10 starred bills).
+- X | Starred state is synced with the existing `StarredBill` and `StarredMembership` models — no schema changes required.
+- X | The existing GraphQL API calls used by mobile should be reused or minimally refactored for the web frontend. (Refactored it)
+- X | Unauthenticated users are prompted to log in when attempting to star content.
 
 ---
 

@@ -32,10 +32,10 @@ class Device(models.Model):
         qs = self.user_profile.get_active_devices()
         if self.id:
             qs = qs.exclude(id=self.id)
-
+        subscription_type = self.user_profile.get_subscription_type()
         device_limit = self.user_profile.get_device_limit()
         if qs.count() >= device_limit:
-            raise ValidationError(message="You can have at most " + str(device_limit) + " devices on your account.", code="DeviceLimit")
+            raise ValidationError(message=subscription_type + " users can have at most " + str(device_limit) + " devices.", code="DeviceLimit")
 
     def save(self, *args, **kwargs):
         # enforce validation (including max-3 check)
@@ -69,10 +69,10 @@ class StarredBill(models.Model):
         qs = self.user_profile.get_starred_bills()
         if self.id:
             qs = qs.exclude(id=self.id)
-
+        subscription_type = self.user_profile.get_subscription_type()
         starred_limit = self.user_profile.get_starred_bills_limit()
         if qs.count() >= starred_limit:
-            raise ValidationError(message="You can have at most " + str(starred_limit) + " starred bills on your account.", code="BillLimit")
+            raise ValidationError(message=subscription_type + " users can have at most " + str(starred_limit) + " starred bills.", code="BillLimit")
 
     def save(self, *args, **kwargs):
         # enforce validation (including max-3 check)
@@ -99,10 +99,10 @@ class StarredMembership(models.Model):
         qs = self.user_profile.get_starred_memberships()
         if self.id:
             qs = qs.exclude(id=self.id)
-
+        subscription_type = self.user_profile.get_subscription_type()
         starred_limit = self.user_profile.get_starred_memberships_limit()
         if qs.count() >= starred_limit:
-            raise ValidationError(message="You can have at most " + str(starred_limit) + " starred members on your account.", code="MembershipLimit")
+            raise ValidationError(message=subscription_type + " users can have at most " + str(starred_limit) + " starred members.", code="MembershipLimit")
 
     def save(self, *args, **kwargs):
         # enforce validation (including max-3 check)
