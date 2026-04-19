@@ -61,6 +61,7 @@ urlpatterns = [
     path('member-query/search/', SQviews.search, name='senateQuerySearch'),
     path('member-query/search-failed/', SQviews.search_failed, name='senateQuerySearchFailed'),
     path('member-query/update-mems/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.update_members, name='update_members'),
+    path('member-query/get-filtered/<int:congress_num>/<str:chamber>/<str:state>/', SQviews.get_filtered_memberships, name='get_filtered_memberships'),
     path('member-query/arrival/<int:congress_num>/<str:arriving_id>/<str:arriving_date>/<int:in_house>/', SQviews.update_arrival, name='update_arrival'),
     path('member-query/swap/<int:congress_num>/<str:leaving_id>/<str:leaving_date>/<int:in_house>/', SQviews.swap_membership, name='swap_membership'),
     path('member-query/swap/<int:congress_num>/<str:leaving_id>/<str:leaving_date>/<int:in_house>/<str:arriving_id>/<str:arriving_date>/<str:party>/', SQviews.swap_membership, name='swap_membership'),

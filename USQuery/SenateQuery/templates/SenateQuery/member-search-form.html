@@ -1,32 +1,50 @@
 {% load static %}
-<form name="MemberForm" id="id_MemberForm" action="results/" method="get">
+<form name="MemberForm" id="id_MemberForm">
     <div class="d-flex flex-column flex-md-row p-4 gap-4 align-items-center justify-content-center">
         {{ mem_form.non_field_errors }}
         <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
             <h6>This field is required.</h6>
-            <label for="{{ mem_form.congress.id_for_label }}"> Select Congress:</label>
+            <label for="{{ mem_form.congress.id_for_label }}">Select Congress:</label>
             <div>{{mem_form.congress}}</div>
         </div>
         <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
             <h6>This field is required.</h6>
-            <label for="{{mem_form.chamber.id_for_label}}"> Select Chamber:</label>
+            <label for="{{mem_form.chamber.id_for_label}}">Select Chamber:</label>
             <div>{{mem_form.chamber}}</div>
         </div>
         <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
             <h6>This field is optional.</h6>
-            <label for="{{mem_form.state.id_for_label}}"> Select State:</label>
+            <label for="{{mem_form.state.id_for_label}}">Select State:</label>
             <div>{{mem_form.state}}</div>
-        </div>
-        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
-            <h6>This field is required.</h6>
-            <label for="{{ mem_form.member.id_for_label }}"> Select Representative:</label>
-            <div>{{mem_form.member}}</div>
-        </div>
-    </div>
-    <div class="d-flex flex-column flex-md-row align-items-center justify-content-center mb-4">
-        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:60px">
-            <input type="submit" value="Search" />
         </div>
     </div>
 </form>
-<script src="{% static 'scripts/updateMemForm.js' %}"></script>
+
+<!-- Members list container -->
+<div class="container mt-5">
+    <div id="members-list" class="row">
+        <!-- Members will be loaded here by JavaScript -->
+    </div>
+    <div id="members-empty" class="text-center text-muted mt-4">
+        <p>Select congress, chamber, and optionally a state to view members.</p>
+    </div>
+</div>
+
+<script src="{% static 'SenateQuery/scripts/member_search.js' %}"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const congressField = document.getElementById('id_congress');
+    
+    // Select the 119th congress by default if no congress is currently selected
+    if (congressField && !congressField.value) {
+        const options = congressField.querySelectorAll('option');
+        for (let option of options) {
+            if (option.textContent.includes('119')) {
+                congressField.value = option.value;
+                break;
+            }
+        }
+    }
+});
+</script>

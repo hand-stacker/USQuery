@@ -176,6 +176,8 @@
     <Folder Include="models\" />
     <Folder Include="notifications\" />
     <Folder Include="notifications\migrations\" />
+    <Folder Include="SenateQuery\static\SenateQuery\" />
+    <Folder Include="SenateQuery\static\SenateQuery\scripts\" />
     <Folder Include="strawberryAPI\" />
     <Folder Include="SenateQuery\" />
     <Folder Include="SenateQuery\migrations\" />
@@ -251,6 +253,7 @@
     <Content Include="app\templates\app\login.html" />
     <Content Include="app\templates\app\loginpartial.html" />
     <Content Include="SenateQuery\static\scripts\updateMemForm.js" />
+    <Content Include="SenateQuery\static\SenateQuery\scripts\member_search.js" />
     <Content Include="SenateQuery\templates\SenateQuery\index.html" />
     <Content Include="SenateQuery\templates\SenateQuery\member-search-form.html" />
     <Content Include="SenateQuery\templates\SenateQuery\representative.html" />
