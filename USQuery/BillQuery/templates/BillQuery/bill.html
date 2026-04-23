@@ -8,138 +8,254 @@
 {{ senate_pred | json_script:"senate_pred" }}
 {% endif %}
 
-<div class="row align-items-md-stretch">
-    <div class="col-md-9">
-        <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
-            <div class="d-flex justify-content-between align-items-center">
-                <h2 id="bill_title">{{bill}} : {{bill_state_type}}</h2>
-                {% if True %}
-                <button id="star-bill-btn" class="star-btn {% if isStarred %}starred{% endif %}" data-bill-id="{{ bill_id }}">
-                    <i class="{% if isStarred %}fas{% else %}far{% endif %} fa-star"></i>
-                    <span>{% if isStarred %}Unstar{% else %}Star{% endif %}</span>
-                </button>
-                {% endif %}
-            </div>
-            <hr />
-            <div id="summary-container">
-                {% if summary %}
-                <div id="bill-summary">{{ summary|safe }}</div>
-                {% else %}
-                <div id="bill-summary">Summary not found.</div>
-                {% endif %}
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="row g-3">
+            <!-- Bill Header Section -->
+            <div class="col-lg-7">
+                <div class="card-dark p-4 bill-page-card">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div class="flex-grow-1 bill-title-scroll">
+                            <h2 id="bill_title" class="mb-2">{{ bill }} : {{ bill_state_type }}</h2>
+                        </div>
+                        {% if loggedIn %}
+                        <button id="star-bill-btn" class="star-btn {% if isStarred %}starred{% endif %}" data-bill-id="{{ bill_id }}" data-bs-toggle="tooltip" title="Star this bill">
+
+                            <span class="d-none d-sm-inline">{% if isStarred %}Unstar{% else %}Star{% endif %}</span>
+                        </button>
+                        {% else %}
+                        <button id="star-bill-btn" class="star-btn" data-bs-toggle="tooltip" title="Sign in to star bills" disabled>
+
+                            <span class="d-none d-sm-inline">Star</span>
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Bill Status Pipeline -->
+                    {% if bill_stages %}
+                    <div class="status-pipeline">
+                        {% for stage in bill_stages %}
+                        {% with forloop.counter0 as i %}
+                        <div class="pipeline-step{% if i <= bill_status_code %} pipeline-step--done{% endif %}{% if i == bill_status_code %} pipeline-step--current{% endif %}">
+                            <div class="pipeline-dot"></div>
+                            <span class="pipeline-label">{{ stage }}</span>
+                        </div>
+                        {% if not forloop.last %}
+                        <div class="pipeline-connector{% if i < bill_status_code %} pipeline-connector--done{% endif %}"></div>
+                        {% endif %}
+                        {% endwith %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <hr class="my-3" style="border-color: rgba(255, 255, 255, 0.1);" />
+
+                    <!-- Summary Section -->
+                    <div id="summary-container" class="summary-container">
+                        {% if summary %}
+                        <div id="bill-summary" class="mb-3">{{ summary|safe }}</div>
+                        {% else %}
+                        <div id="bill-summary" class="text-muted mb-3">Summary not found.</div>
+                        {% endif %}
+                    </div>
+
+                    {% if show_generate_button %}
+                    <button id="generate-summary"
+                            class="btn-glass"
+                            data-url="{% url 'generate_summary' congress_num=bill_id bill_type=bill_type bill_num=bill_num %}"
+                            data-endpoint="/bill-query/generate-summary/{{ congress_num }}/{{ bill_type }}/{{ bill_num }}/">
+                        
+                        <span>Generate AI Summary</span>
+                    </button>
+                    {% endif %}
+                </div>
             </div>
 
-            {% if show_generate_button %}
-            <button id="generate-summary"
-                    class="btn btn-primary"
-                    data-url="{% url 'generate_summary' congress_num=bill_id bill_type=bill_type bill_num=bill_num %}"
-                    data-endpoint="/bill-query/generate-summary/{{ congress_num }}/{{ bill_type }}/{{ bill_num }}/">
-                Generate AI summary
-            </button>
-            {% endif %}
-        </div>
-        <div class="border dark-0 align-items-center d-flex justify-content-center p-3">
-            <h4>Action Timeline</h4>
-        </div>
-        <div id="action_table" class="overflow-scroll t-responsive mb-4">
-            {{actions_table | safe}}
-        </div>
-        {% if eligible_for_prediction == True %}
-        <div class="p-4 bg-body-tertiary rounded shadow-sm mb-4 glass-0">
-            <div class="p-2 align-items-center d-flex justify-content-center pb-3">
-                <h2>
-                    Vote Predictions
-                </h2>
-            </div>
-            <hr>
-            {% if show_prediction == True %}
-            <div id="hist" class="d-flex flex-row justify-content-center"></div>
-            <div id="hist2" class="d-flex flex-row justify-content-center"></div>
-            {% elif show_error == True %}
-            An error occured and we cannot provide a prediction at this time. Either Congress API has not
-            provided a text file or subject list for this bill, or the bill text is too large to make a prediction.
-            {% elif show_request_button == True %}
-            <form class="align-items-center d-flex justify-content-center" action={{request_link}} method="get">
-                <button type="submit" name='submitRequest' value="Submit">Request A Prediction</button>
-            </form>
-            {% else %}
-            Log in to request a vote prediction.
-            {% endif %}
-        </div>
-        {% endif %}
+            <!-- Bill Details Carousel Card -->
+            <div class="col-lg-5">
+                <div class="card-dark-carousel bill-page-card">
+                    <!-- Tab Navigation -->
+                    <div class="carousel-tabs">
+                        <button class="carousel-tab active" data-tab="sponsor">
+                            
+                            <span class="d-none d-sm-inline">Sponsor</span>
+                        </button>
+                        <button class="carousel-tab" data-tab="subjects">
+                            
+                            <span class="d-none d-sm-inline">Subjects</span>
+                        </button>
+                        <button class="carousel-tab" data-tab="related">
+                            
+                            <span class="d-none d-sm-inline">Related</span>
+                        </button>
+                    </div>
 
-    </div>
-    <div class="col-md-3">
-        <div class="p-4 bg-body-tertiary rounded position-relative shadow-sm mb-4 glass-0" style="top: 0rem;">
-            <div class="mt-2">
-                <h4>Sponsor :</h4>
-                {{sponsor | safe}}
-                <details>
-                    <summary>
-                        See Cosponsors
-                    </summary>
-                    <ul id="bill_cosponsors" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
-                        {{cosponsors | safe}}
-                    </ul>
-                </details>
-            </div>
+                    <!-- Carousel Content -->
+                    <div class="carousel-content p-4">
+                        <!-- Sponsor Tab -->
+                        <div class="carousel-pane active" id="carousel-sponsor">
+                            <div class="member-info-section">
+                                <h6 class="form-label-styled mb-2">Sponsor</h6>
+                                <div id="sponsor-container" class="related-bills-scroll mb-3">
+                                    {{ sponsor | safe }}
+                                </div>
 
-            <hr />
-            <div class="mt-2">
-                <h4>Policy Area :</h4>
-                {{policy_area}}
-                <details>
-                    <summary>
-                        Related Subjects
-                    </summary>
-                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
-                        {{subjects | safe}}
-                    </ul>
-                </details>
-                <details>
-                    <summary>
-                        Related Geographic Entities
-                    </summary>
-                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
-                        {{subjects_1 | safe}}
-                    </ul>
-                </details>
-                <details>
-                    <summary>
-                        Related Organizations
-                    </summary>
-                    <ul id="bill_subjects" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
-                        {{subjects_2 | safe}}
-                    </ul>
-                </details>
-            </div>
+                                <h6 class="form-label-styled mb-2">Cosponsors</h6>
+                                {% if cosponsors %}
+                                <div id="bill_cosponsors" class="related-bills-scroll related-bills-scroll--sm">
+                                    {{ cosponsors | safe }}
+                                </div>
+                                {% else %}
+                                <p class="text-muted small">No cosponsors.</p>
+                                {% endif %}
+                            </div>
+                        </div>
 
-            <hr />
-            <div class="mt-2">
-                <h4>Related Bills</h4>
-                <details>
-                    <summary>
-                        See Related Bills
-                    </summary>
-                    <ul id="related_bills" class="list-group p-0 list-group-flush t-responsive-sm overflow-scroll">
-                        {{related_bills | safe}}
-                    </ul>
-                </details>
-            </div>
+                        <!-- Subjects Tab -->
+                        <div class="carousel-pane" id="carousel-subjects">
+                            <div class="member-info-section">
+                                <h6 class="form-label-styled mb-3">
+                                    
+                                    Policy Area
+                                </h6>
+                                {% if policy_area %}
+                                <p class="member-info-value mb-3">{{ policy_area }}</p>
+                                {% else %}
+                                <p class="text-muted small mb-3">No policy area specified.</p>
+                                {% endif %}
+                                
+                                {% if subjects %}
+                                <details>
+                                    <summary class="form-label-styled cursor-pointer">
+                                        
+                                        Subjects
+                                    </summary>
+                                    <div id="bill_subjects" class="related-bills-scroll related-bills-scroll--sm mt-2">
+                                        {{ subjects | safe }}
+                                    </div>
+                                </details>
+                                {% else %}
+                                <p class="text-muted small">No subjects specified.</p>
+                                {% endif %}
 
+                                {% if subjects_1 %}
+                                <details class="mt-2">
+                                    <summary class="form-label-styled cursor-pointer">
+                                        
+                                        Geographic Entities
+                                    </summary>
+                                    <div id="bill_subjects_1" class="related-bills-scroll related-bills-scroll--sm mt-2">
+                                        {{ subjects_1 | safe }}
+                                    </div>
+                                </details>
+                                {% else %}
+                                <p class="text-muted small">No geographic entities specified.</p>
+                                {% endif %}
+
+                                {% if subjects_2 %}
+                                <details class="mt-2">
+                                    <summary class="form-label-styled cursor-pointer">
+                                        
+                                        Organizations
+                                    </summary>
+                                    <div id="bill_subjects_2" class="related-bills-scroll related-bills-scroll--sm mt-2">
+                                        {{ subjects_2 | safe }}
+                                    </div>
+                                </details>
+                                {% else %}
+                                <p class="text-muted small">No organizations specified.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Related Bills Tab -->
+                        <div class="carousel-pane" id="carousel-related">
+                            <div class="member-info-section">
+                                <h6 class="form-label-styled mb-3">
+                                    
+                                    Related Bills
+                                </h6>
+                                
+                                {% if related_bills %}
+                                <div id="related_bills" class="related-bills-scroll">
+                                    {{ related_bills | safe }}
+                                </div>
+                                {% else %}
+                                <p class="text-muted small">No related bills found.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
-<script src="{% static 'scripts/AI_warning.js' %}"></script>
+
+<!-- Action Timeline Section -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="card-dark p-4">
+            <h5 class="form-label-styled mb-3">
+                
+                Action Timeline
+            </h5>
+            <div id="action_table" style="overflow-y: auto; max-height: 320px;">
+                {{ actions_table | safe }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Vote Predictions Section -->
+{% if eligible_for_prediction == True %}
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="card-dark p-4">
+            <h5 class="form-label-styled mb-3">
+                
+                Vote Predictions
+            </h5>
+            <hr class="my-3" style="border-color: rgba(255, 255, 255, 0.1);" />
+            
+            {% if show_prediction == True %}
+            <div id="hist" class="d-flex flex-row justify-content-center mb-4"></div>
+            <div id="hist2" class="d-flex flex-row justify-content-center"></div>
+            {% elif show_error == True %}
+            <div class="alert alert-warning mb-0">
+                
+                <span>An error occurred and we cannot provide a prediction at this time. Either Congress API has not provided a text file or subject list for this bill, or the bill text is too large to make a prediction.</span>
+            </div>
+            {% elif show_request_button == True %}
+            <form class="form-section" action="{{ request_link }}" method="get">
+                <button type="submit" name="submitRequest" value="Submit" class="btn-glass">
+                    
+                    <span>Request A Prediction</span>
+                </button>
+            </form>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                
+                <span><a href="{% url 'login' %}" class="alert-link">Sign in</a> to request vote predictions.</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Scripts -->
+<script src="{% static 'scripts/AI_warning.js' %}" charset="utf-8"></script>
+<script src="{% static 'scripts/bill_details_carousel.js' %}" charset="utf-8"></script>
 {% if show_prediction == True %}
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
-<script src="{% static 'scripts/loadSize_bill.js' %}"></script>
-<script src="{% static 'scripts/predictionHist.js' %}"></script>
-<script src="{% static 'scripts/predictionHist2.js' %}"></script>
+<script src="{% static 'scripts/loadSize_bill.js' %}" charset="utf-8"></script>
+<script src="{% static 'scripts/predictionHist.js' %}" charset="utf-8"></script>
+<script src="{% static 'scripts/predictionHist2.js' %}" charset="utf-8"></script>
 {% endif %}
 
 {% if show_generate_button %}
-<script src="{% static 'scripts/generate_summary.js' %}"></script>
+<script src="{% static 'scripts/generate_summary.js' %}" charset="utf-8"></script>
 {% endif %}
-<script src="{% static 'app/scripts/starred.js' %}"></script>
+<script src="{% static 'app/scripts/starred.js' %}" charset="utf-8"></script>
 {% endblock %}

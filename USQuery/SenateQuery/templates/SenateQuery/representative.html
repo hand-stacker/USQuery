@@ -3,95 +3,168 @@
 {% block content %}
 {% load static %}
 {{ loggedIn | json_script:"loggedIn" }}
-<div class="row align-items-md-stretch">
-    <div class="col-md-6">
-        <div class="g-0 row h-400 p-4 mb-4 rounded shadow-sm align-items-md-stretch glass-0">
-            <div class="col pt-3 position-relative d-flex justify-content-center">
-                <img src="{{rep_img}}" alt="Rep Image" height="240" witdh="200">
-            </div>
-            <div class="col pt-3 position-relative">
-                <h3>
-                    {{rep_name}} [{{rep_party_code}}]
-                    <br />
-                    {{rep_title}}, {{rep_state}}
-                    {% if rep_district %}
-                    District {{rep_district}}
+
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="row g-4">
+            <!-- Left Column: Member Info Card -->
+            <div class="col-lg-7">
+                <div class="card-dark p-4 h-100">
+                    <!-- Header row: photo + name/position + star button -->
+                    <div class="d-flex gap-3 align-items-start">
+                        <div class="member-image-container flex-shrink-0">
+                            <img src="{{rep_img}}" alt="{{rep_name}}" class="member-image-normalized" data-full-src="{{rep_img}}">
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
+                                <h2 class="mb-0 fs-4">{{rep_name}}</h2>
+                                <span class="party-badge party-badge--{{rep_party_code|lower}}">{{rep_party_code}}</span>
+                            </div>
+                            <div class="rep-label">Position</div>
+                            <div class="rep-info-text">{{rep_title}}, {{rep_state}}{% if rep_district %} - District {{rep_district}}{% endif %}</div>
+                            <div class="rep-info-text">{{congress_num}}{{congress_suffix}} Congress</div>
+                        </div>
+
+                        <button id="star-member-btn" class="star-btn flex-shrink-0 {% if isStarred %}starred{% endif %}" data-membership-id="{{ membership_id }}">
+                            <i class="{% if isStarred %}fas{% else %}far{% endif %} fa-star"></i>
+                            <span class="d-none d-sm-inline">{% if isStarred %}Unstar{% else %}Star{% endif %}</span>
+                        </button>
+                    </div>
+
+                    <div class="rep-divider"></div>
+
+                    <!-- Service Period -->
+                    <div class="rep-label">Service Period</div>
+                    <div class="rep-service-period mb-3">{{rep_start}} to {{rep_end}}</div>
+
+                    {% if rep_office %}
+                    <div class="rep-divider"></div>
+
+                    <!-- Office -->
+                    <div class="rep-label">Office</div>
+                    <div class="rep-info-text mb-1">{{rep_office}}</div>
+                    <div class="rep-phone mb-3">{{rep_phone}}</div>
+
+                    {% if rep_url %}
+                    <a href="{{rep_url}}" target="_blank" rel="noopener noreferrer" class="btn-glass">
+                        <i class="fas fa-external-link-alt"></i>
+                        Official Website
+                    </a>
                     {% endif %}
-                    <br />
-                    {{congress_num}}{{congress_suffix}} Congress
-                </h3>
-                {% if True %}
-                <button id="star-member-btn" class="star-btn {% if isStarred %}starred{% endif %} mt-2" data-membership-id="{{ membership_id }}">
-                    <i class="{% if isStarred %}fas{% else %}far{% endif %} fa-star"></i>
-                    <span>{% if isStarred %}Unstar{% else %}Star{% endif %}</span>
-                </button>
-                {% endif %}
-                <h6>({{rep_start}} - {{rep_end}})</h6>
+                    {% else %}
+                    <div class="rep-divider"></div>
+                    <div class="alert alert-warning mb-0">
+                        <strong>No Longer in Office</strong>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <div class="row g-0 align-items-md-stretch">
-                <div class="col pt-3 position-relative">
-                    <h6>
-                        {% if rep_office == None %}
-                        <b>No Longer in Office</b>
+
+            <!-- Right Column: Term & Party History (combined) -->
+            <div class="col-lg-5">
+                <div class="card-dark h-100">
+                    <!-- Term History -->
+                    <div class="p-4">
+                        <div class="rep-label">Term History</div>
+                        {% if term_list %}
+                        <div class="rep-history-scroll">
+                            {{term_list | safe}}
+                        </div>
                         {% else %}
-                        Office : {{rep_office}}
-                        <br />Phone : {{rep_phone}}
+                        <div class="rep-info-text">No term history available.</div>
                         {% endif %}
-                    </h6>
-                </div>
-                <div class="col p-3 position-relative">
-                    <h6>
-                        {% if rep_office != None %}
-                        <a href={{rep_url}}>Official Website</a>
-                        {% endif %}
-                    </h6>
-                </div>
-            </div>
-        </div>
-        <div class="g-0 row h-400 p-4 mb-4 rounded shadow-sm align-items-md-stretch glass-0">
-            <div class="col position-relative">
-                <h2 class="text-center">Term History</h2>
-                <details>
-                    <summary>Click to view Term History</summary>
-                    <ul class="p-0 list-group list-group-flush t-responsive-sm overflow-scroll">
-                        {{term_list | safe}}
-                    </ul>
-                </details>
-            </div>
-            <div class="col position-relative">
-                <h2 class="text-center">Party History</h2>
-                <details>
-                    <summary>Click to view Party History</summary>
-                    <ul class="p-0 list-group list-group-flush t-responsive-sm overflow-scroll">
+                    </div>
+
+                    <div class="rep-divider-full"></div>
+
+                    <!-- Party History -->
+                    <div class="p-4">
+                        <div class="rep-label">Party History</div>
+                        {% if party_list %}
                         {{party_list | safe}}
-                    </ul>
-                </details>
+                        {% else %}
+                        <div class="rep-info-text">No party history available.</div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="border dark-0 align-items-center d-flex justify-content-center p-3">
-            <h2>Votes in this Office</h2>
-        </div>
-        {{vote_table | safe}}
-        <div class="pagination">
-            <span class="step-links">
-                {% if vote_list.has_previous %}
-                <a href="?{{urlPath}}page=1">&laquo; first</a>
-                <a href="?{{urlPath}}page={{vote_list.previous_page_number }}">previous</a>
-                {% endif %}
-
-                <span class="current">
-                    Page {{vote_list.number }} of {{vote_list.paginator.num_pages }}.
-                </span>
-
-                {% if vote_list.has_next %}
-                <a href="?{{urlPath}}page={{vote_list.next_page_number }}">next</a>
-                <a href="?{{urlPath}}page={{vote_list.paginator.num_pages }}">last &raquo;</a>
-                {% endif %}
-            </span>
         </div>
     </div>
 </div>
-<script src="{% static 'app/scripts/starred.js' %}"></script>
+
+<!-- Votes Section -->
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="card-dark p-4">
+            <!-- Votes header -->
+            <div class="d-flex align-items-center justify-content-between rep-card-header">
+                <h5 class="class="form-label-styled mb-3">Votes in {{congress_num}}{{congress_suffix}} Congress</h5>
+                {% if vote_list %}
+                <span class="rep-vote-count">{{vote_list.paginator.count}} votes</span>
+                {% endif %}
+            </div>
+
+            {% if vote_table %}
+            <div class="table-responsive">
+                {{vote_table | safe}}
+            </div>
+
+            <!-- Pagination -->
+            <div class="p-4">
+                <nav aria-label="Vote results pagination">
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item {% if not vote_list.has_previous %}disabled{% endif %}">
+                            <a class="page-link" href="?{{urlPath}}page=1">First</a>
+                        </li>
+
+                        {% if vote_list.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{{urlPath}}page={{vote_list.previous_page_number}}">Previous</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item active">
+                            <span class="page-link">Page {{vote_list.number}} of {{vote_list.paginator.num_pages}}</span>
+                        </li>
+
+                        {% if vote_list.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{{urlPath}}page={{vote_list.next_page_number}}">Next</a>
+                        </li>
+                        {% endif %}
+
+                        <li class="page-item {% if not vote_list.has_next %}disabled{% endif %}">
+                            <a class="page-link" href="?{{urlPath}}page={{vote_list.paginator.num_pages}}">Last</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% else %}
+            <div class="p-4">
+                <div class="alert alert-info mb-0">
+                    No votes recorded for this member in this congress.
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal Popup -->
+<div class="modal fade" id="memberImageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-dark border-0">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <img id="modalImage" src="" alt="Member" class="img-fluid rounded">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'app/scripts/starred.js' %}" charset="utf-8"></script>
+<script src="{% static 'app/scripts/member-image-modal.js' %}" charset="utf-8"></script>
 {% endblock %}

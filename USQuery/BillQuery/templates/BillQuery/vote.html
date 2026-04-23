@@ -13,125 +13,131 @@
 {{ values | json_script:"values" }}
 {{ cloro_text | json_script:"cloro_text" }}
 
-<div class="row mb-2">
-    <div class="col-md-12">
-        <div class="row g-0 rounded overflow-hidden flex-md-row mb-4 shadow-sm position-relative glass-0">
-            <div class="col flex-column position-static">
-                <div class="p-4">
-                    <h6 class="mb-2">{{vote_time}}</h6>
-                    <h2 class="mb-1">{{vote_title}}</h2>
-                    <h5>
-                        {{vote_question}}
-                        <br />
-                        Result : {{vote_result}}
-                    </h5>
-                    <hr />
-                    <h3><a href="{{bill_link}}" class="link-offset-2">{{bill}} </a></h3>
-                    <p>{{bill_title}}</p>
-                </div>
-            </div>
-            <div class="col p-2 d-flex flex-column position-static half-plot">
-                <div>
-                    <div id="donut" class="d-flex flex-row justify-content-center"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+{% with total=yeas_cnt|add:nays_cnt|add:pres_cnt|add:novt_cnt %}
+<div class="row justify-content-center my-4">
+    <div class="col-12 col-xl-11">
+        <div class="card-dark overflow-hidden">
+            <div class="vote-card-body">
 
-<div class="row mb-2">
-    <div class="col-md-12">
-        <div class="row g-0 rounded overflow-auto flex-md-row mb-4 shadow-sm position-relative glass-0">
-            <div class="col p-2 d-flex flex-column position-static half-plot">
-                <div id="sunburst" class="d-flex flex-row justify-content-center"></div>
-            </div>
-            <div class="col p-2 d-flex flex-column position-static half-plot">
-                <div id="bar" class="d-flex flex-row justify-content-center"></div>
-            </div>
-        </div>
-    </div>
-</div>
+                <!-- LEFT SIDE -->
+                <div class="vote-card-left">
 
-<div class="row mb-2">
-    <div class="col-mb-12 mb-4 full-plot">
-        <div class="g-0 row rounded d-flex flex-column justify-content-center glass-0">
-            <div class="text-center pt-4">
-                <h5>
-                    Vote Map
-                </h5>
-            </div>
-            <form name="CloroChoice" id="id_CloroChoice">
-                <div class="d-flex justify-content-center">
-                    <div class="dropdown-menu position-static text-center bg-trans border-0 d-grid gap-2 p-2" style="width:100%;height:100px">
-                        <label for="{{ cloro_form.cloro_choice.id_for_label }}"> Select Vote Type:</label>
-                        <div>{{cloro_form.cloro_choice}}</div>
+                    <!-- Top row: Vote header -->
+                    <div class="vote-header p-4">
+                        <div class="d-flex align-items-start justify-content-between mb-3">
+                            <div class="flex-grow-1 me-3">
+                                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                                    <span class="vote-meta-label">{% if is_house %}House{% else %}Senate{% endif %} &middot; {{ congress }}th Congress</span>
+                                    <span class="vote-meta-label">{{ vote_time }}</span>
+                                </div>
+                                <h2 class="vote-title mb-0">{{ vote_title }}</h2>
+                            </div>
+                            <span class="vote-result-badge{% if 'Pass' in vote_result %} vote-result-badge--passed{% elif 'Fail' in vote_result or 'Reject' in vote_result %} vote-result-badge--failed{% else %} vote-result-badge--other{% endif %}">{{ vote_result }}</span>
+                        </div>
+
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <span class="vote-meta-tag">{{ vote_question }}</span>
+                            <span class="vote-meta-tag"><a href="{{ bill_link }}" class="text-decoration-none vote-bill-link">{{ bill }}</a></span>
+                        </div>
+
+                        <div class="vote-bill-desc mb-3">{{ bill_title }}</div>
+
+                        <div class="mb-2">
+                            <div class="vote-bar">
+                                {% if total > 0 %}
+                                <div class="vote-bar-seg vote-bar-seg--yea" style="width:{% widthratio yeas_cnt total 100 %}%"></div>
+                                <div class="vote-bar-seg vote-bar-seg--pres" style="width:{% widthratio pres_cnt total 100 %}%"></div>
+                                <div class="vote-bar-seg vote-bar-seg--nay" style="width:{% widthratio nays_cnt total 100 %}%"></div>
+                                <div class="vote-bar-seg vote-bar-seg--novt" style="flex:1"></div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-4 flex-wrap">
+                            <div class="vote-count-item">
+                                <div class="vote-count-dot vote-count-dot--yea"></div>
+                                <span class="vote-count-label">Yea</span>
+                                <span class="vote-count-num">{{ yeas_cnt }}</span>
+                            </div>
+                            <div class="vote-count-item">
+                                <div class="vote-count-dot vote-count-dot--nay"></div>
+                                <span class="vote-count-label">Nay</span>
+                                <span class="vote-count-num">{{ nays_cnt }}</span>
+                            </div>
+                            <div class="vote-count-item">
+                                <div class="vote-count-dot vote-count-dot--pres"></div>
+                                <span class="vote-count-label">Present</span>
+                                <span class="vote-count-num">{{ pres_cnt }}</span>
+                            </div>
+                            <div class="vote-count-item">
+                                <div class="vote-count-dot vote-count-dot--novt"></div>
+                                <span class="vote-count-label">No Vote</span>
+                                <span class="vote-count-num">{{ novt_cnt }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom row: Member lists with vote type tabs -->
+                    <div class="vote-members p-4">
+                        <div class="d-flex gap-2 flex-wrap mb-3">
+                            <button class="vote-tab vote-tab--all active" data-target="all">All</button>
+                            <button class="vote-tab vote-tab--yea" data-target="yeas">Yeas <span class="vote-tab-count">{{ yeas_cnt }}</span></button>
+                            <button class="vote-tab vote-tab--nay" data-target="nays">Nays <span class="vote-tab-count">{{ nays_cnt }}</span></button>
+                            <button class="vote-tab vote-tab--pres" data-target="pres">Present <span class="vote-tab-count">{{ pres_cnt }}</span></button>
+                            <button class="vote-tab vote-tab--novt" data-target="novt">No Vote <span class="vote-tab-count">{{ novt_cnt }}</span></button>
+                        </div>
+
+                        <div class="vote-member-list history-scroll">
+                            <div data-vote-group="yeas">
+                                <table class="vote-member-table"><tbody>{{ yeas_list | safe }}</tbody></table>
+                            </div>
+                            <div data-vote-group="nays">
+                                <table class="vote-member-table"><tbody>{{ nays_list | safe }}</tbody></table>
+                            </div>
+                            <div data-vote-group="pres">
+                                <table class="vote-member-table"><tbody>{{ pres_list | safe }}</tbody></table>
+                            </div>
+                            <div data-vote-group="novt">
+                                <table class="vote-member-table"><tbody>{{ novt_list | safe }}</tbody></table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </form>
-            <div class="g-0 overflow-hidden mb-4">
-                <div id="cloro" class="d-flex flex-row justify-content-center"></div>
+
+                <!-- RIGHT SIDE: Abstract state map -->
+                <div class="vote-card-right p-4">
+                    <div class="vote-geo-title">Geographic Distribution</div>
+                    <div class="vote-geo-subtitle mb-4">States colored by majority vote position of their delegation</div>
+                    <div id="state-map" class="d-flex justify-content-center align-items-center flex-grow-1" data-is-house="{% if is_house %}1{% else %}0{% endif %}"></div>
+                    <div class="d-flex gap-3 flex-wrap justify-content-center mt-4">
+                        <div class="vote-map-legend-item">
+                            <div class="vote-map-legend-dot vote-map-legend-dot--yea"></div>
+                            <span>Yea</span>
+                        </div>
+                        <div class="vote-map-legend-item">
+                            <div class="vote-map-legend-dot vote-map-legend-dot--nay"></div>
+                            <span>Nay</span>
+                        </div>
+                        <div class="vote-map-legend-item">
+                            <div class="vote-map-legend-dot vote-map-legend-dot--pres"></div>
+                            <span>Present</span>
+                        </div>
+                        <div class="vote-map-legend-item">
+                            <div class="vote-map-legend-dot vote-map-legend-dot--novt"></div>
+                            <span>No Vote / Split</span>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 </div>
+{% endwith %}
+{% endblock %}
 
-<div class="row g-0 border rounded overflow-auto flex-md-row mb-4 position-relative">
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
-       <thead class="border">
-           <tr class="border-0">
-               <th class="border-0">
-                   Yeas ({{yeas_cnt}})
-               </th>
-           </tr>
-       </thead>
-       <tbody class="d-flex flex-column overflow-scroll">
-           {{yeas_list | safe }}
-       </tbody>
-   </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
-       <thead class="border">
-           <tr class="border-0">
-               <th class="border-0">
-                   Nays ({{nays_cnt}})
-               </th>
-           </tr>
-       </thead>
-       <tbody class="d-flex flex-column overflow-scroll">
-           {{nays_list | safe }}
-       </tbody>
-   </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
-       <thead class="border">
-           <tr class="border-0">
-               <th class="border-0">
-                   Present ({{pres_cnt}})
-               </th>
-           </tr>
-       </thead>
-       <tbody class="d-flex flex-column overflow-scroll">
-           {{pres_list | safe }}
-       </tbody>
-   </table>
-   <table class="table table-bordered table-small dark-1 d-flex flex-column position-static t-responsive" style="width:25%; table-layout: fixed;">
-       <thead class="border">
-           <tr class="border-0">
-               <th class="border-0">
-                   No Vote ({{novt_cnt}})
-               </th>
-           </tr>
-       </thead>
-       <tbody class="d-flex flex-column overflow-scroll">
-           {{novt_list | safe }}
-       </tbody>
-   </table>
-</div>
-
-<script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
-<script src="{% static 'scripts/loadSize.js' %}"></script>
-<script src="{% static 'scripts/barPlot.js' %}"></script>
-<script src="{% static 'scripts/donutPlot.js' %}"></script>
-<script src="{% static 'scripts/sunburstPlot.js' %}"></script>
-<script type="text/javascript" src="{% static geojson_source %}"></script>
-<script type="text/javascript" src="{% static geojson_load %}"></script>
-<script src="{% static 'scripts/cloroplethPlot.js' %}"></script>
-{% endblock%}
+{% block scripts %}
+<link rel="stylesheet" href="{% static 'css/votePage.css' %}">
+<script src="{% static 'app/scripts/lazyLoadUtils.js' %}"></script>
+<script src="{% static 'scripts/votePage.js' %}"></script>
+{% endblock %}

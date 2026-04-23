@@ -164,6 +164,7 @@
     <Folder Include="app\static\app\fonts\" />
     <Folder Include="app\static\app\scripts\" />
     <Folder Include="app\static\images\" />
+    <Folder Include="app\static\scripts\" />
     <Folder Include="app\templates\" />
     <Folder Include="app\templates\app\" />
     <Folder Include="BillQuery\" />
@@ -197,7 +198,13 @@
       <SubType>Code</SubType>
     </Content>
     <Content Include="app\static\app\content\images\20170207_Capitol_at_Dusk.jpg" />
+    <Content Include="app\static\app\scripts\cardUtils.js" />
+    <Content Include="app\static\app\scripts\carouselUtils.js" />
+    <Content Include="app\static\app\scripts\feature-carousel.js" />
+    <Content Include="app\static\app\scripts\lazyLoadUtils.js" />
+    <Content Include="app\static\app\scripts\member-image-modal.js" />
     <Content Include="app\static\app\scripts\resize.js" />
+    <Content Include="app\static\scripts\bill_details_carousel.js" />
     <Content Include="app\templates\app\account_delete.html" />
     <Content Include="app\templates\app\my_congress_privacy_policy.html" />
     <Content Include="app\templates\app\password_reset.html" />

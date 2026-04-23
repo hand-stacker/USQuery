@@ -69,6 +69,8 @@ type_list = (('!','All'),('!H','All House'),('!S','All Senate'),('hr', 'H. R.'),
              ('s','S.'),('sres','S. Res.'),('sjres', 'S. J. Res.'), ('sconres', 'S. Con. Res.'))
 
 classic_form = {"class": "dark-01 overflow-scroll rounded-3 mb-3","style" : "max-width:240px;"}
+classic_form_lg = {"class": "dark-select-lg overflow-scroll rounded-3"}
+
 class BootstrapAuthenticationForm(AuthenticationForm):
     """Authentication form which uses boostrap CSS."""
     username = forms.CharField(max_length=254,
@@ -96,9 +98,9 @@ class MemberForm(forms.Form):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["congress"].widget.attrs.update(classic_form)
-        self.fields["chamber"].widget.attrs.update(classic_form)
-        self.fields["state"].widget.attrs.update(classic_form)
+        self.fields["congress"].widget.attrs.update(classic_form_lg)
+        self.fields["chamber"].widget.attrs.update(classic_form_lg)
+        self.fields["state"].widget.attrs.update(classic_form_lg)
         congress_119 = SQmodels.Congress.objects.get(congress_num=119)
         self.fields["congress"].initial = congress_119
         # Set default congress to 119 if no congress is provided in the data

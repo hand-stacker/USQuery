@@ -1,3 +1,7 @@
+/* ============================================================================
+   GLOBAL STYLES & UTILITIES
+   ============================================================================ */
+
 body {
     background: url("images/20170207_Capitol_at_Dusk.jpg") no-repeat center center fixed;
     -webkit-background-size: cover;
@@ -12,6 +16,19 @@ body {
     color: rgb(250,250,250) !important;
 }
 
+summary {
+    font-weight: bold;
+}
+
+.body-content {
+    padding-left: 15px;
+    padding-right: 15px;
+}
+
+/* ============================================================================
+   RESPONSIVE SIZING UTILITIES
+   ============================================================================ */
+
 .t-responsive-lg {
     max-height: 500px !important;
 }
@@ -22,6 +39,230 @@ body {
 
 .t-responsive-sm {
     max-height: 200px !important;
+}
+
+.half-plot {
+    width: 40%;
+}
+
+.full-plot {
+    width: 100%;
+}
+
+.tselect {
+    width: 300px !important;
+}
+
+.submit_button {
+    width: 200px !important;
+}
+
+/* ============================================================================
+   REUSABLE CARD STYLES
+   ============================================================================ */
+
+.card-dark {
+    background: rgba(30, 30, 30, 0.9) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
+    border-radius: 14px !important;
+}
+
+.card-dark-sm {
+    background: rgba(73, 73, 73, 0.51) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
+    border-radius: 12px !important;
+}
+
+.card-dark-header {
+    background: rgba(0, 0, 0, 0.85) !important;
+    color: rgb(250,250,250) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.09) !important;
+}
+
+/* Glass morphism effect - lighter variant */
+.glass-0 {
+    background: rgba(0, 0, 0, 0.21) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(9.4px) !important;
+    -webkit-backdrop-filter: blur(9.4px) !important;
+    border: 1px solid rgb(150, 150, 150) !important;
+}
+
+/* ============================================================================
+   FORM & INPUT UTILITIES
+   ============================================================================ */
+
+input,
+select,
+textarea {
+    max-width: 280px;
+}
+
+.field-validation-error {
+    color: #b94a48;
+}
+
+.field-validation-valid {
+    display: none;
+}
+
+input.input-validation-error {
+    border: 1px solid #b94a48;
+}
+
+input[type="checkbox"].input-validation-error {
+    border: 0 none;
+}
+
+.validation-summary-errors {
+    color: #b94a48;
+}
+
+.validation-summary-valid {
+    display: none;
+}
+
+/* ============================================================================
+   REUSABLE BUTTON STYLES
+   ============================================================================ */
+
+.btn-glass {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(200, 200, 200, 0.3);
+    background: rgba(56, 120, 255, 0.15);
+    color: rgb(250, 250, 250);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    font-family: inherit;
+}
+
+.btn-glass:hover {
+    background: rgba(56, 120, 255, 0.28);
+    border-color: rgba(200, 200, 200, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 120, 255, 0.2);
+    color: rgb(255, 255, 255);
+    text-decoration: none;
+}
+
+.btn-glass:active {
+    transform: translateY(0);
+}
+
+.btn-glass:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    background: rgba(100, 100, 100, 0.2);
+    border-color: rgba(100, 100, 100, 0.3);
+}
+
+.btn-glass:disabled:hover {
+    background: rgba(100, 100, 100, 0.2);
+    border-color: rgba(100, 100, 100, 0.3);
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-glass i {
+    font-size: 15px;
+}
+
+.star-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 2px solid rgba(250, 250, 250, 0.3);
+    background: rgba(73, 73, 73, 0.51);
+    color: rgb(250, 250, 250);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.star-btn:hover {
+    background: rgba(90, 90, 90, 0.65);
+    border-color: rgba(250, 250, 250, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+    color: rgb(255, 255, 255);
+}
+
+.star-btn:active {
+    transform: translateY(0);
+}
+
+.star-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.star-btn i {
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.star-btn.starred i {
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+}
+
+.star-btn:not(.starred) i {
+    color: rgba(250, 250, 250, 0.7);
+}
+
+.star-btn:hover i {
+    transform: scale(1.2);
+}
+
+.star-btn-spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ============================================================================
+   NAVBAR STYLES
+   ============================================================================ */
+
+.navbar-dark {
+    background: rgba(0, 0, 0, 0.85) !important;
+    color: rgb(250,250,250) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(0, 0, 0, 0.09) !important;
 }
 
 .dark-0, .optgroup-header {
@@ -37,6 +278,10 @@ thead {
     color: rgb(250,250,250) !important;
     border: 1px solid rgba(150,150,150, 0.9) !important;
 }
+
+/* ============================================================================
+   FORM DROPDOWNS & SELECTS
+   ============================================================================ */
 
 .dark-01, .ts-wrapper .option, .ts-control, .ts-control input, .ts-dropdown {
     background: rgba(30, 30, 30, 0.9) !important;
@@ -65,18 +310,186 @@ thead {
     border: 1px solid rgba(73, 73, 73, 0.09) !important;
 }
 
+.dark-select-lg {
+    background: rgba(30, 30, 30, 0.9) !important;
+    color: rgb(250,250,250) !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.51) !important;
+    border-radius: 14px;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    min-height: 44px;
+    padding: 8px 10px;
+}
+
 table.dark-1 {
     border: 1px solid rgba(173,173,173,.4) !important;
 }
 
-.glass-0 {
-    background: rgba(0, 0, 0, 0.21) !important;
-    color: rgb(250,250,250) !important;
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
-    backdrop-filter: blur(9.4px) !important;
-    -webkit-backdrop-filter: blur(9.4px) !important;
-    border: 1px solid rgb(150, 150, 150) !important;
+/* ============================================================================
+   FORM STYLING & UTILITIES
+   ============================================================================ */
+
+.form-help-text {
+    font-size: 14px;
+    color: rgba(250, 250, 250, 0.7);
+    line-height: 1.5;
+    margin-bottom: 16px;
 }
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label-styled {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(250, 250, 250, 0.85);
+}
+
+.form-field-help {
+    font-size: 12px;
+    color: rgba(250, 250, 250, 0.6);
+    margin: 0;
+    line-height: 1.4;
+    font-weight: 400;
+}
+
+.form-group-submit {
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(150, 150, 150, 0.15);
+}
+
+/* TomSelect styling integrated with dark theme */
+.ts-wrapper {
+    width: 100% !important;
+}
+
+.ts-wrapper.single.input-active::after,
+.ts-wrapper.single input.focus::after {
+    border-color: rgba(56, 120, 255, 0.6) !important;
+}
+
+.ts-control {
+    border: 1px solid rgba(73, 73, 73, 0.51) !important;
+    background: rgba(30, 30, 30, 0.9) !important;
+    border-radius: 10px !important;
+    padding: 8px 10px !important;
+    min-height: 44px !important;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ts-control:hover {
+    border-color: rgba(56, 120, 255, 0.4) !important;
+}
+
+.ts-control.focus,
+.ts-control.input-active {
+    border-color: rgba(56, 120, 255, 0.6) !important;
+    box-shadow: 0 0 0 2px rgba(56, 120, 255, 0.15) !important;
+}
+
+.ts-control input {
+    color: rgb(250, 250, 250) !important;
+    font-size: 14px !important;
+    }
+
+.ts-control input::placeholder {
+    color: rgba(250, 250, 250, 0.4) !important;
+}
+
+.ts-dropdown {
+    border: 1px solid rgba(73, 73, 73, 0.51) !important;
+    background: rgba(30, 30, 30, 0.95) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+.ts-dropdown-content {
+    padding: 8px 0 !important;
+}
+
+.ts-dropdown .optgroup-header {
+    background: rgba(0, 0, 0, 0.85) !important;
+    color: rgba(250, 250, 250, 0.75) !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+.ts-dropdown .option {
+    color: rgb(250, 250, 250) !important;
+    padding: 10px 12px !important;
+    border-left: 3px solid transparent;
+    transition: all 0.15s ease;
+}
+
+.ts-dropdown .option:hover {
+    background: rgba(56, 120, 255, 0.2) !important;
+    border-left-color: rgba(56, 120, 255, 0.5) !important;
+}
+
+.ts-dropdown .option.selected {
+    background: rgba(56, 120, 255, 0.3) !important;
+    color: rgb(255, 255, 255) !important;
+    border-left-color: rgba(56, 120, 255, 0.8) !important;
+}
+
+.ts-control .item {
+    background: rgba(56, 120, 255, 0.25) !important;
+    color: rgb(250, 250, 250) !important;
+    border: 1px solid rgba(56, 120, 255, 0.4) !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin: 2px !important;
+    font-size: 13px !important;
+}
+
+.ts-control .item.selected {
+    background: rgba(56, 120, 255, 0.35) !important;
+}
+
+.ts-control .remove {
+    color: rgba(250, 250, 250, 0.7) !important;
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.ts-control .remove:hover {
+    color: rgb(255, 255, 255) !important;
+}
+
+.tselect {
+    width: 100% !important;
+}
+
+.tselect.dark-select-lg {
+    min-width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* ============================================================================
+   TABLE & VOTING STYLES
+   ============================================================================ */
 
 .special-0 {
     background-color: rgb(120,161,187) !important;
@@ -149,7 +562,7 @@ tr.lib {
     -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
-ts.grn {
+tr.grn {
     background-color: rgba(11,137,11,.4) !important;
     color: rgb(250,250,250) !important;
     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1) !important;
@@ -157,155 +570,230 @@ ts.grn {
     -webkit-backdrop-filter: blur(9.4px) !important;
 }
 
-summary {
-    font-weight: bold;
+/* ============================================================================
+   PARTY BADGE STYLES
+   ============================================================================ */
+
+.party-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 2px solid;
+    white-space: nowrap;
 }
 
-/* Set padding to keep content from hitting the edges */
-.body-content {
-    padding-left: 15px;
-    padding-right: 15px;
+.party-badge--d {
+    background: rgba(34, 76, 201, 0.2);
+    border-color: rgba(34, 76, 201, 0.6);
+    color: rgb(100, 180, 255);
 }
 
-/* Set width on the form input elements since they're 100% wide by default */
-input,
-select,
-textarea {
-    max-width: 280px;
+.party-badge--r {
+    background: rgba(171, 27, 27, 0.2);
+    border-color: rgba(171, 27, 27, 0.6);
+    color: rgb(255, 100, 100);
 }
 
-/* styles for validation helpers */
-.field-validation-error {
-    color: #b94a48;
+.party-badge--i {
+    background: rgba(200, 200, 200, 0.2);
+    border-color: rgba(200, 200, 200, 0.6);
+    color: rgb(220, 220, 220);
 }
 
-.field-validation-valid {
-    display: none;
+.party-badge--l {
+    background: rgba(224, 201, 11, 0.2);
+    border-color: rgba(224, 201, 11, 0.6);
+    color: rgb(255, 220, 100);
 }
 
-input.input-validation-error {
-    border: 1px solid #b94a48;
+.party-badge--g {
+    background: rgba(11, 137, 11, 0.2);
+    border-color: rgba(11, 137, 11, 0.6);
+    color: rgb(100, 255, 100);
 }
 
-input[type="checkbox"].input-validation-error {
-    border: 0 none;
+/* ============================================================================
+   MEMBER IMAGE STYLES
+   ============================================================================ */
+
+.member-image-container {
+    max-width: 158px;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid rgba(150, 150, 150, 0.3);
+    background: rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
 }
 
-.validation-summary-errors {
-    color: #b94a48;
+.member-image-container:hover {
+    border-color: rgba(200, 200, 200, 0.5);
+    box-shadow: 0 6px 20px rgba(56, 120, 255, 0.2);
 }
 
-.validation-summary-valid {
-    display: none;
-}
-
-.half-plot {
-    width: 40%;
-}
-
-.full-plot {
+.member-image-normalized {
     width: 100%;
+    height: auto;
+    display: block;
 }
 
-.tselect {
-    width: 300px !important;
-}
-
-.submit_button {
-    width :200px !important;
-}
-
-@media only screen and (max-width: 1400px) {
-    h1 {
-        font-size: 36px !important;
-    }
-
-    h2 {
-        font-size: 30px !important;
-    }
-
-    h3 {
-        font-size: 24px !important;
-    }
-
-    h4, summary, label {
-        font-size: 20px !important;
-    }
-
-    h5, li, p , option {
-        font-size: 18px !important;
-    }
-
-    h6, th, td {
-        font-size: 16px !important;
-    }
-
-    .half-plot {
-        width: 40% !important;
+/* Responsive sizing */
+@media (max-width: 1199.98px) {
+    .member-image-container {
+        max-width: 140px;
     }
 }
 
-@media only screen and (max-width: 768px) {
-    h1 {
-        font-size: 24px !important;
-    }
-
-    h2 {
-        font-size: 20px !important;
-    }
-
-    h3 {
-        font-size: 16px !important;
-    }
-
-    h4, summary, label {
-        font-size: 14px !important;
-    }
-
-    h5, li, p, option {
-        font-size: 12px !important;
-    }
-
-    h6, th, td {
-        font-size: 10px !important;
-    }
-
-    .half-plot {
-        width: 100% !important;
+@media (max-width: 991.98px) {
+    .member-image-container {
+        max-width: 120px;
     }
 }
 
-@media only screen and (max-width: 320px) {
-    h1 {
-        font-size: 16px !important;
-    }
-
-    h2 {
-        font-size: 14px !important;
-    }
-
-    h3 {
-        font-size: 12px !important;
-    }
-
-    h4, summary, label {
-        font-size: 10px !important;
-    }
-
-    h5, li, p, option {
-        font-size: 10px !important;
-    }
-
-    h6, th, td {
-        font-size: 10px !important;
-    }
-
-    .half-plot {
-        width: 100% !important;
+@media (max-width: 575.98px) {
+    .member-image-container {
+        max-width: 90px;
     }
 }
 
-/* Starred items styling */
+/* ============================================================================
+   MEMBER INFO CARD STYLES
+   ============================================================================ */
+
+.member-info-section {
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(150, 150, 150, 0.15);
+}
+
+.member-info-section:last-of-type {
+    border-bottom: none;
+}
+
+.member-info-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(250, 250, 250, 0.6);
+    margin-bottom: 8px;
+}
+
+.member-info-value {
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(250, 250, 250, 0.9);
+    margin-bottom: 0;
+}
+
+.member-info-separator {
+    margin: 0 8px;
+    color: rgba(250, 250, 250, 0.4);
+}
+
+/* ============================================================================
+   HISTORY SCROLL STYLES
+   ============================================================================ */
+
+.history-title {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: rgba(250, 250, 250, 0.8);
+    margin-bottom: 12px;
+}
+
+.history-scroll {
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 8px;
+    scroll-behavior: smooth;
+}
+
+.history-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.history-scroll::-webkit-scrollbar-track {
+    background: rgba(150, 150, 150, 0.1);
+    border-radius: 3px;
+}
+
+.history-scroll::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.4);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+}
+
+.history-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.6);
+}
+
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.history-list-item {
+    display: block;
+    background: rgba(73, 73, 73, 0.3);
+    border-left: 3px solid rgba(56, 120, 255, 0.5);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: rgba(250, 250, 250, 0.85);
+    line-height: 1.5;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.history-list-item:hover {
+    background: rgba(73, 73, 73, 0.5);
+    border-left-color: rgba(56, 120, 255, 0.8);
+    padding-left: 14px;
+    color: rgb(250, 250, 250);
+}
+
+.history-list-item:visited {
+    color: rgba(250, 250, 250, 0.85);
+}
+
+.history-list-item:last-child {
+    margin-bottom: 0;
+}
+
+.history-list-item.active-item {
+    background: rgba(56, 120, 255, 0.15);
+    border-left-color: rgba(56, 120, 255, 0.8);
+}
+
+.history-link {
+    color: rgba(250, 250, 250, 0.85);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.history-link:hover {
+    color: rgb(250, 250, 250);
+    text-decoration: underline;
+}
+
+.history-link:visited {
+    color: rgba(250, 250, 250, 0.85);
+}
+
+/* ============================================================================
+   CARD COMPONENT STYLES
+   ============================================================================ */
+
 .starred-item {
     display: block;
     border-radius: 12px;
@@ -382,50 +870,286 @@ input[type="checkbox"].input-validation-error {
     color: rgb(250, 250, 250);
     padding: 4px 10px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 11px;
     white-space: nowrap;
     border: 1px solid rgba(56, 120, 255, 0.4);
+    font-family: monospace;
 }
 
 .starred-member-card {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
-    text-align: center;
+    gap: 14px;
     height: 100%;
 }
 
 .starred-member-image {
-    width: 100px;
-    height: 100px;
-    border-radius: 12px;
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
     object-fit: cover;
-    margin-bottom: 12px;
-    border: 2px solid rgba(150, 150, 150, 0.3);
+    border: 1px solid rgba(150, 150, 150, 0.25);
     background: rgba(0, 0, 0, 0.2);
+}
+
+.starred-member-image--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(150, 150, 150, 0.2);
+    color: rgba(250, 250, 250, 0.4);
+    font-size: 11px;
+}
+
+.starred-member-image-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.member-active-dot {
+    position: absolute;
+    bottom: -3px;
+    right: -3px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: #2ea87e;
+    border: 2px solid rgba(18, 18, 18, 0.95);
+    box-shadow: 0 0 8px rgba(46, 168, 126, 0.65);
+    animation: member-dot-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes member-dot-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(46, 168, 126, 0.55); }
+    50%       { box-shadow: 0 0 14px rgba(46, 168, 126, 0.9); }
+}
+
+.starred-member-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
 }
 
 .starred-member-name {
     font-weight: 600;
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-size: 14px;
     line-height: 1.3;
     color: rgb(250, 250, 250);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .starred-member-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.starred-vote-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.starred-vote-date {
+    font-size: 12px;
+    color: rgba(250, 250, 250, 0.6);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.starred-vote-bill-display {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    color: rgb(250, 250, 250);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.starred-vote-question {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 10px;
+    line-height: 1.4;
+    color: rgb(250, 250, 250);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(150, 150, 150, 0.2);
+}
+
+.starred-vote-result {
     font-size: 13px;
     color: rgba(250, 250, 250, 0.8);
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: flex-start;
+    white-space: nowrap;
+}
+
+.search-vote-subjects {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(150, 150, 150, 0.2);
+}
+
+/* ============================================================================
+   CAROUSEL & FEATURES STYLES
+   ============================================================================ */
+
+.feature-carousel,
+.mission-statement {
+    padding: 40px 32px;
+    text-align: center;
+}
+
+.feature-carousel {
+    position: relative;
+    overflow: hidden;
+    min-height: 450px;
+    text-align: left;
+    padding: 0;
+}
+
+.feature-carousel.card-dark,
+.mission-statement.card-dark {
+    color: rgb(250, 250, 250) !important;
+}
+
+.feature-slide {
+    display: none;
+    animation: slideIn 0.8s ease-in-out forwards;
+    min-height: 450px;
+}
+
+.feature-slide.active {
+    display: block;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.feature-animation {
+    width: 100%;
+    height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+.feature-description {
+    font-size: 18px;
     line-height: 1.6;
+    color: rgba(250, 250, 250, 0.9);
 }
 
-.starred-member-location {
-    color: rgba(250, 250, 250, 0.6);
-    font-size: 12px;
-    margin-top: 8px;
+.carousel-controls {
+    padding: 16px !important;
 }
 
-/* Register / OAuth page */
+.carousel-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(250, 250, 250, 0.4);
+    background: rgba(250, 250, 250, 0.2);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.carousel-dot:hover {
+    background: rgba(250, 250, 250, 0.5);
+    border-color: rgba(250, 250, 250, 0.7);
+}
+
+.carousel-dot.active {
+    background: rgba(250, 250, 250, 0.9);
+    border-color: rgb(250, 250, 250);
+    transform: scale(1.3);
+}
+
+/* Mission Statement specific overrides */
+.mission-statement {
+    padding: 40px 32px !important;
+}
+
+.mission-statement h1 {
+    font-size: 42px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+}
+
+.mission-statement .tagline {
+    font-size: 20px;
+    font-weight: 500;
+    color: rgba(250, 250, 250, 0.8);
+    margin-bottom: 16px;
+}
+
+.mission-statement p {
+    font-size: 15px;
+    line-height: 1.6;
+    color: rgba(250, 250, 250, 0.75);
+    margin-bottom: 0;
+}
+
+.mission-statement-description {
+    margin-bottom: 28px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.mission-statement-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.mission-statement .btn-glass {
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+/* ============================================================================
+   AUTHENTICATION STYLES
+   ============================================================================ */
+
 .auth-shell {
     max-width: 980px;
     margin: 0 auto;
@@ -583,133 +1307,1057 @@ input[type="checkbox"].input-validation-error {
     font-weight: 600;
 }
 
-@media (min-width: 992px) {
-    .auth-grid {
-        grid-template-columns: 1.2fr .8fr;
-        gap: 24px;
-    }
-}
-
-/* Star/Unstar Button Styling */
-.star-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    border-radius: 8px;
-    border: 2px solid rgba(250, 250, 250, 0.3);
-    background: rgba(73, 73, 73, 0.51);
-    color: rgb(250, 250, 250);
-    font-weight: 500;
-    font-size: 14px;
+details {
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: inherit;
 }
 
-.star-btn:hover {
-    background: rgba(90, 90, 90, 0.65);
-    border-color: rgba(250, 250, 250, 0.6);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.2);
+details summary {
+    outline: none;
+    user-select: none;
+    color: rgba(250, 250, 250, 0.8);
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+details summary:hover {
+    color: rgb(250, 250, 250);
+}
+
+details[open] summary {
+    margin-bottom: 12px;
+}
+
+/* Pagination styling */
+.pagination .page-link {
+    background: transparent;
+    border-color: rgba(200, 200, 200, 0.3);
+    color: rgba(250, 250, 250, 0.8);
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover:not(.disabled) {
+    background: rgba(56, 120, 255, 0.15);
+    border-color: rgba(56, 120, 255, 0.6);
+    color: rgb(250, 250, 250);
+}
+
+.pagination .page-item.active .page-link {
+    background: rgba(56, 120, 255, 0.3);
+    border-color: rgba(56, 120, 255, 0.6);
     color: rgb(255, 255, 255);
 }
 
-.star-btn:active {
-    transform: translateY(0);
-}
-
-.star-btn:disabled {
-    opacity: 0.6;
+.pagination .page-item.disabled .page-link {
+    background: transparent;
+    border-color: rgba(100, 100, 100, 0.3);
+    color: rgba(100, 100, 100, 0.5);
     cursor: not-allowed;
-    transform: none;
 }
 
-.star-btn i {
-    font-size: 16px;
-    transition: all 0.3s ease;
+/* ============================================================================
+   LAZY LOADING STYLES
+   ============================================================================ */
+
+img[data-src] {
+    background: rgba(100, 100, 100, 0.2);
+    animation: pulse-placeholder 2s ease-in-out infinite;
 }
 
-.star-btn.starred i {
-    color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+@keyframes pulse-placeholder {
+    0%, 100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
 }
 
-.star-btn:not(.starred) i {
-    color: rgba(250, 250, 250, 0.7);
+img.lazy-loaded {
+    animation: fadeIn 0.3s ease-in;
 }
 
-.star-btn:hover i {
-    transform: scale(1.2);
-}
-
-.star-btn-spinner {
-    display: inline-block;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
+@keyframes fadeIn {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
     }
+
     to {
-        transform: rotate(360deg);
+        opacity: 1;
     }
 }
 
-/* Vote Card Styling - matching bill card styling */
-.starred-vote-card {
+img.lazy-error {
+    background: rgba(150, 150, 150, 0.3) !important;
+}
+
+/* Modal dark styling */
+.modal-content {
+    background: rgba(30, 30, 30, 0.95) !important;
+}
+
+.modal-header {
+    background: rgba(0, 0, 0, 0.85) !important;
+}
+
+.btn-close-white {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+/* ============================================================================
+   UTILITY OVERRIDE CLASSES
+   ============================================================================ */
+
+.override-no-padding {
+    padding: 0 !important;
+}
+
+.override-text-center {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+/* ============================================================================
+   BILL DETAILS CAROUSEL STYLES
+   ============================================================================ */
+
+.bill-page-card {
+    height: fit-content !important;
+    max-height: 500px;
     display: flex;
     flex-direction: column;
-    height: 100%;
-}
-
-.starred-vote-date {
-    font-size: 12px;
-    color: rgba(250, 250, 250, 0.6);
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.starred-vote-bill-display {
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 10px;
-    line-height: 1.4;
-    color: rgb(250, 250, 250);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
     overflow: hidden;
 }
 
-.starred-vote-question {
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 10px;
-    line-height: 1.4;
-    color: rgb(250, 250, 250);
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(150, 150, 150, 0.2);
-}
 
-.starred-vote-result {
-    font-size: 13px;
-    color: rgba(250, 250, 250, 0.8);
-    margin-bottom: 12px;
-    display: flex;
-    justify-content: flex-start;
+.bill-title-scroll {
+    overflow-x: auto;
     white-space: nowrap;
 }
 
-.search-vote-subjects {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid rgba(150, 150, 150, 0.2);
+.summary-container {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
 }
+
+.card-dark-carousel {
+    background: rgba(30, 30, 30, 0.9) !important;
+    color: rgb(250, 250, 250) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18) !important;
+    backdrop-filter: blur(6.6px) !important;
+    -webkit-backdrop-filter: blur(6.6px) !important;
+    border: 1px solid rgba(73, 73, 73, 0.09) !important;
+    border-radius: 14px !important;
+    overflow: hidden;
+    height: 500px;
+    display: flex;
+    flex-direction: column;
+}
+
+.carousel-tabs {
+    display: flex;
+    gap: 0;
+    padding: 0;
+    margin: 0;
+    background: rgba(0, 0, 0, 0.5);
+    /*! border-bottom: 1px solid rgba(73, 73, 73, 0.2); */
+}
+
+.carousel-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    color: rgba(250, 250, 250, 0.6);
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    /*! border-bottom: 2px solid transparent; */
+    border-radius: 14px 14px 0px 0px;
+}
+
+.carousel-tab:hover {
+    color: rgb(250, 250, 250);
+    background: rgba(56, 120, 255, 0.1);
+}
+
+.carousel-tab.active {
+    color: rgb(100, 180, 255);
+    /*! border-bottom-color: rgb(100, 180, 255); */
+    background: rgba(255, 255, 255, 0.065) !important;
+}
+
+.carousel-tab i {
+    font-size: 14px;
+}
+
+.carousel-content {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+}
+
+.carousel-pane {
+    display: none;
+    animation: slideInFade 0.3s ease-in-out forwards;
+}
+
+.carousel-pane.active {
+    display: block;
+}
+
+@keyframes slideInFade {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.related-bills-scroll {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+
+.subject-tag--muted {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.12);
+    color: rgba(250, 250, 250, 0.7);
+    cursor: default;
+}
+
+.subject-tag--link {
+    text-decoration: none;
+    transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.subject-tag--link:hover {
+    background: rgba(56, 120, 255, 0.35);
+    border-color: rgba(56, 120, 255, 0.7);
+    color: rgb(255, 255, 255);
+    text-decoration: none;
+}
+
+.related-bills-scroll--sm {
+    max-height: 110px;
+}
+
+/* ============================================================================
+   VOTE PAGE CARD LAYOUT
+   ============================================================================ */
+
+.vote-card-body {
+    display: flex;
+    flex-direction: row;
+    min-height: 600px;
+}
+
+.vote-card-left {
+    flex: 0 0 50%;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid rgba(150, 150, 150, 0.12);
+}
+
+.vote-card-right {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(12, 12, 12, 0.35);
+}
+
+.vote-header {
+    border-bottom: 1px solid rgba(150, 150, 150, 0.12);
+}
+
+.vote-title {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: rgb(250, 250, 250);
+}
+
+.vote-meta-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(250, 250, 250, 0.5);
+    font-family: monospace;
+}
+
+.vote-result-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 99px;
+    border: 1px solid;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.vote-result-badge--passed {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(16, 185, 129, 0.4);
+    color: rgb(52, 211, 153);
+}
+
+.vote-result-badge--failed {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: rgb(248, 113, 113);
+}
+
+.vote-result-badge--other {
+    background: rgba(107, 114, 128, 0.15);
+    border-color: rgba(107, 114, 128, 0.4);
+    color: rgb(156, 163, 175);
+}
+
+.vote-meta-tag {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(250, 250, 250, 0.55);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.vote-bill-desc {
+    font-size: 12.5px;
+    color: rgba(250, 250, 250, 0.6);
+    line-height: 1.65;
+    max-height: 72px;
+    overflow-y: auto;
+    padding-right: 4px;
+    border-bottom: 1px solid rgba(150, 150, 150, 0.1);
+    padding-bottom: 14px;
+}
+
+.vote-bar {
+    display: flex;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 8px;
+    gap: 1px;
+    background: rgba(100, 100, 100, 0.2);
+}
+
+.vote-bar-seg {
+    transition: width 0.4s ease;
+}
+
+.vote-bar-seg--yea {
+    background: #10B981;
+}
+
+.vote-bar-seg--nay {
+    background: #EF4444;
+}
+
+.vote-bar-seg--pres {
+    background: #F59E0B;
+}
+
+.vote-bar-seg--novt {
+    background: #6B7280;
+}
+
+.vote-count-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.vote-count-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+.vote-count-dot--yea {
+    background: #10B981;
+}
+
+.vote-count-dot--nay {
+    background: #EF4444;
+}
+
+.vote-count-dot--pres {
+    background: #F59E0B;
+}
+
+.vote-count-dot--novt {
+    background: #6B7280;
+}
+
+.vote-count-label {
+    font-size: 11px;
+    color: rgba(250, 250, 250, 0.55);
+}
+
+.vote-count-num {
+    font-size: 12px;
+    font-weight: 700;
+    color: rgb(250, 250, 250);
+    font-family: monospace;
+}
+
+.vote-members {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.vote-tab {
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    transition: all 0.15s ease;
+    border: 1.5px solid rgba(150, 150, 150, 0.25);
+    background: rgba(60, 60, 60, 0.25);
+    color: rgba(250, 250, 250, 0.45);
+    font-family: inherit;
+}
+
+.vote-tab:hover {
+    border-color: rgba(200, 200, 200, 0.45);
+    color: rgba(250, 250, 250, 0.85);
+}
+
+.vote-tab-count {
+    margin-left: 4px;
+    font-size: 10px;
+    font-family: monospace;
+    opacity: 0.7;
+}
+
+.vote-tab--all.active {
+    border-color: rgba(200,200,200,0.5);
+    background: rgba(200,200,200,0.1);
+    color: rgb(250,250,250);
+}
+
+.vote-tab--yea.active {
+    border-color: #10B981;
+    background: rgba(16,185,129,0.12);
+    color: rgb(52,211,153);
+}
+
+.vote-tab--nay.active {
+    border-color: #EF4444;
+    background: rgba(239,68,68,0.12);
+    color: rgb(248,113,113);
+}
+
+.vote-tab--pres.active {
+    border-color: #F59E0B;
+    background: rgba(245,158,11,0.12);
+    color: rgb(251,191,36);
+}
+
+.vote-tab--novt.active {
+    border-color: #6B7280;
+    background: rgba(107,114,128,0.12);
+    color: rgb(156,163,175);
+}
+
+.vote-member-list {
+    flex: 1;
+    max-height: 300px;
+}
+
+.vote-member-table {
+    display: block !important;
+    width: 100%;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    background: transparent !important;
+}
+
+.vote-member-table tbody {
+    display: block !important;
+}
+
+.vote-member-row {
+    display: flex !important;
+    align-items: center;
+    background: rgba(55, 55, 55, 0.3) !important;
+    border: 1px solid rgba(150, 150, 150, 0.14) !important;
+    border-radius: 8px !important;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.vote-member-row:hover {
+    background: rgba(75, 75, 75, 0.4) !important;
+}
+
+.vote-member-row td {
+    display: block !important;
+    padding: 9px 12px !important;
+    border: none !important;
+    background: transparent !important;
+    flex: 1;
+    min-width: 0;
+}
+
+.vote-member-row-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    color: rgb(250, 250, 250);
+}
+
+.vote-member-row-inner:hover {
+    color: rgb(250, 250, 250);
+}
+
+.vote-member-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    border: 2px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: monospace;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+}
+
+.vote-member-info-wrap {
+    flex: 1;
+    min-width: 0;
+}
+
+.vote-member-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: rgb(250, 250, 250);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vote-member-sub {
+    font-size: 11px;
+    color: rgba(250, 250, 250, 0.5);
+    margin-top: 1px;
+}
+
+.vote-type-badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.vote-geo-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(250, 250, 250, 0.9);
+    margin-bottom: 4px;
+}
+
+.vote-geo-subtitle {
+    font-size: 11px;
+    color: rgba(250, 250, 250, 0.4);
+    line-height: 1.5;
+}
+
+.vote-map-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: rgba(250, 250, 250, 0.55);
+}
+
+.vote-map-legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    border: 1.5px solid;
+    flex-shrink: 0;
+}
+
+@media (max-width: 991.98px) {
+    .vote-card-body {
+        flex-direction: column;
+    }
+
+    .vote-card-left {
+        flex: none;
+        border-right: none;
+        border-bottom: 1px solid rgba(150, 150, 150, 0.12);
+    }
+
+    .vote-card-right {
+        flex: none;
+    }
+
+    .vote-member-list {
+        max-height: 250px;
+    }
+}
+
+/* ============================================================================
+   BILL STATUS PIPELINE
+   ============================================================================ */
+
+.status-pipeline {
+    display: flex;
+    align-items: center;
+    margin-bottom: 18px;
+    margin-top: 4px;
+}
+
+.pipeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    flex: 1;
+}
+
+.pipeline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: rgba(33, 38, 45, 1);
+    border: 2px solid rgba(33, 38, 45, 1);
+    transition: all 0.2s ease;
+}
+
+.pipeline-step--done .pipeline-dot {
+    background: rgba(46, 168, 126, 0.4);
+    border-color: rgba(46, 168, 126, 0.27);
+}
+
+.pipeline-step--current .pipeline-dot {
+    background: #2ea87e;
+    border-color: #2ea87e;
+    box-shadow: 0 0 8px rgba(46, 168, 126, 0.53);
+}
+
+.pipeline-label {
+    font-family: monospace;
+    font-size: 8px;
+    font-weight: 400;
+    color: rgba(72, 79, 88, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: center;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.pipeline-step--done .pipeline-label {
+    color: rgba(125, 133, 144, 1);
+}
+
+.pipeline-step--current .pipeline-label {
+    color: #2ea87e;
+    font-weight: 600;
+}
+
+.pipeline-connector {
+    height: 1px;
+    flex: 1.5;
+    margin-bottom: 18px;
+    background: rgba(33, 38, 45, 1);
+    transition: background 0.2s ease;
+}
+
+.pipeline-connector--done {
+    background: rgba(46, 168, 126, 0.33);
+}
+
+/* ============================================================================
+   ACTION TIMELINE TABLE STYLES
+   ============================================================================ */
+
+.action-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.action-table thead tr {
+    background: rgba(28, 33, 40, 1) !important;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.action-table thead th {
+    padding: 9px 18px;
+    text-align: left;
+    font-family: monospace;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(72, 79, 88, 1);
+    border-bottom: 1px solid rgba(33, 38, 45, 1);
+    white-space: nowrap;
+    border: none !important;
+}
+
+.action-table tbody tr {
+    border-bottom: 1px solid rgba(33, 38, 45, 0.7);
+    transition: background 0.1s;
+}
+
+.action-table tbody tr:hover {
+    background: rgba(28, 33, 40, 0.6);
+}
+
+.action-table td {
+    padding: 10px 18px;
+    vertical-align: middle;
+    border: none !important;
+}
+
+.action-table .action-date {
+    font-family: monospace;
+    font-size: 11px;
+    color: rgba(72, 79, 88, 1);
+    white-space: nowrap;
+}
+
+.action-table .action-text {
+    color: rgba(125, 133, 144, 1);
+    line-height: 1.55;
+    font-size: 12px;
+}
+
+.action-table .action-text a {
+    color: #2ea87e;
+    text-decoration: none;
+}
+
+.action-table .action-source {
+    font-family: monospace;
+    font-size: 10px;
+    color: rgba(72, 79, 88, 1);
+    white-space: nowrap;
+}
+
+.action-badge {
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.action-badge--vote {
+    color: #2ea87e;
+    background: rgba(46, 168, 126, 0.13);
+    border-color: rgba(46, 168, 126, 0.33);
+}
+
+.action-badge--intro {
+    color: #2ea87e;
+    background: rgba(46, 168, 126, 0.13);
+    border-color: rgba(46, 168, 126, 0.33);
+}
+
+.action-badge--floor {
+    color: #388bfd;
+    background: rgba(56, 139, 253, 0.13);
+    border-color: rgba(56, 139, 253, 0.33);
+}
+
+.action-badge--referral {
+    color: rgba(125, 133, 144, 1);
+    background: rgba(33, 38, 45, 1);
+    border-color: rgba(33, 38, 45, 1);
+}
+
+.action-badge--report {
+    color: #d29922;
+    background: rgba(210, 153, 34, 0.13);
+    border-color: rgba(210, 153, 34, 0.33);
+}
+
+.action-badge--markup {
+    color: #a371f7;
+    background: rgba(163, 113, 247, 0.13);
+    border-color: rgba(163, 113, 247, 0.33);
+}
+
+/* ============================================================================
+   MEMBER PARTY TAGS (sponsor / cosponsor pills)
+   ============================================================================ */
+
+.member-party-tag {
+    display: inline-flex;
+    align-items: center;
+    font-family: monospace;
+    font-size: 11px;
+    font-weight: 400;
+    padding: 3px 10px;
+    border-radius: 6px;
+    border: 1px solid;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: filter 0.15s ease;
+}
+
+.member-party-tag:hover {
+    filter: brightness(1.15);
+    text-decoration: none;
+}
+
+.member-party-tag--d {
+    color: #388bfd;
+    background: rgba(56, 139, 253, 0.09);
+    border-color: rgba(56, 139, 253, 0.25);
+}
+
+.member-party-tag--r {
+    color: #f85149;
+    background: rgba(248, 81, 73, 0.09);
+    border-color: rgba(248, 81, 73, 0.25);
+}
+
+.member-party-tag--i {
+    color: #a371f7;
+    background: rgba(163, 113, 247, 0.09);
+    border-color: rgba(163, 113, 247, 0.25);
+}
+
+.member-party-tag--other {
+    color: rgba(125, 133, 144, 1);
+    background: rgba(125, 133, 144, 0.09);
+    border-color: rgba(125, 133, 144, 0.25);
+}
+
+/* ============================================================================
+   SUBJECT / RELATED BILL CHIP FONT (bill page)
+   ============================================================================ */
+
+.subject-tag--muted,
+.subject-tag--link {
+    font-family: monospace;
+    font-size: 11px;
+}
+
+/* ============================================================================
+   REPRESENTATIVE PAGE STYLES
+   ============================================================================ */
+
+.rep-label {
+    font-family: monospace;
+    font-size: 9px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(72, 79, 88, 1);
+    margin-bottom: 8px;
+}
+
+.rep-divider {
+    height: 1px;
+    background: rgba(33, 38, 45, 0.8);
+    margin: 16px 0;
+}
+
+.rep-divider-full {
+    height: 1px;
+    background: rgba(33, 38, 45, 0.8);
+}
+
+.rep-info-text {
+    font-size: 13px;
+    color: rgba(125, 133, 144, 1);
+    line-height: 1.6;
+}
+
+.rep-service-period {
+    font-family: monospace;
+    font-size: 12px;
+    color: rgb(230, 237, 243);
+}
+
+.rep-phone {
+    font-family: monospace;
+    font-size: 12px;
+    color: rgba(125, 133, 144, 1);
+}
+
+.rep-history-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 280px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.rep-term-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(28, 33, 40, 0.5);
+    border: 1px solid rgba(33, 38, 45, 1);
+    border-radius: 7px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.1s;
+}
+
+    .rep-term-row:hover {
+        background: rgba(40, 46, 55, 0.8);
+        color: inherit;
+        text-decoration: none;
+    }
+
+    .rep-term-row--current {
+        background: rgba(46, 168, 126, 0.13);
+        border-color: rgba(46, 168, 126, 0.33);
+    }
+
+.rep-term-congress {
+    font-family: monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(72, 79, 88, 1);
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+}
+
+    .rep-term-row--current .rep-term-congress {
+        color: #2ea87e;
+    }
+
+.rep-term-role {
+    font-size: 13px;
+    color: rgba(125, 133, 144, 1);
+}
+
+    .rep-term-row--current .rep-term-role {
+        color: rgb(230, 237, 243);
+    }
+
+.rep-term-period {
+    font-family: monospace;
+    font-size: 11px;
+    color: rgba(72, 79, 88, 1);
+    flex-shrink: 0;
+    margin-left: 12px;
+}
+
+    .rep-term-row--current .rep-term-period {
+        color: #2ea87e;
+    }
+
+.rep-party-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-radius: 7px;
+    border: 1px solid rgba(125, 133, 144, 0.25);
+    background: rgba(125, 133, 144, 0.09);
+    margin-bottom: 6px;
+}
+
+    .rep-party-row--r {
+        background: rgba(248, 81, 73, 0.09);
+        border-color: rgba(248, 81, 73, 0.25);
+    }
+
+    .rep-party-row--d {
+        background: rgba(56, 139, 253, 0.09);
+        border-color: rgba(56, 139, 253, 0.25);
+    }
+
+    .rep-party-row--i {
+        background: rgba(163, 113, 247, 0.09);
+        border-color: rgba(163, 113, 247, 0.25);
+    }
+
+.rep-party-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: rgb(230, 237, 243);
+}
+
+.rep-party-period {
+    font-family: monospace;
+    font-size: 11px;
+    color: rgba(72, 79, 88, 1);
+}
+
+.rep-card-header {
+    border-bottom: 1px solid rgba(33, 38, 45, 0.8);
+}
+
+.rep-vote-count {
+    font-family: monospace;
+    font-size: 10px;
+    color: rgba(72, 79, 88, 1);
+}
+
+.rep-vote-link {
+    font-family: monospace;
+    font-size: 11px;
+    color: #388bfd;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(56, 139, 253, 0.25);
+}
+
+    .rep-vote-link:hover {
+        color: #64a8ff;
+        border-color: rgba(56, 139, 253, 0.55);
+        text-decoration: none;
+    }

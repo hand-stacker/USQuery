@@ -1,18 +1,36 @@
 {% load static %}
 <form name="BillForm" id="id_BillForm" action="bill-query/" method="get">
-    <div class="g-0 row align-items-md-stretch">
-        <div class="g-0 col">
-            {{bill_form.non_field_errors }}
-            <h4>Bill Type</h4>
-            {{bill_form.bill_type}}
-            <h4>Start Date</h4>
-            {{bill_form.start_date}}
-            <br />
-            <h4>End Date</h4>
-            {{bill_form.end_date}}
-            <h4>Subjects</h4>
+    <div class="form-section">
+        <div class="form-group">
+            <label for="{{ bill_form.bill_type.id_for_label }}" class="form-label-styled">
+                Bill Type
+            </label>
+            <p class="form-field-help">Select the type of legislation you want to search (e.g., Senate Bill, House Resolution).</p>
+            {{ bill_form.bill_type }}
+        </div>
 
-            <select class="tselect mb-3" id="id_bill_subjects" name="bill_subjects" multiple>
+        <div class="form-group">
+            <label for="{{ bill_form.start_date.id_for_label }}" class="form-label-styled">
+                Start Date
+            </label>
+            <p class="form-field-help">Beginning of the date range to search.</p>
+            {{ bill_form.start_date }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ bill_form.end_date.id_for_label }}" class="form-label-styled">
+                End Date
+            </label>
+            <p class="form-field-help">End of the date range to search.</p>
+            {{ bill_form.end_date }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_bill_subjects" class="form-label-styled">
+                Subjects & Topics
+            </label>
+            <p class="form-field-help">Filter by legislative subjects, geographic entities, or organizations. Select multiple items to search across different categories.</p>
+            <select class="tselect dark-select-lg override-no-padding" id="id_bill_subjects" name="bill_subjects" multiple>
                 <optgroup label="Bill Subjects">
                     {% for t in bill_form.fields.bill_subjects.queryset %}
                     <option value="{{ t.id }}">{{ t.name }}</option>
@@ -29,7 +47,13 @@
                     {% endfor %}
                 </optgroup>
             </select>
-            <input type="submit" value="Search" class="submit_button" />
+            {{ bill_form.non_field_errors }}
+        </div>
+
+        <div class="form-group-submit">
+            <button type="submit" class="btn-glass override-text-center w-100">
+                Search Bills
+            </button>
         </div>
     </div>
 </form>

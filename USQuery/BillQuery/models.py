@@ -76,6 +76,7 @@ class Bill(models.Model):
     subjects = models.ManyToManyField(Subject)
     related_bills = models.ManyToManyField('self', symmetrical=False)
     status = models.BooleanField(default=False)
+    status_code = models.IntegerField(default=0)
     title = models.CharField(max_length=2000)
     origin_date = models.DateField(db_index=True)
     latest_action = models.DateField(db_index=True)

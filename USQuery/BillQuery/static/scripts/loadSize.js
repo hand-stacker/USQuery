@@ -4,6 +4,13 @@ var half_image_width = 0;
 
 const width_buckets = [200, 250, 280, 320, 480, 768, 840, 1000, 1400, 2000, 3000, 4000];
 
+const literal_colors = [
+    'rgb(242, 43, 41)',
+    'rgb(36, 130, 50)',
+    'rgb(38, 35, 34)',
+    'rgb(242, 175, 41)'
+]
+
 const debounce = (func, wait, immediate) => {
     var timeout;
     return () => {

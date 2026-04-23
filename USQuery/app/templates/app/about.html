@@ -2,76 +2,100 @@
 
 {% block content %}
 
-<div class="row justify-content-center p-4 bg-body-tertiary rounded shadow-sm position-relative text-center glass-0 mb-4">
-    <div class="col-md-9">
-        <h2>Mission Statement</h2>
-        <h5>
-            Our mission is to inform voters by providing clear,
-            accessible data on their representatives in the House and Senate, enabling
-            informed decisions and greater civic engagement.
-        </h5>
-    </div>
-</div>
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+        <div class="card-dark p-4 text-center mb-4">
+            <h2 class="mb-3">
+                Mission Statement
+            </h2>
+            <p class="lead">
+                Our mission is to inform voters by providing clear, accessible data on their representatives 
+                in the House and Senate, enabling informed decisions and greater civic engagement.
+            </p>
+        </div>
 
-<div class="row justify-content-center p-4 bg-body-tertiary rounded shadow-sm position-relative text-center glass-0 mb-4">
-    <div class="col-md-9">
-        <h2>About USQuery</h2>
-        <p>
-            USQuery is a website designed to make congressional data more accessible.
-            Here you can find information on how members of Congress have voted in present and past congresses.
-            Detailed graphics provide easy to understand results of how many votes a bill had, and the distribution of votes by party and state.
-            Each member of congress has their own page where you can see the list of votes they made for a specific Congress,
-            as well as history of their past roles in Congress and general information about their office and contacts.
-            Bills have their own page, showing the timeline of actions on said bill as well as information on what subjects the bill is related to,
-            who sponsored/cosponsored the bill, and a summary of the contents of the bill.
-        </p>
-        <address>
-            <strong>Email:</strong>   <a href="mailto:usquery.help@gmail.com">usquery.help@gmail.com</a><br />
-        </address>
-        <p class="small"><a href="{% url 'MCPrivPolicy' %}">Privacy Policy</a></p>
-    </div>
-</div>
+        <div class="card-dark p-4 text-center mb-4">
+            <h2 class="mb-3">
+                About USQuery
+            </h2>
+            <p>
+                USQuery is a website designed to make congressional data more accessible.
+                Here you can find information on how members of Congress have voted in present and past congresses.
+                Detailed graphics provide easy to understand results of how many votes a bill had, and the distribution of votes by party and state.
+                Each member of congress has their own page where you can see the list of votes they made for a specific Congress,
+                as well as history of their past roles in Congress and general information about their office and contacts.
+                Bills have their own page, showing the timeline of actions on said bill as well as information on what subjects the bill is related to,
+                who sponsored/cosponsored the bill, and a summary of the contents of the bill.
+            </p>
+            <address class="mt-4">
+                <strong>Email:</strong> <a href="mailto:usquery.help@gmail.com" class="text-decoration-none">usquery.help@gmail.com</a>
+            </address>
+            <div class="mt-4">
+                <a href="{% url 'MCPrivPolicy' %}" class="btn-glass">
+                    Privacy Policy
+                </a>
+            </div>
+        </div>
 
-<div class="row justify-content-center p-4 bg-body-tertiary rounded shadow-sm position-relative text-center glass-0 mb-4">
-    <div class="col-md-9">
-        <h2>Under the Hood</h2>
-        <h4>Data</h4>
-        <p>
-            Data is collected from Congress API, and the official House and Senate websites.
-            Some content is generated through the use of AI, these are marked with a yellow warning in order to be transparent of where content is AI generated.
-            We track all voting members of US Congress, meaning that unfortunately, as of now any non voting members like representatives from US territories are not tracked.
-            We plan to integrate these members in the near future.
-        </p>
-        <hr />
-        <h4>Predictions</h4>
-        <p>
-            Predictions on how many votes a bill can receive are made from a three step process;
-            First, bill text is processed by collecting provided bill subjects from the Congress API, and then quantifying how liberal or conservative the bill is for each subject.
-            Next, the quantified features are passed through a pre-trained neural network, outputting the probability for a senator or representative to vote "Yes" on the bill.
-            Finally, using the probabilities, we run 1000 simulated votes and plot the distribution of total "Yes" votes for the House and Senate
-        </p>
-        <hr />
-        <h4>Detailed Explanation</h4>
-        <p>
-            Our model aims to classify whether a member of the House or Senate will vote "Yes" or "No" on a given bill.
-            For the purpose of predicting if a bill will pass, both "Present" and "No Vote" votes are classified as a "No" vote.
-            The scope of our training data is all house and senate votes from 2024 up until 2014.
-            Due to limitations on token counts, some bills that had text files that were too long were omitted from the training data.
-        </p>
-        <p>
-            Using the raw bill text and provided bill subjects from Congress API, we quantify the feature values for each subject on a scale from very conservative (-20) to very liberal (20).
-            This classification is done through a prompt given to Gemini 2.0, providing the raw bill text and subject list.
-            There are over 500 subject columns in our training data. Each row of training data consists of both bill features and specific member features.
-            Other columns include whether the member is part of the house or the senate, what state the member is from, and what party the member is from.
-            Through rigorous testing of different model architectures, the best results we found were a testing accuracy of 87% and a loss of 0.3, a good loss value for a binary classification model.
-            Further improvements will be made in the future, with plans to generate more quality data, and with a further scope in the data used.
-        </p>
-        <p>
-            Predictions give the user a distribution of 1000 sample votes, where each sample is a prediction of how many total votes the bill may get.
-            Predictions are grouped by Senate/House membership, party, and state, and then a binomial random variable is produced using the probability of a yes vote given by the pre-trained mode.
-            For each sample, all Senator and House member votes are predicted by the binomial random variables.
-            The distribution of counts of total votes is then plotted, one plot for the Senate and one plot for the House.
-        </p>
+        <div class="card-dark p-4 mb-4">
+            <h2 class="mb-4 text-center">
+                Under the Hood
+            </h2>
+
+            <div class="mb-4">
+                <h4 class="mb-3">
+                    Data
+                </h4>
+                <p>
+                    Data is collected from Congress API, and the official House and Senate websites.
+                    Some content is generated through the use of AI, these are marked with a yellow warning in order to be transparent of where content is AI generated.
+                    We track all voting members of US Congress, meaning that unfortunately, as of now any non voting members like representatives from US territories are not tracked.
+                    We plan to integrate these members in the near future.
+                </p>
+            </div>
+
+            <hr class="my-4" style="border-color: rgba(255, 255, 255, 0.1);" />
+
+            <div class="mb-4">
+                <h4 class="mb-3">
+                    Predictions
+                </h4>
+                <p>
+                    Predictions on how many votes a bill can receive are made from a three step process;
+                    First, bill text is processed by collecting provided bill subjects from the Congress API, and then quantifying how liberal or conservative the bill is for each subject.
+                    Next, the quantified features are passed through a pre-trained neural network, outputting the probability for a senator or representative to vote "Yes" on the bill.
+                    Finally, using the probabilities, we run 1000 simulated votes and plot the distribution of total "Yes" votes for the House and Senate
+                </p>
+            </div>
+
+            <hr class="my-4" style="border-color: rgba(255, 255, 255, 0.1);" />
+
+            <div>
+                <h4 class="mb-3">
+                    Detailed Explanation
+                </h4>
+                <p>
+                    Our model aims to classify whether a member of the House or Senate will vote "Yes" or "No" on a given bill.
+                    For the purpose of predicting if a bill will pass, both "Present" and "No Vote" votes are classified as a "No" vote.
+                    The scope of our training data is all house and senate votes from 2024 up until 2014.
+                    Due to limitations on token counts, some bills that had text files that were too long were omitted from the training data.
+                </p>
+                <p>
+                    Using the raw bill text and provided bill subjects from Congress API, we quantify the feature values for each subject on a scale from very conservative (-20) to very liberal (20).
+                    This classification is done through a prompt given to Gemini 2.0, providing the raw bill text and subject list.
+                    There are over 500 subject columns in our training data. Each row of training data consists of both bill features and specific member features.
+                    Other columns include whether the member is part of the house or the senate, what state the member is from, and what party the member is from.
+                    Through rigorous testing of different model architectures, the best results we found were a testing accuracy of 87% and a loss of 0.3, a good loss value for a binary classification model.
+                    Further improvements will be made in the future, with plans to generate more quality data, and with a further scope in the data used.
+                </p>
+                <p>
+                    Predictions give the user a distribution of 1000 sample votes, where each sample is a prediction of how many total votes the bill may get.
+                    Predictions are grouped by Senate/House membership, party, and state, and then a binomial random variable is produced using the probability of a yes vote given by the pre-trained mode.
+                    For each sample, all Senator and House member votes are predicted by the binomial random variables.
+                    The distribution of counts of total votes is then plotted, one plot for the Senate and one plot for the House.
+                </p>
+            </div>
+        </div>
     </div>
 </div>
 
