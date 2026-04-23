@@ -760,7 +760,7 @@ async def gatherFeatures(bill_id):
         try:
             response = await asyncio.to_thread(lambda: client.models.generate_content(model=model, contents=ctns, config=generate_content_config))
         except Exception:
-            return None
+            raise Exception
 
         response = response.text
         response = response.removeprefix('```python')
@@ -784,7 +784,7 @@ tf_model = tf.keras.models.load_model('models/model_with_state_welltrained.keras
 # returns -1 if any errors occured, 1 if creation was successfull
 def createPredictions(bill_id):
     today = datetime.date.today().strftime('%Y-%m-%d')
-    bill_pred = BillPrediction.objects.get_or_create(id = bill_id,creation_date = today)[0]
+    
     query = Q(end_date = None)
     query.add(Q(end_date__gte = today), Q.OR)
     memberships = Membership.objects.filter(query)
@@ -798,7 +798,10 @@ def createPredictions(bill_id):
     mem_df = pd.DataFrame({'state' : state_list, 'party': party_list, 'house' : house_list})
     mem_df = mem_df.groupby(by=['state','party','house'],as_index=False).size()
     feat_df = pd.DataFrame(0, index=np.arange(mem_df.shape[0]), columns=column_list, dtype='int8')
-    d = asyncio.run(gatherFeatures(bill_id))
+    try:
+        d = asyncio.run(gatherFeatures(bill_id))
+    except:
+        return -1
     if d == None : return -1
     for key in list(d.keys()):
         feat_df[key] = d[key]
@@ -810,6 +813,7 @@ def createPredictions(bill_id):
     fit = tf_model.predict(feat_df)
     fit = np.round(fit,5)
     objs = [None] * mem_df.shape[0]
+    bill_pred = BillPrediction.objects.get_or_create(id = bill_id,creation_date = today)[0]
     for index, row in mem_df.iterrows():
         objs[index] = BinaryProbability(
             bill_pred = bill_pred,

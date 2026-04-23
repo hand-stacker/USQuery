@@ -498,6 +498,7 @@ def starred(request):
             "party": membership.party,
             "district_num": membership.district_num,
             "house": membership.house,
+            "is_active": not membership.end_date,
         })
 
     return render(

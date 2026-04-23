@@ -1,35 +1,72 @@
 {% load static %}
-<form name="MemberForm" id="id_MemberForm">
-    <div class="d-flex flex-column flex-md-row p-4 gap-4 align-items-center justify-content-center">
-        {{ mem_form.non_field_errors }}
-        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
-            <h6>This field is required.</h6>
-            <label for="{{ mem_form.congress.id_for_label }}">Select Congress:</label>
-            <div>{{mem_form.congress}}</div>
-        </div>
-        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
-            <h6>This field is required.</h6>
-            <label for="{{mem_form.chamber.id_for_label}}">Select Chamber:</label>
-            <div>{{mem_form.chamber}}</div>
-        </div>
-        <div class="dropdown-menu position-static d-grid gap-1 p-2 rounded-3 mx-0 shadow glass-0" style="width:300px;height:120px">
-            <h6>This field is optional.</h6>
-            <label for="{{mem_form.state.id_for_label}}">Select State:</label>
-            <div>{{mem_form.state}}</div>
-        </div>
-    </div>
-</form>
 
-<!-- Members list container -->
-<div class="container mt-5">
-    <div id="members-list" class="row">
-        <!-- Members will be loaded here by JavaScript -->
-    </div>
-    <div id="members-empty" class="text-center text-muted mt-4">
-        <p>Select congress, chamber, and optionally a state to view members.</p>
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="card-dark p-5">
+            <h3 class="mb-4 text-center">
+                Search Congress Members
+            </h3>
+            <p class="form-help-text mb-3 text-center">
+                Find your representatives by specifying a congress, chamber, and optional state.
+            </p>
+            <form name="MemberForm" id="id_MemberForm">
+                {{ mem_form.non_field_errors }}
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ mem_form.congress.id_for_label }}" class="form-label-styled d-block mb-1">
+                                Congress
+                            </label>
+                            <p class="form-field-help">The congressional session to search.</p>
+                            {{ mem_form.congress }}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ mem_form.chamber.id_for_label }}" class="form-label-styled d-block mb-1">
+                                Chamber
+                            </label>
+                            <p class="form-field-help">Filter by House of Representatives or Senate.</p>
+                            {{ mem_form.chamber }}
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="{{ mem_form.state.id_for_label }}" class="form-label-styled d-block mb-1">
+                                State
+                            </label>
+                            <p class="form-field-help">Optionally narrow results to a specific state.</p>
+                            {{ mem_form.state }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button type="button" onclick="updateMembersList()" class="btn-glass px-5">
+                        Filter Members
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- Members list container -->
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div id="members-list" class="row g-3 mb-4">
+            <!-- Members will be loaded here by JavaScript -->
+        </div>
+        <div id="members-empty" class="card-dark-sm p-5 text-center">
+            <p class="mb-0">Select congress, chamber, and optionally a state to view members.</p>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'app/scripts/lazyLoadUtils.js' %}"></script>
+<script src="{% static 'app/scripts/cardUtils.js' %}"></script>
 <script src="{% static 'SenateQuery/scripts/member_search.js' %}"></script>
 
 <script>

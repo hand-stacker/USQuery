@@ -64,30 +64,10 @@ function renderMembersList(members) {
     
     emptyMessage.classList.add('d-none');
     
-    membersList.innerHTML = members.map(member => {
-        const chamber = member.house ? 'House+of+Representatives' : 'Senate';
-        const memberURL = `/member-query/results/?congress=119&member=${member.member_id}&chamber=${chamber}`;
-        const districtText = member.house && member.district_num ? ` - District ${member.district_num}` : '';
-        const imageSrc = member.image_link && member.image_link !== 'empty' ? member.image_link : '';
-        
-        return `
-            <div class="col-md-4 mb-4">
-                <a href="${memberURL}" class="starred-item text-decoration-none">
-                    <div class="starred-member-card" style="cursor: pointer;">
-                        ${imageSrc ? `<img src="${imageSrc}" alt="${member.name}" class="starred-member-image" onerror="this.style.display='none'">` : `<div class="starred-member-image" style="display: flex; align-items: center; justify-content: center; background: rgba(150, 150, 150, 0.3);"><span style="color: rgba(250, 250, 250, 0.5);">No Image</span></div>`}
-                        <div class="starred-member-name">${member.name}</div>
-                        <div class="starred-member-info">
-                            <div>${member.party}</div>
-                            <div class="starred-member-location">
-                                ${member.state}${districtText}
-                            </div>
-                            <div style="font-size: 11px; color: rgba(250, 250, 250, 0.5); margin-top: 6px;">
-                                ${member.house ? 'House' : 'Senate'}
-                            </div>
-                        </div>
-                    </div>
-                </a>
-            </div>
-        `;
-    }).join('');
+    membersList.innerHTML = members.map(member => createMemberCardHTML(member, true)).join('');
+    
+    // Initialize lazy loading for the newly rendered images
+    initializeLazyLoad('#members-list', {
+        bufferPx: 500
+    });
 }

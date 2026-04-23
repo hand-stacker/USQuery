@@ -1,46 +1,165 @@
 {% extends "app/layout.html" %}
 {% block content %}
 {% load static %}
-<div class="row justify-content-center mb-4">
-    <div class="col-md-10 p-4 bg-body-tertiary rounded shadow-sm position-relative text-center glass-0">
-        <h1 class="mb-3">USQuery - Understand Congress</h1>
-        <p class="col-lg-8 mx-auto mb-0">
-            USQuery makes U.S. congressional data accessible and understandable. Search bills, explore vote histories, and view member profiles with contact and committee information. The site provides clear visualizations, AI-powered summaries and vote predictions, and personalization features such as starred bills and members.
-        </p>
-        <p class="small mt-2"><a href="{% url 'MCPrivPolicy' %}">Privacy Policy</a></p>
-    </div>
-</div>
 
-<div class="row align-items-md-stretch">
-    <div class="col-md-6 mb-4" id="left-column">
-        <div class="row g-0">
-            <div class="p-4 rounded shadow-sm position-relative text-center glass-0 mb-4">
-                <h1 class="text-body-emphasis">Representative Search</h1>
-                <p class="col-lg-6 mx-auto mb-4">
-                    Get information on what your representative has done in a specific Congress Session. Information includes contacts, term history, vote history, committee positions, and more.
+<!-- Mission Statement Section -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="mission-statement card-dark">
+            <h1>USQuery</h1>
+            <p class="tagline">Understand Congress</p>
+            <div class="mission-statement-description">
+                <p>
+                    Make informed decisions about U.S. congressional legislation. Access comprehensive data, AI-powered insights, and personalized tracking in one intuitive platform.
                 </p>
-                <a href="{% url 'senateQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
             </div>
-        </div>
-
-        <div class="row g-0">
-            <div class="p-4 rounded shadow-sm position-relative text-center glass-0">
-                <h1 class="text-body-emphasis">Bill Search</h1>
-                <p class="col-lg-6 mx-auto mb-4">
-                    Get information on bills introduced to Congress. Information includes a history of actions Congress has made on the bill, list of sponsors and cosponsors, topics the bill is related to, and more.
-                </p>
-                <a href="{% url 'billQueryHome' %}" class="btn btn-primary px-5 mb-5">Take Me There!</a>
+            <div class="mission-statement-buttons">
+                <a href="{% url 'MCPrivPolicy' %}" class="btn-glass">
+                    Privacy Policy
+                </a>
+                <a href="{% url 'about' %}" class="btn-glass">
+                    About
+                </a>
+                <button class="btn-glass" disabled>
+                    Guide
+                </button>
             </div>
         </div>
     </div>
-    <div class="col-md-6" id="right-column" style="display: none;">
-        <div class="border dark-0 align-items-center d-flex justify-content-center p-3" id="right-title-space">
-            <h3>Recent Votes</h3>
-        </div>
-        <div id="action_table" class="overflow-scroll mb-4">
-            {{vote_table | safe}}
+</div>
+
+<!-- Feature Carousel Jumbotron -->
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-10">
+        <div class="feature-carousel card-dark">
+            <!-- Feature 1: Search -->
+            <div class="feature-slide active" data-feature="0">
+                <div class="row g-0 align-items-center h-100">
+                    <div class="col-md-6 p-5 d-flex flex-column justify-content-center">
+                        <h2 class="mb-4 fw-bold">Search Congress</h2>
+                        <p class="mb-4 feature-description">
+                            Discover comprehensive information on members of Congress and bills. Filter by topics, track legislative activity, and explore voting records with powerful search tools.
+                        </p>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <a href="{% url 'senateQueryHome' %}" class="btn-glass px-4">
+                                Search Members
+                            </a>
+                            <a href="{% url 'billQueryHome' %}" class="btn-glass px-4">
+                                Search Bills
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 p-5 d-flex align-items-center justify-content-center">
+                        <div class="feature-animation">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 2: Bill History & Votes -->
+            <div class="feature-slide" data-feature="1">
+                <div class="row g-0 align-items-center h-100">
+                    <div class="col-md-6 p-5 d-flex flex-column justify-content-center">
+                        <h2 class="mb-4 fw-bold">Track Bill History</h2>
+                        <p class="mb-4 feature-description">
+                            Access detailed congressional history for every bill. View action timelines, vote records, vote breakdowns by party, and sponsor information all in one place.
+                        </p>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <a href="{% url 'billQueryHome' %}" class="btn-glass px-4">
+                                Explore Bills
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 p-5 d-flex align-items-center justify-content-center">
+                        <div class="feature-animation">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 3: Starred Items -->
+            <div class="feature-slide" data-feature="2">
+                <div class="row g-0 align-items-center h-100">
+                    <div class="col-md-6 p-5 d-flex flex-column justify-content-center">
+                        <h2 class="mb-4 fw-bold">Save & Track Your Favorites</h2>
+                        {% if user.is_authenticated %}
+                            <p class="mb-4 feature-description">
+                                Star your favorite bills and representatives to build a personalized watchlist. Get quick access to ongoing legislative developments and track what matters to you.
+                            </p>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <a href="{% url 'starred' %}" class="btn-glass px-4">
+                                    View My Starred
+                                </a>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-dark mb-4" role="alert">
+                                <strong>Sign in required:</strong> Create an account to star and save your favorite bills and members.
+                            </div>
+                            <p class="mb-4 feature-description">
+                                Star your favorite bills and representatives to build a personalized watchlist. Get quick access to ongoing legislative developments and track what matters to you.
+                            </p>
+                            <div class="d-flex gap-3 flex-wrap">
+                                <a href="{% url 'login' %}" class="btn-glass px-4">
+                                    Sign In
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-6 p-5 d-flex align-items-center justify-content-center">
+                        <div class="feature-animation">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 4: Predictions -->
+            <div class="feature-slide" data-feature="3">
+                <div class="row g-0 align-items-center h-100">
+                    <div class="col-md-6 p-5 d-flex flex-column justify-content-center">
+                        <h2 class="mb-4 fw-bold">Bill Predictions <span class="badge bg-warning text-dark ms-2">Beta</span></h2>
+                        <p class="mb-4 feature-description">
+                            Explore AI-powered predictions on bill passage likelihood and representative voting patterns. Understand which members are most likely to support specific legislation. <em>(Currently in development with continuous improvements)</em>
+                        </p>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <a href="{% url 'billQueryHome' %}" class="btn-glass px-4">
+                                View Predictions
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 p-5 d-flex align-items-center justify-content-center">
+                        <div class="feature-animation">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Carousel Controls -->
+            <div class="carousel-controls d-flex justify-content-center gap-2 p-4">
+                <button class="carousel-dot active" data-slide="0" aria-label="Feature 1: Search Congress"></button>
+                <button class="carousel-dot" data-slide="1" aria-label="Feature 2: Track Bill History"></button>
+                <button class="carousel-dot" data-slide="2" aria-label="Feature 3: Save & Track"></button>
+                <button class="carousel-dot" data-slide="3" aria-label="Feature 4: Predictions"></button>
+            </div>
         </div>
     </div>
 </div>
-<script src="{% static 'app/scripts/resize.js' %}"></script>
+
+<!-- Recent Activity Section (Optional) -->
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card-dark p-4">
+            <h3 class="mb-4">Recent Congressional Activity
+            </h3>
+            {% if vote_table %}
+                <div class="table-responsive">
+                    {{vote_table | safe}}
+                </div>
+            {% else %}
+                <p class="text-muted">No recent votes available.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script src="{% static 'app/scripts/carouselUtils.js' %}"></script>
+<script src="{% static 'app/scripts/feature-carousel.js' %}"></script>
 {% endblock %}

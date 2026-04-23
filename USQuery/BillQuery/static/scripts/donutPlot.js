@@ -3,12 +3,6 @@ let nays = JSON.parse(document.getElementById('nays_cnt').textContent);
 let pres = JSON.parse(document.getElementById('pres_cnt').textContent);
 let novt = JSON.parse(document.getElementById('novt_cnt').textContent);
 
-const literal_colors = [
-    'rgb(242, 43, 41)',
-    'rgb(36, 130, 50)',
-    'rgb(38, 35, 34)',
-    'rgb(242, 175, 41)'
-]
 let donutData = [{
     values: [nays, yeas, pres, novt],
     labels: ['Nays', 'Yeas', 'Present', 'No Vote'],

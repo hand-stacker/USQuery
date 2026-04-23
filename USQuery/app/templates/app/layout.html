@@ -7,7 +7,6 @@
         window.dataLayer = window.dataLayer || [];
         function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
-
         gtag('config', 'G-5LZT8Q0E3M');
     </script>
     <meta charset="utf-8" />
@@ -20,9 +19,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9M5ct+wYfsTMngpreNubOOQSCnNrWufo+i3FH5HdeRn5XV4yXZtGnUo/KQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
-    <nav class="navbar navbar-expand-md navbar-dark dark-0 sticky-top mb-4" aria-label="USQuery nav bar">
+    <nav class="navbar navbar-expand-md navbar-dark dark-0 sticky-top mb-4" aria-label="USQuery navigation">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">USQuery</a>
+            <a class="navbar-brand fw-bold" href="/">
+                USQuery
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarUSQuery" aria-controls="navbarUSQuery" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -30,38 +31,53 @@
             <div class="collapse navbar-collapse" id="navbarUSQuery">
                 <ul class="navbar-nav me-auto mb-2 mb-md-0">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'senateQueryHome' %}">Rep. Search</a>
+                        <a class="nav-link" href="{% url 'senateQueryHome' %}">
+                            Rep. Search
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'billQueryHome' %}">Bill Search</a>
+                        <a class="nav-link" href="{% url 'billQueryHome' %}">
+                            Bill Search
+                        </a>
                     </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'starred' %}">My Starred</a>
+                        <a class="nav-link" href="{% url 'starred' %}">
+                            My Starred
+                        </a>
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <a class="nav-link disabled" href="/">Guide</a>
+                        <a class="nav-link disabled" href="/">
+                            Guide
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'about' %}">About</a>
+                        <a class="nav-link" href="{% url 'about' %}">
+                            About
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'MCPrivPolicy' %}">Privacy Policy</a>
+                        <a class="nav-link" href="{% url 'MCPrivPolicy' %}">
+                            Privacy
+                        </a>
                     </li>
-
                 </ul>
                 {% include 'app/loginpartial.html' %}
             </div>
         </div>
     </nav>
+
     <div class="container body-content">
         {% block content %}{% endblock %}
-        <hr />
-        <footer>
-            <p> Copyright © 2026 USQuery | Powered by Congress API</p>
+        <hr class="mt-5 mb-4" style="border-color: rgba(250, 250, 250, 0.2);" />
+        <footer class="text-center pb-4">
+            <p class="text-muted small">
+                Copyright © 2026 USQuery | Powered by Congress API
+            </p>
         </footer>
     </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
     <script src="{% static 'app/scripts/respond.js' %}"></script>
