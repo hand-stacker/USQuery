@@ -92,6 +92,7 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 **		- Correctly defined Javascript Origins in cloud console.
 		- ids are correct.
 		- Wait for production access, maybe this will fix our issue...**
+**Update(4/23):** Resubmitted for prod verification...
 ---
 
 #### 6.2 [Completed] Starred Bills & Members on Web
@@ -122,14 +123,14 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 - Use a Javascript/Typescript distribution plot library to present a sample of predictions (1000 sample full votes for both senate and house).
 - Remove old pandas made vote distribution predictions and make user device create prediction, also add list showing "Yea" vote probabilities for each member.
 
-#### 6.4 Paid Membership / Subscription Feature
+#### 6.4 [Completed, not in Prod yet...]Paid Membership / Subscription Feature
 **Scope:** Web + Mobile
 **Goal:** Enable users to upgrade from Free to Plus or Premium, unlocking gated features.
 **Estimated Difficulty:** 7
 
 **Requirements:**
 - A "Plans & Pricing" page clearly presents Free, Plus, and Premium tiers with feature comparisons.
-- Users can initiate an upgrade from within the app (from the plans page or from a feature gate prompt).
+- Users can initiate an upgrade from within the app (from the plans page or from a feature gate prompt) or on a page in the web app.
 - Payment processing is integrated (provider TBD — e.g., Stripe). PCI scope must be minimized by using a hosted payment page or embedded SDK (never handling raw card data server-side).
 - On successful payment, the user's `UserProfile.subscription_tier` is updated to the purchased tier.
 - Subscription management (cancel, view billing) is accessible from the user's account settings.

@@ -1,0 +1,240 @@
+{% extends "app/layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-10">
+
+        <div class="card-dark p-4 text-center mb-4">
+            <h1 class="mb-2">Plans &amp; Pricing</h1>
+            <p class="lead" style="color: rgba(250,250,250,0.75);">
+                Unlock predictions, starred content, and more.
+            </p>
+        </div>
+
+        {% if cancel_at_period_end and period_end %}
+        <div class="mb-4 p-3 text-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;">
+            <i class="fa-solid fa-triangle-exclamation me-2" style="color: #F59E0B;"></i>
+            <span style="color: rgba(250,250,250,0.85);">
+                Your subscription is set to cancel on <strong>{{ period_end|date:"N j, Y" }}</strong>.
+                You will keep access until then.
+            </span>
+            <form method="post" action="{% url 'billing_portal' %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" style="background:none; border:none; color:#F59E0B; cursor:pointer; text-decoration:underline; padding:0; font:inherit; font-size:inherit;">
+                    Manage in billing portal
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
+        <div class="pricing-grid">
+
+            <!-- Free -->
+            <div class="pricing-card">
+                <div class="pricing-card-header">
+                    <div class="pricing-tier-name">Free</div>
+                    <div class="pricing-price">$0</div>
+                    <p class="pricing-price-sub">forever</p>
+                </div>
+                <div class="pricing-card-body">
+                    <ul class="pricing-feature-list">
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>3 starred members</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>10 starred bills</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-xmark pricing-feature-icon pricing-feature-icon--cross"></i>
+                            <span style="color: rgba(250,250,250,0.4);">Vote predictions</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-xmark pricing-feature-icon pricing-feature-icon--cross"></i>
+                            <span style="color: rgba(250,250,250,0.4);">AI chatbot</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pricing-card-footer">
+                    {% if user_tier == 0 %}
+                    <span class="pricing-btn pricing-btn--current">
+                        <i class="fa-solid fa-circle-check me-2"></i> Current Plan
+                    </span>
+                    {% elif user_tier is not None %}
+                    <form method="post" action="{% url 'billing_portal' %}" id="billing-portal-form">
+                        {% csrf_token %}
+                        <button type="submit" class="pricing-btn pricing-btn--secondary">
+                            Downgrade via Portal
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--secondary">
+                        Sign In
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Plus -->
+            <div class="pricing-card pricing-card--highlight">
+                <div class="pricing-badge">POPULAR</div>
+                <div class="pricing-card-header">
+                    <div class="pricing-tier-name">Plus</div>
+                    <div class="pricing-price">{{ plus_price }}</div>
+                    <p class="pricing-price-sub">billed monthly</p>
+                </div>
+                <div class="pricing-card-body">
+                    <ul class="pricing-feature-list">
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>10 starred members</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>50 starred bills</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>Vote predictions <span style="font-size:12px; color:rgba(250,250,250,0.5);">(3/day)</span></span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(3 msgs/day)</span></span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pricing-card-footer">
+                    {% if user_tier == 1 %}
+                    <span class="pricing-btn pricing-btn--current">
+                        <i class="fa-solid fa-circle-check me-2"></i> Current Plan
+                    </span>
+                    {% if not cancel_at_period_end %}
+                    <form method="post" action="{% url 'billing_portal' %}" class="mt-2">
+                        {% csrf_token %}
+                        <button type="submit" class="pricing-btn pricing-btn--secondary" style="font-size:12px; padding: 8px 14px;">
+                            Manage Billing
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% elif user_tier == 0 %}
+                    {% if stripe_configured %}
+                    <form method="post" action="{% url 'create_checkout_session' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="tier" value="1">
+                        <button type="submit" class="pricing-btn pricing-btn--primary">
+                            Upgrade to Plus
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% elif user_tier == 2 %}
+                    <form method="post" action="{% url 'billing_portal' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="pricing-btn pricing-btn--secondary">
+                            Switch via Portal
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--primary">
+                        Sign In to Upgrade
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Premium -->
+            <div class="pricing-card">
+                <div class="pricing-card-header">
+                    <div class="pricing-tier-name">Premium</div>
+                    <div class="pricing-price">{{ premium_price }}</div>
+                    <p class="pricing-price-sub">billed monthly</p>
+                </div>
+                <div class="pricing-card-body">
+                    <ul class="pricing-feature-list">
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>100 starred members</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>100 starred bills</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>Vote predictions <span style="font-size:12px; color:rgba(250,250,250,0.5);">(unlimited)</span></span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(unlimited)</span></span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pricing-card-footer">
+                    {% if user_tier == 2 %}
+                    <span class="pricing-btn pricing-btn--current">
+                        <i class="fa-solid fa-circle-check me-2"></i> Current Plan
+                    </span>
+                    {% if not cancel_at_period_end %}
+                    <form method="post" action="{% url 'billing_portal' %}" class="mt-2">
+                        {% csrf_token %}
+                        <button type="submit" class="pricing-btn pricing-btn--secondary" style="font-size:12px; padding: 8px 14px;">
+                            Manage Billing
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% elif user_tier == 0 or user_tier == 1 %}
+                    {% if stripe_configured %}
+                    <form method="post" action="{% url 'create_checkout_session' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="tier" value="2">
+                        <button type="submit" class="pricing-btn pricing-btn--primary">
+                            Upgrade to Premium
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% else %}
+                    <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--primary">
+                        Sign In to Upgrade
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Feature comparison note -->
+        <div class="card-dark p-4 mt-2">
+            <h5 class="mb-3 text-center">About the Limits</h5>
+            <div class="row g-3 text-center">
+                <div class="col-md-4">
+                    <div class="card-dark-sm p-3">
+                        <div style="font-size:13px; color:rgba(250,250,250,0.6); margin-bottom:6px;">VOTE PREDICTIONS</div>
+                        <div style="font-size:13px;">Run simulated votes on any bill to see likely outcomes. Powered by our neural network trained on congressional voting history.</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-dark-sm p-3">
+                        <div style="font-size:13px; color:rgba(250,250,250,0.6); margin-bottom:6px;">STARRED CONTENT</div>
+                        <div style="font-size:13px;">Save members and bills you care about. Get push notifications when they have new activity.</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card-dark-sm p-3">
+                        <div style="font-size:13px; color:rgba(250,250,250,0.6); margin-bottom:6px;">AI CHATBOT</div>
+                        <div style="font-size:13px;">Ask questions about bills and their potential impact. Grounded in real congressional data.</div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center mt-3 mb-0" style="font-size:12px; color:rgba(250,250,250,0.4);">
+                Prices shown in USD. Billed monthly. Cancel anytime — access continues until end of billing period.
+                Payments processed securely by Stripe.
+            </p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

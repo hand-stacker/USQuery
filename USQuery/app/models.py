@@ -77,6 +77,10 @@ class UserProfile(models.Model):
         blank=True,
     )
     oauth_provider_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    stripe_customer_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    subscription_period_end = models.DateTimeField(null=True, blank=True)
+    subscription_cancel_at_period_end = models.BooleanField(default=False)
 
     def get_active_devices(self):
         return self.devices.filter(is_active=True)

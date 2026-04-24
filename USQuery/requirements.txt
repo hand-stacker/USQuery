@@ -21,3 +21,4 @@ markdownify
 djangorestframework-simplejwt
 djangorestframework-simplejwt[token_blacklist]
 strawberry-django-auth
+stripe

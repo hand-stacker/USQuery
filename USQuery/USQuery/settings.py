@@ -20,6 +20,14 @@ GOOGLE_CLIENT_IDS = os.environ.get('GOOGLE_CLIENT_IDS')
 GOOGLE_WEB_CLIENT_ID = os.environ.get('GOOGLE_WEB_CLIENT_ID')
 APPLE_CLIENT_ID = os.environ.get('APPLE_CLIENT_ID')
 
+STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
+STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
+STRIPE_PLUS_PRICE_ID = os.environ.get('STRIPE_PLUS_PRICE_ID')
+STRIPE_PREMIUM_PRICE_ID = os.environ.get('STRIPE_PREMIUM_PRICE_ID')
+STRIPE_PLUS_DISPLAY_PRICE = os.environ.get('STRIPE_PLUS_DISPLAY_PRICE', '$2.99/mo')
+STRIPE_PREMIUM_DISPLAY_PRICE = os.environ.get('STRIPE_PREMIUM_DISPLAY_PRICE', '$14.99/mo')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'false').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS').split(',')
