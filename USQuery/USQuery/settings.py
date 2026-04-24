@@ -24,6 +24,10 @@ GOOGLE_CLIENT_IDS = os.environ.get('GOOGLE_CLIENT_IDS')
 GOOGLE_WEB_CLIENT_ID = os.environ.get('GOOGLE_WEB_CLIENT_ID')
 APPLE_CLIENT_ID = os.environ.get('APPLE_CLIENT_ID')
 
+# Allow Google Sign-In popup (gsi/transform) to postMessage back via window.opener.
+# Django 4.1+ defaults to 'same-origin' which nulls window.opener in popups.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PUBLISHABLE_KEY = os.environ.get('STRIPE_PUBLISHABLE_KEY')
 STRIPE_WEBHOOK_SECRET = os.environ.get('STRIPE_WEBHOOK_SECRET')
