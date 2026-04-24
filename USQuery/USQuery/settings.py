@@ -23,6 +23,7 @@ GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_IDS = os.environ.get('GOOGLE_CLIENT_IDS')
 GOOGLE_WEB_CLIENT_ID = os.environ.get('GOOGLE_WEB_CLIENT_ID')
 APPLE_CLIENT_ID = os.environ.get('APPLE_CLIENT_ID')
+SUBSCRIPTIONS_ENABLED = os.environ.get('SUBSCRIPTIONS_ENABLED', 'false').lower() == 'true'
 
 # Allow Google Sign-In popup (gsi/transform) to postMessage back via window.opener.
 # Django 4.1+ defaults to 'same-origin' which nulls window.opener in popups.
