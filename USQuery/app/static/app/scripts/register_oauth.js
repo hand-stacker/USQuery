@@ -127,8 +127,8 @@
             googleInitialized = true;
             window.google.accounts.id.initialize({
                 client_id: googleClientId,
-                // Avoid browser-specific FedCM transform flow issues that can show a blank popup.
                 use_fedcm_for_prompt: false,
+                use_fedcm_for_button: false,
                 itp_support: true,
                 auto_select: false,
                 cancel_on_tap_outside: true,
@@ -148,7 +148,8 @@
                     size: "large",
                     width: host.offsetWidth || 360,
                     text: "continue_with",
-                    shape: "pill"
+                    shape: "pill",
+                    ux_mode: "popup"
                 });
                 if (fallback) fallback.classList.add("oauth-btn--hidden");
             } else {
@@ -199,16 +200,6 @@
 
     function boot() {
         var config = getConfig();
-        try {
-            console.debug('OAuth config:', {
-                googleClientId: config.googleClientId,
-                appleClientId: config.appleClientId,
-                googleUrl: config.googleUrl,
-                registerUrl: config.registerUrl,
-                pageOrigin: window.location.origin
-            });
-        } catch (e) { /* ignore */ }
-
         initGoogle(config);
         initApple(config);
     }
