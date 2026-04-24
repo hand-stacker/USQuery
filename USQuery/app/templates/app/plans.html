@@ -11,6 +11,15 @@
             </p>
         </div>
 
+        {% if not subscriptions_enabled %}
+        <div class="mb-4 p-3 text-center" style="background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.3); border-radius: 12px;">
+            <i class="fa-solid fa-wrench me-2" style="color: #818cf8;"></i>
+            <span style="color: rgba(250,250,250,0.85);">
+                New subscriptions are <strong>temporarily unavailable</strong> while we finish building promised features. Check back soon!
+            </span>
+        </div>
+        {% endif %}
+
         {% if cancel_at_period_end and period_end %}
         <div class="mb-4 p-3 text-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;">
             <i class="fa-solid fa-triangle-exclamation me-2" style="color: #F59E0B;"></i>
@@ -118,7 +127,7 @@
                     </form>
                     {% endif %}
                     {% elif user_tier == 0 %}
-                    {% if stripe_configured %}
+                    {% if subscriptions_enabled and stripe_configured %}
                     <form method="post" action="{% url 'create_checkout_session' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tier" value="1">
@@ -130,6 +139,7 @@
                     <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
                     {% endif %}
                     {% elif user_tier == 2 %}
+                    {% if subscriptions_enabled %}
                     <form method="post" action="{% url 'billing_portal' %}">
                         {% csrf_token %}
                         <button type="submit" class="pricing-btn pricing-btn--secondary">
@@ -137,9 +147,16 @@
                         </button>
                     </form>
                     {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% else %}
+                    {% if subscriptions_enabled %}
                     <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--primary">
                         Sign In to Upgrade
                     </a>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -185,7 +202,7 @@
                     </form>
                     {% endif %}
                     {% elif user_tier == 0 or user_tier == 1 %}
-                    {% if stripe_configured %}
+                    {% if subscriptions_enabled and stripe_configured %}
                     <form method="post" action="{% url 'create_checkout_session' %}">
                         {% csrf_token %}
                         <input type="hidden" name="tier" value="2">
@@ -197,9 +214,13 @@
                     <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
                     {% endif %}
                     {% else %}
+                    {% if subscriptions_enabled %}
                     <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--primary">
                         Sign In to Upgrade
                     </a>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>

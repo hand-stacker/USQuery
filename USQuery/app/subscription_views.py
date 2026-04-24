@@ -67,12 +67,17 @@ def plans(request):
         'plus_price': getattr(settings, 'STRIPE_PLUS_DISPLAY_PRICE', '$2.99/mo'),
         'premium_price': getattr(settings, 'STRIPE_PREMIUM_DISPLAY_PRICE', '$14.99/mo'),
         'stripe_configured': bool(getattr(settings, 'STRIPE_SECRET_KEY', None)),
+        'subscriptions_enabled': getattr(settings, 'SUBSCRIPTIONS_ENABLED', True),
     })
 
 
 @login_required
 @require_POST
 def create_checkout_session(request):
+    if not getattr(settings, 'SUBSCRIPTIONS_ENABLED', True):
+        messages.error(request, 'Subscriptions are temporarily unavailable.')
+        return redirect('plans')
+
     tier_str = request.POST.get('tier', '')
     try:
         tier = int(tier_str)
@@ -170,6 +175,7 @@ def manage_subscription(request):
         'profile': user_profile,
         'tier_name': TIER_NAMES.get(user_profile.user_type, 'Free'),
         'has_stripe': bool(user_profile.stripe_customer_id),
+        'subscriptions_enabled': getattr(settings, 'SUBSCRIPTIONS_ENABLED', True),
     })
 
 
@@ -446,6 +452,7 @@ def api_plans(request):
     stripe_configured = bool(getattr(settings, 'STRIPE_SECRET_KEY', None))
     return Response({
         'stripe_configured': stripe_configured,
+        'subscriptions_enabled': getattr(settings, 'SUBSCRIPTIONS_ENABLED', True),
         'tiers': [
             {
                 'id': 0,
@@ -503,6 +510,9 @@ def api_subscription_status(request):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def api_create_checkout_session(request):
+    if not getattr(settings, 'SUBSCRIPTIONS_ENABLED', True):
+        return Response({'error': 'Subscriptions are temporarily unavailable.'}, status=503)
+
     tier_str = request.data.get('tier', '')
     try:
         tier = int(tier_str)
