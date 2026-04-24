@@ -72,7 +72,6 @@
     </Compile>
     <Compile Include="BillQuery\tests.py" />
     <Compile Include="BillQuery\views.py" />
-    <Compile Include="BillQuery\views_new.py" />
     <Compile Include="BillQuery\__init__.py" />
     <Compile Include="manage.py" />
     <Compile Include="notifications\push.py">

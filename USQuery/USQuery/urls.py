@@ -11,6 +11,7 @@ from django.contrib import admin
 from django.contrib.auth.views import LoginView, LogoutView,PasswordResetView, PasswordResetDoneView, PasswordResetConfirmView, PasswordResetCompleteView
 
 from app import forms, views
+from app import subscription_views
 from django.conf.urls.static import static
 from SenateQuery import views as SQviews
 from BillQuery import views as BQviews
@@ -28,6 +29,17 @@ admin.autodiscover()
 urlpatterns = [
     path('', views.home, name='home'),
     path('about/', views.about, name='about'),
+    path('plans/', subscription_views.plans, name='plans'),
+    path('subscription/checkout/create/', subscription_views.create_checkout_session, name='create_checkout_session'),
+    path('subscription/success/', subscription_views.checkout_success, name='checkout_success'),
+    path('subscription/manage/', subscription_views.manage_subscription, name='manage_subscription'),
+    path('subscription/portal/', subscription_views.billing_portal, name='billing_portal'),
+    path('api/stripe/webhook/', subscription_views.stripe_webhook, name='stripe_webhook'),
+    path('api/subscription/plans/', subscription_views.api_plans, name='api_plans'),
+    path('api/subscription/status/', subscription_views.api_subscription_status, name='api_subscription_status'),
+    path('api/subscription/create-checkout/', subscription_views.api_create_checkout_session, name='api_create_checkout_session'),
+    path('api/subscription/cancel/', subscription_views.api_cancel_subscription, name='api_cancel_subscription'),
+    path('api/subscription/reactivate/', subscription_views.api_reactivate_subscription, name='api_reactivate_subscription'),
     path('starred/', views.starred, name='starred'),
     path('star-item/', Nviews.StarItemInternal.as_view(), name='star_item_internal'),
     path('unstar-item/', Nviews.UnstarItemInternal.as_view(), name='unstar_item_internal'),
