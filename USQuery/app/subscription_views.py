@@ -553,3 +553,26 @@ def api_create_checkout_session(request):
         return Response({'error': 'Payment provider error.'}, status=502)
 
     return Response({'checkout_url': session.url}, status=200)
+
+# Mobile REST endpoint: JWT authenticated, returns a Stripe Billing Portal URL
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def api_billing_portal(request):
+    _stripe_client()
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if not user_profile.stripe_customer_id:
+        return Response({'error': 'No billing account found. Upgrade to a paid plan first.'}, status=404)
+
+    try:
+        portal_session = stripe.billing_portal.Session.create(
+            customer=user_profile.stripe_customer_id,
+            return_url='https://www.usquery.com/subscription/manage/',
+        )
+    except stripe.error.StripeError as exc:
+        logger.error('Stripe billing portal error (mobile): %s', exc)
+        return Response({'error': 'Unable to open billing portal. Please try again.'}, status=502)
+
+    return Response({'portal_url': portal_session.url})
+
