@@ -70,7 +70,7 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 
 ### Phase 1 — End of April 2026 (Current Sprint)
 
-#### 6.1 OAuth Login (Google & Apple)
+#### 6.1 [Completed Google Oauth]OAuth Login (Google & Apple)
 **Scope:** Web + Mobile  
 **Goal:** Reduce friction for new user registration and login.
 **Estimated Difficulty:** 4
@@ -81,8 +81,8 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 - X | On first OAuth login, a `User` and `UserProfile` are created automatically with Free tier defaults.
 - X | If an email from an OAuth provider matches an existing email/password account, the accounts are linked (or the user is prompted to link them).
 - X | JWT tokens are issued on successful OAuth login, consistent with the existing `simplejwt` flow.
--X |  OAuth login must work on both the web app and mobile (shared backend endpoint).
-- Password reset and email verification flows are not applicable to OAuth-only accounts.
+- X |  OAuth login must work on both the web app and mobile (shared backend endpoint).
+- X |Password reset and email verification flows are not applicable to OAuth-only accounts.
 
 **Out of scope:** OAuth login for admin/staff accounts.
 
@@ -123,7 +123,7 @@ The scope of edits in this repo should only be for the web frontend and web/mobi
 - Use a Javascript/Typescript distribution plot library to present a sample of predictions (1000 sample full votes for both senate and house).
 - Remove old pandas made vote distribution predictions and make user device create prediction, also add list showing "Yea" vote probabilities for each member.
 
-#### 6.4 [Completed, not in Prod yet...]Paid Membership / Subscription Feature
+#### 6.4 [Completed, need to enable after adding promised features]Paid Membership / Subscription Feature
 **Scope:** Web + Mobile
 **Goal:** Enable users to upgrade from Free to Plus or Premium, unlocking gated features.
 **Estimated Difficulty:** 7
