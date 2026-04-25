@@ -186,6 +186,14 @@ def _issue_tokens(user):
     }
 
 
+def _activate_oauth_user(user):
+    """Ensure an OAuth-authenticated user is active and has no pending email verification."""
+    if not user.is_active:
+        user.is_active = True
+        user.save(update_fields=['is_active'])
+    EmailVerification.objects.filter(user=user).delete()
+
+
 def _find_or_create_oauth_user(provider, provider_id, email):
     """
     Resolve an OAuth identity to a Django User + UserProfile.
@@ -203,7 +211,9 @@ def _find_or_create_oauth_user(provider, provider_id, email):
             oauth_provider=provider,
             oauth_provider_id=provider_id,
         )
-        return profile.user, False
+        user = profile.user
+        _activate_oauth_user(user)
+        return user, False
     except UserProfile.DoesNotExist:
         pass
 
@@ -214,6 +224,7 @@ def _find_or_create_oauth_user(provider, provider_id, email):
         profile.oauth_provider = provider
         profile.oauth_provider_id = provider_id
         profile.save(update_fields=['oauth_provider', 'oauth_provider_id'])
+        _activate_oauth_user(user)
         return user, False
     except User.DoesNotExist:
         pass
