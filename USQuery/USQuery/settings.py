@@ -15,6 +15,7 @@ CONGRESS_DIR = 'https://api.congress.gov/v3/'
 SECRET_KEY = os.environ.get('SECRET_KEY')
 CONGRESS_KEY = os.environ.get('CONGRESS_KEY')
 GEMINI_KEY = os.environ.get('GEMINI_KEY')
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_IDS = os.environ.get('GOOGLE_CLIENT_IDS')
 GOOGLE_WEB_CLIENT_ID = os.environ.get('GOOGLE_WEB_CLIENT_ID')
@@ -52,6 +53,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.admindocs',
+    'django.contrib.postgres',
     'django_select2',
     'aiohttp',
     'dj_database_url',
