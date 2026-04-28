@@ -372,8 +372,7 @@ async def updateRecentBills(congress_num, date_str, bill_type):
         if cached:
             date_str = cached
         else:
-            print ("Fatal error for updateRecentBills: no cached last_processed_action_date")
-            return
+            date_str = (date.today() - timedelta(days=1)).strftime('%Y-%m-%d')
 
     last_processed_action_date = datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)
     tracked_latest_date = datetime.strptime(date_str, '%Y-%m-%d')
