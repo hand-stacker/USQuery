@@ -452,7 +452,7 @@ def api_plans(request):
     stripe_configured = bool(getattr(settings, 'STRIPE_SECRET_KEY', None))
     return Response({
         'stripe_configured': stripe_configured,
-        'subscriptions_enabled': getattr(settings, 'SUBSCRIPTIONS_ENABLED', True),
+        'subscriptions_enabled': getattr(settings, 'SUBSCRIPTIONS_ENABLED', False),
         'tiers': [
             {
                 'id': 0,

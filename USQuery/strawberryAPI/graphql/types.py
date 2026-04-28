@@ -32,6 +32,12 @@ class VoteType:
 
 ## Bill related types
 @strawberry.type
+class BillMemberType:
+    name: str
+    party: str
+    state: str
+
+@strawberry.type
 class BillEdge:
     cursor : str
     node : "BillType"
@@ -56,6 +62,10 @@ class BillType:
     summary : str | None = None
     is_AI_generated : bool | None = False
     actions: List["ActionType"]
+    current_stage: int | None = None
+    sponsor: Optional["BillMemberType"] = None
+    cosponsors: List["BillMemberType"] = strawberry.field(default_factory=list)
+    related_bills: List[str] = strawberry.field(default_factory=list)
 
 @strawberry.type
 class ActionType:
@@ -102,4 +112,11 @@ class CongressType:
     congress_num : auto
     start_year : auto
     end_year : auto
-    
+
+
+@strawberry.type
+class ChatMessageResponseType:
+    session_id: Optional[str]
+    assistant_message: Optional[str]
+    error: Optional[str]
+    messages_remaining: int
