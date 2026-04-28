@@ -443,6 +443,62 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
         tg.create_task(session.close())
         tg.create_task(vote_session.close())
 
+async def _sync_bill_relations(session, bill, congress_num, _type, num):
+    """Fetch and sync cosponsors, related bills, and subjects from the Congress API."""
+    base_url = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(num)
+    header_str = '?api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250'
+
+    async with asyncio.TaskGroup() as tg:
+        cosp_task = tg.create_task(connectASYNC(session, base_url + '/cosponsors', header_str))
+        rel_task  = tg.create_task(connectASYNC(session, base_url + '/relatedbills', header_str))
+        subj_task = tg.create_task(connectASYNC(session, base_url + '/subjects', header_str))
+
+    cosp_data = cosp_task.result()
+    rel_data  = rel_task.result()
+    subj_data = subj_task.result()
+
+    if cosp_data:
+        cosps = cosp_data.get('cosponsors', [])
+        ids = [c['bioguideId'] for c in cosps if 'bioguideId' in c]
+        if ids:
+            all_memberships = await sync_to_async(list)(
+                Membership.objects.filter(congress=int(congress_num), member__id__in=ids).select_related('member')
+            )
+            mem_map = {(str(m.member.id), bool(m.house)): m for m in all_memberships}
+            cosponsors = Membership.objects.none()
+            for c in cosps:
+                mobj = mem_map.get((c.get('bioguideId'), 'district' in c))
+                if mobj:
+                    cosponsors |= Membership.objects.filter(id=mobj.id)
+            await bill.cosponsors.aset(cosponsors)
+
+    if rel_data:
+        related_ids = []
+        for b in rel_data.get('relatedBills', []):
+            try:
+                n = int(b['number'])
+                t = types[b['type'].lower()]
+                if n < 10000:
+                    _id = int(b['congress']) * 100000 + t * 10000 + n
+                else:
+                    _id = int(b['congress']) * 1000000 + t * 100000 + n
+                related_ids.append(_id)
+            except (KeyError, ValueError):
+                continue
+        if related_ids:
+            await bill.related_bills.aset(Bill.objects.filter(id__in=related_ids))
+
+    if subj_data:
+        subjects_data = subj_data.get('subjects', {})
+        names = [s['name'] for s in subjects_data.get('legislativeSubjects', []) if 'name' in s]
+        if names:
+            subjects = Subject.objects.filter(name__in=names)
+            await bill.subjects.aset(subjects)
+            await add_subjects(bill.subjects.all())
+        bill.policy_area = subjects_data.get('policyArea', {}).get('name', 'Not Specified Yet.')
+        await bill.asave()
+
+
 async def updateBill(congress_num, _type, num) :
     url = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(num) + '/actions?'
     header_str = '&api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
@@ -528,6 +584,7 @@ async def updateBill(congress_num, _type, num) :
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
+    await _sync_bill_relations(session, bill, congress_num, _type, num)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
         tg.create_task(vote_session.close())

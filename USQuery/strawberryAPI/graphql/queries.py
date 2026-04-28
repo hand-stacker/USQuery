@@ -1,7 +1,7 @@
 import strawberry, aiohttp
 import strawberry.types
 from datetime import date, datetime
-from .types import BillConnection, BillEdge, BillType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
+from .types import BillConnection, BillEdge, BillType, BillMemberType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
 from typing import List, Optional
 from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramSimilarity
 from django.db.models import F, Q, Count, Prefetch, Value, FloatField, Max
@@ -67,6 +67,25 @@ def selection_contains_field(info: "strawberry.types.Info", field_name: str) -> 
     # info.field_nodes is a list of AST Field nodes for the current resolver
     return _ast_selection_contains(info.field_nodes, field_name)
 
+def _get_bill_with_related(bill_id: int):
+    bill = (
+        Bill.objects
+        .select_related("sponsor__member")
+        .get(id=bill_id)
+    )
+    sponsor = BillMemberType(
+        name=bill.sponsor.member.full_name,
+        party=bill.sponsor.party,
+        state=bill.sponsor.state,
+    )
+    cosponsors = [
+        BillMemberType(name=m.member.full_name, party=m.party, state=m.state)
+        for m in bill.cosponsors.select_related("member").all()
+    ]
+    related_bills = [str(rb) for rb in bill.related_bills.all()]
+    return bill, sponsor, cosponsors, related_bills
+
+
 @strawberry.type
 class Query:
     @strawberry.field
@@ -80,12 +99,12 @@ class Query:
     @strawberry.field
     async def getBill(self, bill_id : int) -> Optional[BillType]:
         try:
-            bill = await Bill.objects.aget(id = bill_id)
+            bill, sponsor, cosponsors, related_bills = await sync_to_async(_get_bill_with_related)(bill_id)
         except Bill.DoesNotExist:
-            return None 
+            return None
         session = aiohttp.ClientSession()
         sum_context = await fetch_summary(session, bill)
-        act_context = await fetch_actions(session,bill)
+        act_context = await fetch_actions(session, bill)
         actions = [ActionType(
             actionCode=a.get("actionCode"),
             actionDate=a.get("actionDate"),
@@ -104,9 +123,13 @@ class Query:
             latest_action = bill.latest_action,
             subjects = bill.subjects.all(),
             match_count = 0,
-            summary =md(sum_context['summary']) ,
+            summary = md(sum_context['summary']),
             is_AI_generated = sum_context['AI_generated_content?'],
-            actions = actions
+            actions = actions,
+            current_stage = bill.status_code,
+            sponsor = sponsor,
+            cosponsors = cosponsors,
+            related_bills = related_bills,
             )
 
     @strawberry.field
