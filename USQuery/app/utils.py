@@ -744,22 +744,13 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
+    await _sync_bill_relations(session, bill, congress_num, _type, b['number'])
     if new_action and not new_vote:
         await send_bill_notification(
             bill_id=bill.id,
             title="New Action",
             body="New action(s) were taken on Bill " + bill.__str__() + "."
         )
-        # if new actions were added to bill, first update bill subjects and then add subjects to redis set for notifs
-        if 'subjects' in API_response_bill['bill']:
-            subjects_response = await connectASYNC(session, API_response_bill['bill']['subjects']['url'], header_str)
-            subjects = Subject.objects.none()
-            for s in subjects_response['subjects']['legislativeSubjects']:
-                subjects |= Subject.objects.filter(name=s['name'])
-            await bill.subjects.aset(subjects)
-            bill.policy_area = ('Not Specified Yet.' if not ('policyArea' in subjects_response['subjects']) else subjects_response['subjects']['policyArea']['name'])
-            await bill.asave()
-            await add_subjects(bill.subjects.all())
     return 1
 
 # runs through existing votes up to limit, and adds memberships that were missing
