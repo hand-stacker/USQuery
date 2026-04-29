@@ -82,7 +82,7 @@ def _get_bill_with_related(bill_id: int):
         BillMemberType(name=m.member.full_name, party=m.party, state=m.state)
         for m in bill.cosponsors.select_related("member").all()
     ]
-    related_bills = [str(rb) for rb in bill.related_bills.all()]
+    related_bills = [int(rb.id) for rb in bill.related_bills.all()]
     return bill, sponsor, cosponsors, related_bills
 
 

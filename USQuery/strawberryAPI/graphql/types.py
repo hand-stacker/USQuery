@@ -65,7 +65,7 @@ class BillType:
     current_stage: int | None = None
     sponsor: Optional["BillMemberType"] = None
     cosponsors: List["BillMemberType"] = strawberry.field(default_factory=list)
-    related_bills: List[str] = strawberry.field(default_factory=list)
+    related_bills: List[int] = strawberry.field(default_factory=list)
 
 @strawberry.type
 class ActionType:
