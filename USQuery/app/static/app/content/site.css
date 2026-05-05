@@ -1989,7 +1989,7 @@ img.lazy-error {
     letter-spacing: 0.05em;
     text-align: center;
     line-height: 1.2;
-    white-space: nowrap;
+    max-width: 72px;
 }
 
 .pipeline-step--done .pipeline-label {
@@ -2012,6 +2012,75 @@ img.lazy-error {
 .pipeline-connector--done {
     background: rgba(46, 168, 126, 0.33);
 }
+
+/* Dot color modifiers */
+.pipeline-dot--gray {
+    background: rgba(33, 38, 45, 1);
+    border-color: rgba(44, 50, 58, 1);
+}
+
+.pipeline-dot--blue {
+    background: rgba(59, 130, 246, 0.75);
+    border-color: rgba(59, 130, 246, 0.75);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.35);
+}
+
+.pipeline-dot--green {
+    background: #2ea87e;
+    border-color: #2ea87e;
+    box-shadow: 0 0 8px rgba(46, 168, 126, 0.53);
+}
+
+.pipeline-dot--red {
+    background: rgba(220, 38, 38, 0.8);
+    border-color: rgba(220, 38, 38, 0.8);
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.35);
+}
+
+/* Label color modifiers */
+.pipeline-label--gray { color: rgba(72, 79, 88, 1); }
+.pipeline-label--blue { color: rgba(96, 165, 250, 1); font-weight: 600; }
+.pipeline-label--green { color: #2ea87e; font-weight: 600; }
+.pipeline-label--red { color: rgba(248, 113, 113, 1); font-weight: 600; }
+
+/* Multi-item step (Conference / Veto Override) */
+.pipeline-step--multi {
+    flex: 0 0 auto;
+    width: fit-content;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.pipeline-section-title {
+    font-family: monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(100, 110, 125, 0.8);
+    margin-bottom: 2px;
+}
+
+.pipeline-multi-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    width: 100%;
+}
+
+.pipeline-multi-label {
+    font-family: monospace;
+    font-size: 8px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+}
+
+.pipeline-multi-label--gray { color: rgba(72, 79, 88, 1); }
+.pipeline-multi-label--blue { color: rgba(96, 165, 250, 1); font-weight: 600; }
+.pipeline-multi-label--green { color: #2ea87e; font-weight: 600; }
+.pipeline-multi-label--red { color: rgba(248, 113, 113, 1); font-weight: 600; }
 
 /* ============================================================================
    ACTION TIMELINE TABLE STYLES

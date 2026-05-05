@@ -54,6 +54,9 @@ class BillType:
     id : auto
     policy_area : auto
     status : auto
+    status_code : auto
+    veto_in_history : auto
+    conf_in_history : auto
     title : auto
     origin_date : auto
     latest_action : auto
@@ -62,7 +65,6 @@ class BillType:
     summary : str | None = None
     is_AI_generated : bool | None = False
     actions: List["ActionType"]
-    current_stage: int | None = None
     sponsor: Optional["BillMemberType"] = None
     cosponsors: List["BillMemberType"] = strawberry.field(default_factory=list)
     related_bills: List[int] = strawberry.field(default_factory=list)

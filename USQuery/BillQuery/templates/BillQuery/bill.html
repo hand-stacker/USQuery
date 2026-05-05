@@ -32,20 +32,9 @@
                     </div>
 
                     <!-- Bill Status Pipeline -->
-                    {% if bill_stages %}
-                    <div class="status-pipeline">
-                        {% for stage in bill_stages %}
-                        {% with forloop.counter0 as i %}
-                        <div class="pipeline-step{% if i <= bill_status_code %} pipeline-step--done{% endif %}{% if i == bill_status_code %} pipeline-step--current{% endif %}">
-                            <div class="pipeline-dot"></div>
-                            <span class="pipeline-label">{{ stage }}</span>
-                        </div>
-                        {% if not forloop.last %}
-                        <div class="pipeline-connector{% if i < bill_status_code %} pipeline-connector--done{% endif %}"></div>
-                        {% endif %}
-                        {% endwith %}
-                        {% endfor %}
-                    </div>
+                    {% if pipeline_data %}
+                    {{ pipeline_data | json_script:"pipeline_data" }}
+                    <div id="bill-status-pipeline"></div>
                     {% endif %}
 
                     <hr class="my-3" style="border-color: rgba(255, 255, 255, 0.1);" />
@@ -247,6 +236,7 @@
 <!-- Scripts -->
 <script src="{% static 'scripts/AI_warning.js' %}" charset="utf-8"></script>
 <script src="{% static 'scripts/bill_details_carousel.js' %}" charset="utf-8"></script>
+<script src="{% static 'scripts/bill_pipeline.js' %}" charset="utf-8"></script>
 {% if show_prediction == True %}
 <script src="https://cdn.plot.ly/plotly-3.0.0.min.js" charset="utf-8"></script>
 <script src="{% static 'scripts/loadSize_bill.js' %}" charset="utf-8"></script>
