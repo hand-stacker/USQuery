@@ -1,7 +1,7 @@
 from datetime import datetime, date, timedelta
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
-import requests, asyncio, json, aiohttp, hashlib
+import requests, asyncio, json, aiohttp, hashlib, re
 from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
@@ -376,7 +376,7 @@ async def updateRecentBills(congress_num, date_str, bill_type):
 
     last_processed_action_date = datetime.strptime(date_str, '%Y-%m-%d') - timedelta(days=1)
     tracked_latest_date = datetime.strptime(date_str, '%Y-%m-%d')
-    header_str = '&api_key=' + settings.CONGRESS_KEY + '&format=json&limit=250&sort=actionDate+desc'
+    header_str = '&api_key=' + settings.CONGRESS_KEY + f'&format=json&limit=250&fromDateTime={date_str}T00:00:00Z'
     session = aiohttp.ClientSession()
     vote_session = aiohttp.ClientSession()
     async with asyncio.TaskGroup() as tg:
@@ -397,9 +397,6 @@ async def updateRecentBills(congress_num, date_str, bill_type):
                     await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
                     if latest_action_date > tracked_latest_date:
                         tracked_latest_date = latest_action_date
-                else :
-                    API_response = None
-                    break
         if API_response is not None and 'next' in API_response['pagination']:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
@@ -497,6 +494,224 @@ async def _sync_bill_relations(session, bill, congress_num, _type, num):
         bill.policy_area = subjects_data.get('policyArea', {}).get('name', 'Not Specified Yet.')
         await bill.asave()
 
+_TEXT_CODES = frozenset({8000, 17000, 19500, 20500})
+
+async def compute_status_code(origin_code, action_codes_desc, initial_status=0):
+    """
+    Derives bill status from Congress API action codes using a chronological
+    state machine. action_codes_desc is newest-first (as the API returns);
+    the function reverses it internally.
+     
+    Not set here (require text parsing or end-of-congress detection):
+     18/19  Tabled/Expired in Origin Committee
+     22     Origin Concurs with Outer Amendment
+     27-29  Expired/Tabled after Origin passage
+     38/39  Tabled/Expired in Outer Committee
+     42     Outer Concurs with Origin Amendment
+     47-49  Expired/Tabled after Outer passage
+     58/59  Tabled/Expired in Conference
+    """
+    is_house = origin_code == 'H'
+    origin_reported  = 5000  if is_house else 14000
+    origin_pass    = 8000  if is_house else 17000
+    outer_reported   = 14000 if is_house else 5000
+    outer_pass     = 17000 if is_house else 8000
+    origin_fail    = 9000  if is_house else 18000
+    outer_fail     = 18000 if is_house else 9000
+    origin_diff    = 19000 if is_house else 20000
+    outer_diff     = 20000 if is_house else 19000
+    origin_pass_amnd = 19500 if is_house else 20500
+    outer_pass_amnd = 20500 if is_house else 19500
+
+    origin_conf_accept = 21000 if is_house else 23000
+    origin_conf_reject = 22000 if is_house else 24000
+    outer_conf_accept  = 23000 if is_house else 21000
+    outer_conf_reject  = 24000 if is_house else 22000
+
+    origin_veto_pass = 32000 if is_house else 34000
+    origin_veto_fail = 33000 if is_house else 35000
+    outer_veto_pass  = 34000 if is_house else 32000
+    outer_veto_fail  = 35000 if is_house else 33000
+
+    ORIGIN_CMTE = frozenset((2000, 3000, 4000, 4100, 4200, 4900, 5000, 5500, 1010) if is_house else (11000, 12000, 13000, 13100, 13200, 13900, 14000, 14500, 14900, 10010))
+    OUTER_CMTE  = frozenset((11000, 12000, 13000, 13100, 13200, 13900, 14000, 14500, 14900, 10010) if is_house else (2000, 3000, 4000, 4100, 4200, 4900, 5000, 5500, 1010))
+
+    INTROS = frozenset((1000, 1010, 1025, 10000, 10010, 10025))
+    # tabled bills do not count as terminal as there is still a
+    # (very) rare possibility of further actions in the future
+    TERMINAL_CODES = frozenset((19, 27, 29, 39, 47, 49, 59, 61, 62, 69, 75))
+
+    codes = []
+    for item in action_codes_desc:
+        if isinstance(item, tuple):
+            c, text = item
+        else:
+            c, text = item, None
+        try:
+            codes.append((int(c), text))
+        except (ValueError, TypeError):
+            continue
+
+    status = max(initial_status, 0)  # -1 (uninitialized) treated as 0
+    conf_origin_accepted = (initial_status == 54)
+    conf_outer_accepted  = (initial_status == 55)
+
+    for code, action_text in reversed(codes):
+        # realistically would there ever be a case where
+        # we get new actions after a terminal status??
+        if status in TERMINAL_CODES:
+            break
+        match code:
+            # if intro
+            case _ if code in INTROS:
+                status = 0
+
+            ## Handles origin committee
+            ##
+            # if first time bill enters origin committee
+            case _ if code in ORIGIN_CMTE and status < 20: 
+                status = 10
+
+            ## Handles origin floor actions
+            ##
+            # if reported to origin for first time
+            case _ if code == origin_reported and status < 20:
+                status = 20
+            # if passes origin
+            case _ if code == origin_pass:
+                if action_text and 'with an amendment' in action_text: # checks if (txt matches "with an amendment") and thus sents status to 21
+                    status = 21
+                else : # if status is originally an outer amend set status to 22 otherwise 25
+                    status = 22 if (status == 41) else 25
+            # if fails origin before other chamber ever recieved bill
+            case _ if code == origin_fail and status < 40:
+                status = 26
+            # if passed an amended bill
+            case _ if code == origin_pass_amnd:
+                if action_text and re.search(r'On motion that the House agree[\w ]* to the Senate amendment|Senate concurred in the House amendment', action_text):# if txt matches ("On motion that the House agree[\w ]* to the Senate amendment" or "Senate concurred in the House amendment"):
+                    status = 22 if ('with an amendment' not in action_text) else 21 # if matches "with an amendment" set to 21
+
+            ## Handles Outer Committee
+            ##
+            # if origin passed for first time and recieved in outer chamber committee
+            case _ if code in OUTER_CMTE and status == 25:
+                status = 30
+
+            ## Handles Outer chamber floor actions
+            ##
+            # if reported to outer chamber
+            case _ if code == outer_reported and status in {25, 30}:
+                status = 40
+            # if passes outer chamber
+            case _ if code == outer_pass and status in {25, 30, 21}:
+                if action_text and 'with an amendment' in action_text: # checks if (txt matches "with an amendment") and thus sents status to 41
+                    status = 41
+                else : # if status is originally an origin amend set status to 42 otherwise 45
+                    status = 42 if (status == 21) else 45
+            # if fail outer chamber
+            case _ if code == outer_fail and status >= 20:
+                status = 46
+            # if passed an amended bill
+            case _ if code == outer_pass_amnd:
+                if action_text and re.search(r'On motion that the House agree[\w ]* to the Senate amendment|Senate concurred in the House amendment', action_text):# if txt matches ("On motion that the House agree[\w ]* to the Senate amendment" or "Senate concurred in the House amendment"):
+                    status = 42 if ('with an amendment' not in action_text) else 41 # if matches "with an amendment" set to 21
+
+            ## Handles Conference Committees
+            ##
+            # conference committee started
+            case 20800 | 19000 | 20000 if status < 50:
+                status = 50
+            # conference committee made a report for voting
+            case 20900 if status == 50:
+                status = 53
+            # if report agreed to in origin
+            case _ if code == origin_conf_accept:
+                status = 60 if status == 55 else 54
+            # if report agreed to in outer
+            case _ if code == outer_conf_accept:
+                status = 60 if status == 54 else 55
+
+            ## handles law acceptance or if pocket vetoed
+            ##
+            # if presented to president
+            case 28000:
+                status = 60
+            # if signed by pres
+            case 29000 | 37000 | 42000 | 36000 | 41000:
+                status = 61
+            # if passed without signature by presiident
+            case 29100 | 38000 | 40000 | 43000 | 45000:
+                status = 62
+            # if became law despite veto
+            case 39000 | 44000:
+                status = 63
+            # if pocket vetoed
+            case 30000:
+                status = 69
+
+            ## Handles vetoes
+            ##
+            # if vetoed
+            case 31000:
+                status = 70
+            # if both pass over veto
+            case _ if code == outer_veto_pass and status == 71:
+                status = 75
+            case _ if code == origin_veto_pass and status == 72:
+                status = 75
+            # if one pass over veto
+            case _ if code == origin_veto_pass:
+                status = 71
+            case _ if code == outer_veto_pass:
+                status = 72
+            # if one fails
+            case _ if code == origin_veto_fail:
+                status = 76
+            case _ if code == outer_veto_fail:
+                status = 77
+    return status
+
+def compute_history_flags(action_codes_desc):
+    """Returns (veto_in_history, conf_in_history) by scanning raw action codes."""
+    VETO_CODES = {30000, 31000, 32000, 33000, 34000, 35000, 39000, 44000}
+    CONF_CODES = {19000, 20000, 20800, 20900, 21000, 22000, 23000, 24000}
+    veto = conf = False
+    for item in action_codes_desc:
+        c = item[0] if isinstance(item, tuple) else item
+        try:
+            code = int(c)
+        except (ValueError, TypeError):
+            continue
+        veto = veto or code in VETO_CODES
+        conf = conf or code in CONF_CODES
+        if veto and conf:
+            break
+    return veto, conf
+
+
+
+# This will be run once for existing bills, it goes through
+# all actions and updates status code rather than cutting
+# action codes to latest_action (date) stored in bill data
+async def getAllActionCodes(session, header_str, actions):
+    ret = [None] * int(actions['pagination']['count'])
+    indx = 0
+    while actions is not None:
+        for a in actions['actions']:
+            ac = a.get('actionCode')
+            if ac:
+                try:
+                    ac_int = int(ac)
+                except (ValueError, TypeError):
+                    ac_int = None
+                text = a.get('text') if ac_int in _TEXT_CODES else None
+                ret[indx] = (ac, text)
+                indx += 1
+        if 'next' in actions['pagination']:
+            actions = await connectASYNC(session, actions['pagination']['next'], header_str)
+        else:
+            actions = None
+    return ret[0:indx]
 
 async def updateBill(congress_num, _type, num) :
     url = settings.CONGRESS_DIR + 'bill/' + str(congress_num) + '/' + _type + '/' + str(num) + '/actions?'
@@ -514,8 +729,17 @@ async def updateBill(congress_num, _type, num) :
     congress = congress.result()
     bill = bill.result()
     API_response_actions = API_response_actions.result()
+    action_codes_seen = []
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
+            ac = a.get('actionCode')
+            if ac:
+                try:
+                    ac_int = int(ac)
+                except (ValueError, TypeError):
+                    ac_int = None
+                text = a.get('text') if ac_int in _TEXT_CODES else None
+                action_codes_seen.append((ac, text))
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
@@ -548,41 +772,45 @@ async def updateBill(congress_num, _type, num) :
                 vote = await Vote.objects.aget_or_create(**vote_data)
                 vote = vote[0]
                 members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                yeas = Membership.objects.none()
-                nays = Membership.objects.none()
-                pres = Membership.objects.none()
-                novt = Membership.objects.none()
-                for m in members:
-                    if (in_house == 1):
-                        mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
-                        mem_vote = m['vote']
-                    else :
-                        mem_data = {
-                            'congress' : congress,
-                            'house' : False,
-                            'member__last_name__iexact' : m['last_name'],
-                            'state' : m['state']
-                        }
-                        mem_vote = m['vote_cast']
-                    member = Membership.objects.filter(**mem_data)
-                    if mem_vote in ['Yea', 'Aye', 'Guilty']:
-                        yeas |= member
-                    elif mem_vote in ['Nay', 'No', 'Not Guilty']:
-                        nays |= member
-                    elif mem_vote == 'Present':
-                        pres |= member
-                    else:
-                        novt |= member
+                if in_house == 1:
+                    yea_ids, nay_ids, pres_ids, novt_ids = [], [], [], []
+                    for m in members:
+                        v = m['vote']
+                        if v in ('Yea', 'Aye', 'Guilty'):      yea_ids.append(m['legislator']['@name-id'])
+                        elif v in ('Nay', 'No', 'Not Guilty'): nay_ids.append(m['legislator']['@name-id'])
+                        elif v == 'Present':                   pres_ids.append(m['legislator']['@name-id'])
+                        else:                                  novt_ids.append(m['legislator']['@name-id'])
+                    base = {'congress': congress, 'house': True}
+                    yeas = Membership.objects.filter(**base, member__id__in=yea_ids)
+                    nays = Membership.objects.filter(**base, member__id__in=nay_ids)
+                    pres = Membership.objects.filter(**base, member__id__in=pres_ids)
+                    novt = Membership.objects.filter(**base, member__id__in=novt_ids)
+                else:
+                    yea_q = nay_q = pres_q = novt_q = Q()
+                    for m in members:
+                        q = Q(member__last_name__iexact=m['last_name'], state=m['state'])
+                        v = m['vote_cast']
+                        if v in ('Yea', 'Aye', 'Guilty'):      yea_q |= q
+                        elif v in ('Nay', 'No', 'Not Guilty'): nay_q |= q
+                        elif v == 'Present':                   pres_q |= q
+                        else:                                  novt_q |= q
+                    base = {'congress': congress, 'house': False}
+                    yeas = Membership.objects.filter(**base).filter(yea_q)  if yea_q  else Membership.objects.none()
+                    nays = Membership.objects.filter(**base).filter(nay_q)  if nay_q  else Membership.objects.none()
+                    pres = Membership.objects.filter(**base).filter(pres_q) if pres_q else Membership.objects.none()
+                    novt = Membership.objects.filter(**base).filter(novt_q) if novt_q else Membership.objects.none()
                 async with asyncio.TaskGroup() as tg:
                     tg.create_task(vote.yeas.aset(yeas))
                     tg.create_task(vote.nays.aset(nays))
                     tg.create_task(vote.pres.aset(pres))
                     tg.create_task(vote.novt.aset(novt))
-                # print('Added Vote : ' + str(vote_id))
         if 'next' in API_response_actions['pagination']:
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
+    bill.status_code = await compute_status_code(bill.getOriginCode(), action_codes_seen)
+    bill.veto_in_history, bill.conf_in_history = compute_history_flags(action_codes_seen)
+    await bill.asave()
     await _sync_bill_relations(session, bill, congress_num, _type, num)
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
@@ -606,6 +834,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
         API_response_actions = tg.create_task(connectASYNC(session, API_response_bill['bill']['actions']['url'], header_str))
         member = tg.create_task(Member.objects.aget(id=API_response_bill['bill']['sponsors'][0]['bioguideId']))
     API_response_actions = API_response_actions.result()
+    API_response_actions_store = API_response_actions
     member = member.result()
     date = API_response_bill['bill']['introducedDate'].split('-')
     dtime = datetime(int(date[0]), int(date[1]), int(date[2]))
@@ -617,7 +846,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
         return
     enacted = ('laws' in API_response_bill['bill']) and (len(API_response_bill['bill']['laws']) > 0)
     status = enacted
-    status_code = 4 if enacted else 0
+    status_code = 61 if enacted else 0
 
     # Track previous latest_action when bill already exists so we can stop processing older actions
     prev_latest_action = None
@@ -627,8 +856,6 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
         prev_latest_action = bill.latest_action
         bill.title = b['title']
         bill.status = status
-        if enacted:
-            bill.status_code = status_code
         bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
         await bill.asave()
     else :
@@ -648,6 +875,7 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
         prev_latest_action = prev_latest_action.date()
     new_action = False
     new_vote = False
+    action_codes_seen = []
 
     while API_response_actions is not None:
         for a in API_response_actions['actions']:
@@ -657,17 +885,26 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                 action_date = datetime.strptime(a['actionDate'], '%Y-%m-%d').date()
             except Exception:
                 action_date = None
-            if prev_latest_action is not None and action_date is not None and action_date <= prev_latest_action:
+            if prev_latest_action is not None and action_date is not None and action_date < prev_latest_action:
                 # stop processing further actions (they are older)
                 API_response_actions = None
                 break
+            ac = a.get('actionCode')
+            if ac:
+                try:
+                    ac_int = int(ac)
+                except (ValueError, TypeError):
+                    ac_int = None
+                text = a.get('text') if ac_int in _TEXT_CODES else None
+                action_codes_seen.append((ac, text))
             new_action = True
             if 'recordedVotes' in a:
                 in_house = 0 if (a['recordedVotes'][0]['chamber'] != 'House') else 1
                 vote_id = congress_num * 10000000 + in_house * 1000000 + int(a['recordedVotes'][0]['sessionNumber']) * 100000 + int(a['recordedVotes'][0]['rollNumber'])
                 set_vote = Vote.objects.filter(id = vote_id)
-                if ignore_exists and (await set_vote.aexists()):
-                    return
+                vote_exists = await set_vote.aexists()
+                if ignore_exists and vote_exists:
+                    continue
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
                     vote_xml = ET.XML(vote_xml)
@@ -690,43 +927,45 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                     'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
                     'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
                 }
-                if not (await set_vote.aexists()):
+                if not vote_exists:
                     vote_data['dateTime'] = dt
                     vote, created = await Vote.objects.aget_or_create(**vote_data)
-                else: 
+                else:
                     vote = await set_vote.afirst()
                     created = False
                 vote.dateTime = dt
-                await vote.asave()
                 if created or not ignore_exists:
                     vote.bill = bill
-                    await vote.asave()
+                await vote.asave()
+                if created or not ignore_exists:
                     members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                    yeas = Membership.objects.none()
-                    nays = Membership.objects.none()
-                    pres = Membership.objects.none()
-                    novt = Membership.objects.none()
-                    for m in members:
-                        if (in_house == 1):
-                            mem_data = {'congress' : congress, 'member__id' : m['legislator']['@name-id'], 'house' : True}
-                            mem_vote = m['vote']
-                        else :
-                            mem_data = {
-                                'congress' : congress,
-                                'house' : False,
-                                'member__last_name__iexact' : m['last_name'],
-                                'state' : m['state']
-                            }
-                            mem_vote = m['vote_cast']
-                        member = Membership.objects.filter(**mem_data)
-                        if mem_vote in ['Yea', 'Aye', 'Guilty']:
-                            yeas |= member
-                        elif mem_vote in ['Nay', 'No', 'Not Guilty']:
-                            nays |= member
-                        elif mem_vote == 'Present':
-                            pres |= member
-                        else:
-                            novt |= member
+                    if in_house == 1:
+                        yea_ids, nay_ids, pres_ids, novt_ids = [], [], [], []
+                        for m in members:
+                            v = m['vote']
+                            if v in ('Yea', 'Aye', 'Guilty'):      yea_ids.append(m['legislator']['@name-id'])
+                            elif v in ('Nay', 'No', 'Not Guilty'): nay_ids.append(m['legislator']['@name-id'])
+                            elif v == 'Present':                   pres_ids.append(m['legislator']['@name-id'])
+                            else:                                  novt_ids.append(m['legislator']['@name-id'])
+                        base = {'congress': congress, 'house': True}
+                        yeas = Membership.objects.filter(**base, member__id__in=yea_ids)
+                        nays = Membership.objects.filter(**base, member__id__in=nay_ids)
+                        pres = Membership.objects.filter(**base, member__id__in=pres_ids)
+                        novt = Membership.objects.filter(**base, member__id__in=novt_ids)
+                    else:
+                        yea_q = nay_q = pres_q = novt_q = Q()
+                        for m in members:
+                            q = Q(member__last_name__iexact=m['last_name'], state=m['state'])
+                            v = m['vote_cast']
+                            if v in ('Yea', 'Aye', 'Guilty'):      yea_q |= q
+                            elif v in ('Nay', 'No', 'Not Guilty'): nay_q |= q
+                            elif v == 'Present':                   pres_q |= q
+                            else:                                  novt_q |= q
+                        base = {'congress': congress, 'house': False}
+                        yeas = Membership.objects.filter(**base).filter(yea_q)  if yea_q  else Membership.objects.none()
+                        nays = Membership.objects.filter(**base).filter(nay_q)  if nay_q  else Membership.objects.none()
+                        pres = Membership.objects.filter(**base).filter(pres_q) if pres_q else Membership.objects.none()
+                        novt = Membership.objects.filter(**base).filter(novt_q) if novt_q else Membership.objects.none()
                     async with asyncio.TaskGroup() as tg:
                         tg.create_task(vote.yeas.aset(yeas))
                         tg.create_task(vote.nays.aset(nays))
@@ -744,6 +983,23 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
             API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
         else:
             API_response_actions = None
+    origin_code = bill.getOriginCode()
+    if bill.status_code == -1:
+        action_codes_seen = await getAllActionCodes(session, header_str, API_response_actions_store)
+    new_sc = await compute_status_code(
+        origin_code, action_codes_seen,
+        initial_status=bill.status_code if bill_exists else 0,
+    )
+    if enacted:
+        new_sc = max(new_sc, 61)
+    new_veto, new_conf = compute_history_flags(action_codes_seen)
+    new_veto = new_veto or bill.veto_in_history
+    new_conf = new_conf or bill.conf_in_history
+    if new_sc != bill.status_code or new_veto != bill.veto_in_history or new_conf != bill.conf_in_history:
+        bill.status_code = new_sc
+        bill.veto_in_history = new_veto
+        bill.conf_in_history = new_conf
+        await bill.asave()
     await _sync_bill_relations(session, bill, congress_num, _type, b['number'])
     if new_action and not new_vote:
         await send_bill_notification(
@@ -1019,15 +1275,17 @@ async def billHtml(bill, congress_id, bill_type, num):
         context['bill_state_type'] = 'Still Just a Bill'
 
     # Bill status pipeline
-    origin = bill.getOriginCode()
-    if origin == 'H':
-        context['bill_stages'] = ['Introduced', 'In Committee', 'Passed House', 'Passed Senate', 'Enacted']
-    else:
-        context['bill_stages'] = ['Introduced', 'In Committee', 'Passed Senate', 'Passed House', 'Enacted']
-    status_code = getattr(bill, 'status_code', None)
-    if status_code is None:
-        status_code = 4 if bill.status else 0
-    context['bill_status_code'] = status_code
+    sc = getattr(bill, 'status_code', None)
+    if sc is None:
+        sc = 61 if bill.status else 0
+    context['pipeline_data'] = {
+        'status_code': sc,
+        'origin': bill.getOrigin(),
+        'outer': 'House' if bill.getOrigin() == 'Senate' else 'Senate',
+        'conf_in_history': bool(getattr(bill, 'conf_in_history', False)),
+        'veto_in_history': bool(getattr(bill, 'veto_in_history', False)),
+        'passed': bool(bill.status),
+    }
 
     context['actions_table'] = await actionTable(API_data[1], bill_type, num)
     member_link = '/member-query/results/?congress='

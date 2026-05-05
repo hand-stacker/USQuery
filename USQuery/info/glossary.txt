@@ -1,0 +1,88 @@
+﻿ ▄▄ • ▄▄▌        .▄▄ · .▄▄ ·  ▄▄▄· ▄▄▄   ▄· ▄▌
+▐█ ▀ ▪██•  ▪     ▐█ ▀. ▐█ ▀. ▐█ ▀█ ▀▄ █·▐█▪██▌
+▄█ ▀█▄██▪   ▄█▀▄ ▄▀▀▀█▄▄▀▀▀█▄▄█▀▀█ ▐▀▀▄ ▐█▌▐█▪
+▐█▄▪▐█▐█▌▐▌▐█▌.▐▌▐█▄▪▐█▐█▄▪▐█▐█ ▪▐▌▐█•█▌ ▐█▀·.
+·▀▀▀▀ .▀▀▀  ▀█▄▀▪ ▀▀▀▀  ▀▀▀▀  ▀  ▀ .▀  ▀  ▀ • 
+
+
+ _             ___     
+|_) o  |  |     |  _| _
+|_) |  |  |    _|_(_|_>
+
+Usually Bills are in the form CCC_T_XXXX Where:
+	- CCC is the congress number (ex:119)
+	- T is the Bill type enum (0-3 are Senate origin and 4-7 are House origin)
+	- XXXX is the Bill number (ex: HR *3923* )
+
+When the Bill number is beyond 9999 we get ids of the form CCC_T_XXXXX, with an extra X integer at the end
+	- This is just because of poor planning when designing the primary ids, fixing would
+		require literally deleting and recreating all the rows in db so thats not happening
+ _              __                   __           
+|_) o  |  |    (_ _|_ _ _|_    _    /   _  _| _  _
+|_) |  |  |    __) |_(_| |_|_|_>    \__(_)(_|(/__>
+
+-1 Uninitiated, need to read actions
+---
+00 Introduced X
+09 Expired
+----
+10 In Origin Committee X
+19 Expired in Origin Committee
+----
+20 Reported in Origin Chamber X
+21 Amended by Origin - Awaiting Outer X
+22 Passed Outer Amended in Origin Chamber X
+25 Passed Origin Chamber X
+26 Failed Origin Chamber X
+27 Expired after passing Origin after Amendment
+28 Expired in Origin floor
+29 Expired after passing Origin
+----
+30 In Outer Committee X
+39 Expired in Outer Committee
+----
+40 Reported in Outer Chamber X
+41 Amended by Outer - Awaiting Origin X
+42 Passed Origin Amendment in Outer Chamber X
+45 Passed Outer Chamber X
+46 Failed Outer Chamber X
+47 Expired after passing Outer after Amendment
+48 Expired in Outer floor
+49 Expired after passing Outer
+----
+50 Conference Committee started X
+51 Conference Proposal accepted in Origin
+52 Conference Proposal accepted in Outer
+53 Conference Report Made X
+54 Origin Chamber accept Report X
+55 Outer Chamber accepts Report X
+59 Expired in Conference
+(once both Chambers accept Report it goes to status 60)
+----
+60 Enrolled / Presented to President X
+61 Became Law with Signature X
+62 Became Law without Signature X
+63 Became Law over veto X
+69 Pocket Vetoed (Expired after congress adjourned waiting for president action) X
+----
+70  Vetoed X
+71  Veto Override passed in Origin X
+72  Veto Override passed in Outer X
+75  Veto Overridden X
+76  Veto Override failed in Origin X
+77  Veto Override failed in Outer X
+----
+
+
+
+
+                                        _
+           |\___/|                      \\
+        _  ) @ @ (    |\_/|              ||
+        \\=\ `Y` /=   )~ ~ `,_.-""""-.  //
+        //  )===(    =\Y_= /          \//
+        \\ /     \     `"`\       /    /
+         \ | ! ! |         |    \ |   / "        
+          /! | | ;\         \   /- \  \ %
+          \ :; ;: /         || |  // /` 
+_/\_/\_/\_/\|_V_|/_/\_/\_/\_((_|\((_//\_/\_/\_/\_

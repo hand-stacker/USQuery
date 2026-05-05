@@ -7,6 +7,9 @@
     <TestFramework>Pytest</TestFramework>
     <InterpreterId>MSBuild|env3.11|$(MSBuildProjectFullPath)</InterpreterId>
     <SuppressConfigureTestFrameworkPrompt>true</SuppressConfigureTestFrameworkPrompt>
+    <CommandLineArguments>
+    </CommandLineArguments>
+    <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
   </PropertyGroup>
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -174,6 +177,7 @@
     <Folder Include="BillQuery\templates\" />
     <Folder Include="BillQuery\templates\BillQuery\" />
     <Folder Include="models\" />
+    <Folder Include="info\" />
     <Folder Include="notifications\" />
     <Folder Include="notifications\migrations\" />
     <Folder Include="SenateQuery\static\SenateQuery\" />
@@ -241,6 +245,10 @@
     <Content Include="BillQuery\templates\BillQuery\vote.html" />
     <Content Include="BillQuery\templates\BillQuery\vote_search_results.html" />
     <Content Include="build.sh" />
+    <Content Include="docker-compose.yml" />
+    <Content Include="Dockerfile" />
+    <Content Include="entrypoint.prod.sh" />
+    <Content Include="info\glossary.txt" />
     <Content Include="models\model.keras" />
     <Content Include="models\model_with_state_welltrained.keras" />
     <Content Include="requirements.txt" />
