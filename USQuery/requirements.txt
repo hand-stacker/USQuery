@@ -24,3 +24,4 @@ strawberry-django-auth
 stripe
 anthropic
 pgvector
+PyJWT
