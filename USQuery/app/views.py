@@ -93,6 +93,12 @@ class CustomLoginView(LoginView):
     but the user account is inactive (not yet verified), redirects to the verify-email page
     so the user can enter their verification code instead of just getting a login error.
     """
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["google_client_id"] = _get_google_web_client_id()
+        ctx["apple_client_id"] = getattr(settings, "APPLE_CLIENT_ID", None)
+        return ctx
+
     def form_invalid(self, form):
         # Django authenticate() will return None for inactive users :/
         # To detect correct credentials for unactivated accounts,
