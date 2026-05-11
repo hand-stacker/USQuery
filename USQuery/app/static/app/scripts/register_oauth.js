@@ -171,6 +171,13 @@
             usePopup: true
         });
 
+        window.AppleID.auth.render("appleid-signin", {
+            color: "black",
+            border: true,
+            type: "continue",
+            borderRadius: 20
+        });
+
         document.addEventListener("AppleIDSignInOnSuccess", async function (event) {
             try {
                 var auth = event.detail.authorization || {};
