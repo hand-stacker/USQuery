@@ -162,38 +162,35 @@
 
     function initApple(config) {
         if (!config.appleClientId || !config.appleUrl) return;
-        var appleBtn = document.getElementById("appleBtn");
-        if (!appleBtn) return;
+        if (!window.AppleID || !window.AppleID.auth) return;
 
-        appleBtn.addEventListener("click", async function (ev) {
-            ev.preventDefault();
+        window.AppleID.auth.init({
+            clientId: config.appleClientId,
+            scope: "name email",
+            redirectURI: window.location.origin + config.appleUrl,
+            usePopup: true
+        });
 
-            if (!window.AppleID || !window.AppleID.auth) {
-                showOAuthError("Apple Sign in JS SDK failed to load.");
-                return;
-            }
-
+        document.addEventListener("AppleIDSignInOnSuccess", async function (event) {
             try {
-                window.AppleID.auth.init({
-                    clientId: config.appleClientId,
-                    scope: "name email",
-                    redirectURI: window.location.origin + config.registerUrl,
-                    usePopup: true
-                });
-
-                var resp = await window.AppleID.auth.signIn();
-                var idToken = (resp && resp.authorization && (resp.authorization.id_token || resp.authorization.idToken))
-                    || resp.id_token
-                    || resp.idToken;
-                var email = (resp && resp.user && resp.user.email) || "";
+                var auth = event.detail.authorization || {};
+                var idToken = auth.id_token || auth.idToken;
+                var user = event.detail.user || {};
+                var email = user.email || "";
 
                 if (!idToken) throw new Error("Apple did not return an identity token.");
 
                 var out = await postForm(config.appleUrl, { identity_token: idToken, email: email });
                 window.location.assign(out.redirect || "/");
             } catch (e) {
-                var msg = (e && e.error) ? e.error : ((e && e.message) ? e.message : "Apple sign-in failed.");
-                showOAuthError(msg);
+                showOAuthError(e.message || "Apple sign-in failed.");
+            }
+        });
+
+        document.addEventListener("AppleIDSignInOnFailure", function (event) {
+            var error = event.detail && event.detail.error;
+            if (error && error !== "popup_closed_by_user") {
+                showOAuthError(error);
             }
         });
     }
