@@ -17,6 +17,7 @@ from django.http import JsonResponse
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import jwt
+import json
 import requests as http_requests
 
 
@@ -279,7 +280,7 @@ def _get_apple_public_key(kid):
         keys = resp.json().get('keys', [])
         _apple_jwks_cache.clear()
         for k in keys:
-            _apple_jwks_cache[k['kid']] = jwt.algorithms.RSAAlgorithm.from_jwk(k)
+            _apple_jwks_cache[k['kid']] = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(k))
     return _apple_jwks_cache.get(kid)
 
 

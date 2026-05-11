@@ -31,6 +31,9 @@ from app.models import UserProfile as AppUserProfile
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import jwt
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def home(request):
@@ -226,6 +229,14 @@ def oauth_apple_web(request):
     Web-only endpoint: accepts an Apple identity token (+ optional email),
     creates/links the user, and establishes a Django session.
     """
+    try:
+        return _oauth_apple_web_inner(request)
+    except Exception as exc:
+        logger.exception("Unhandled error in oauth_apple_web")
+        return JsonResponse({"detail": f"Server error: {exc}"}, status=500)
+
+
+def _oauth_apple_web_inner(request):
     token = request.POST.get("identity_token") or ""
     client_email = (request.POST.get("email") or "").lower()
     apple_client_id = getattr(settings, "APPLE_CLIENT_ID", None)
