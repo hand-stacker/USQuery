@@ -47,17 +47,15 @@
 
                     <div class="mb-2">
                         {% if apple_client_id %}
-                            <div id="appleid-signin"
-                                 data-color="black"
-                                 data-border="true"
-                                 data-type="continue"
-                                 data-border-radius="20"
-                                 data-client-id="{{ apple_client_id }}"
-                                 data-redirect-uri="https://{{ request.get_host }}{% url 'oauth-apple-web' %}"
-                                 data-scope="name email"
-                                 data-use-popup="true"
-                                 style="width:100%;height:44px;">
-                            </div>
+                            <a href="javascript:void(0)" id="appleBtn" class="oauth-btn oauth-btn--hidden">
+                                <span class="oauth-icon" aria-hidden="true">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 814 1000" width="18" height="18">
+                                        <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46.7 790.7 0 663 0 541.8c0-207.5 135.4-317.3 269-317.3 70.1 0 128.4 46.4 172.5 46.4 42.8 0 109.6-49 192.1-49 30.8.1 111.6 4.2 168.8 68z"/>
+                                        <path d="M554.1 219.2c25.1-30.5 43.6-73.2 43.6-115.9 0-5.9-.5-11.9-1.5-16.7-41.3 1.5-90.9 27.6-120.8 58.1-23.5 25.2-45.7 67.8-45.7 111.2 0 6.5 1 13 1.5 15.3 2.5.5 6.5 1 10.5 1 37.1 0 83.4-24.7 112.4-53z"/>
+                                    </svg>
+                                </span>
+                                Continue with Apple
+                            </a>
                         {% else %}
                             <div class="auth-help">Apple sign-in isn't configured yet.</div>
                         {% endif %}
