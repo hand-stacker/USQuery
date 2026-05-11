@@ -162,30 +162,58 @@
 
     function initApple(config) {
         if (!config.appleClientId || !config.appleUrl) return;
-        if (!window.AppleID || !window.AppleID.auth) return;
 
-        document.addEventListener("AppleIDSignInOnSuccess", async function (event) {
-            try {
-                var auth = event.detail.authorization || {};
-                var idToken = auth.id_token || auth.idToken;
-                var user = event.detail.user || {};
-                var email = user.email || "";
+        var maxAttempts = 40;
+        var attempts = 0;
 
-                if (!idToken) throw new Error("Apple did not return an identity token.");
-
-                var out = await postForm(config.appleUrl, { identity_token: idToken, email: email });
-                window.location.assign(out.redirect || "/");
-            } catch (e) {
-                showOAuthError(e.message || "Apple sign-in failed.");
+        function tryInitApple() {
+            if (!window.AppleID || !window.AppleID.auth) {
+                attempts += 1;
+                if (attempts >= maxAttempts) return;
+                window.setTimeout(tryInitApple, 250);
+                return;
             }
-        });
 
-        document.addEventListener("AppleIDSignInOnFailure", function (event) {
-            var error = event.detail && event.detail.error;
-            if (error && error !== "popup_closed_by_user") {
-                showOAuthError(error);
+            AppleID.auth.init({
+                clientId: config.appleClientId,
+                scope: "name email",
+                redirectURI: window.location.protocol + "//" + window.location.host + config.appleUrl,
+                usePopup: true
+            });
+
+            var btn = document.getElementById("appleBtn");
+            if (btn) {
+                btn.classList.remove("oauth-btn--hidden");
+                btn.addEventListener("click", function () {
+                    AppleID.auth.signIn();
+                });
             }
-        });
+
+            document.addEventListener("AppleIDSignInOnSuccess", async function (event) {
+                try {
+                    var auth = event.detail.authorization || {};
+                    var idToken = auth.id_token || auth.idToken;
+                    var user = event.detail.user || {};
+                    var email = user.email || "";
+
+                    if (!idToken) throw new Error("Apple did not return an identity token.");
+
+                    var out = await postForm(config.appleUrl, { identity_token: idToken, email: email });
+                    window.location.assign(out.redirect || "/");
+                } catch (e) {
+                    showOAuthError(e.message || "Apple sign-in failed.");
+                }
+            });
+
+            document.addEventListener("AppleIDSignInOnFailure", function (event) {
+                var error = event.detail && event.detail.error;
+                if (error && error !== "popup_closed_by_user") {
+                    showOAuthError(error);
+                }
+            });
+        }
+
+        tryInitApple();
     }
 
     function boot() {
