@@ -164,20 +164,6 @@
         if (!config.appleClientId || !config.appleUrl) return;
         if (!window.AppleID || !window.AppleID.auth) return;
 
-        window.AppleID.auth.init({
-            clientId: config.appleClientId,
-            scope: "name email",
-            redirectURI: window.location.origin + config.appleUrl,
-            usePopup: true
-        });
-
-        window.AppleID.auth.render("appleid-signin", {
-            color: "black",
-            border: true,
-            type: "continue",
-            borderRadius: 20
-        });
-
         document.addEventListener("AppleIDSignInOnSuccess", async function (event) {
             try {
                 var auth = event.detail.authorization || {};
