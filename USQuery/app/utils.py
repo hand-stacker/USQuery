@@ -503,12 +503,13 @@ async def compute_status_code(origin_code, action_codes_desc, initial_status=0):
     the function reverses it internally.
      
     Not set here (require text parsing or end-of-congress detection):
+      9     Expired as Introduced
      18/19  Tabled/Expired in Origin Committee
      22     Origin Concurs with Outer Amendment
-     27-29  Expired/Tabled after Origin passage
+     27-29  Expired/Tabled after Origin passage (28 = expired on origin floor)
      38/39  Tabled/Expired in Outer Committee
      42     Outer Concurs with Origin Amendment
-     47-49  Expired/Tabled after Outer passage
+     47-49  Expired/Tabled after Outer passage (48 = expired on outer floor)
      58/59  Tabled/Expired in Conference
     """
     is_house = origin_code == 'H'
@@ -537,9 +538,9 @@ async def compute_status_code(origin_code, action_codes_desc, initial_status=0):
     OUTER_CMTE  = frozenset((11000, 12000, 13000, 13100, 13200, 13900, 14000, 14500, 14900, 10010) if is_house else (2000, 3000, 4000, 4100, 4200, 4900, 5000, 5500, 1010))
 
     INTROS = frozenset((1000, 1010, 1025, 10000, 10010, 10025))
-    # tabled bills do not count as terminal as there is still a
-    # (very) rare possibility of further actions in the future
-    TERMINAL_CODES = frozenset((19, 27, 29, 39, 47, 49, 59, 61, 62, 69, 75))
+    # tabled codes (18, 27, 28, 47, 48, ...) are NOT terminal — rare future action still possible
+    # expired codes (9, 19, 28, 29, 39, 48, 49, 59, ...) ARE terminal
+    TERMINAL_CODES = frozenset((9, 19, 27, 28, 29, 39, 47, 48, 49, 59, 61, 62, 69, 75))
 
     codes = []
     for item in action_codes_desc:
