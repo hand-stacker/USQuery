@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 from datetime import timedelta
+from pgvector.django import VectorField
 
 SUBSCRIPTION_TYPE = {
     0:'Free', 
@@ -128,6 +129,43 @@ class UserProfile(models.Model):
         return DAILY_OUTPUT_TOKEN_LIMITS[self.user_type]
 
 
+class ChatSession(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_sessions')
+    bill_id = models.IntegerField(db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'bill_id'])]
+
+
+class ChatMessage(models.Model):
+    class Role(models.TextChoices):
+        USER = 'user', 'User'
+        ASSISTANT = 'assistant', 'Assistant'
+
+    id = models.BigAutoField(primary_key=True)
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
+    role = models.CharField(max_length=10, choices=Role)
+    content = models.TextField()
+    input_tokens = models.IntegerField(default=0)
+    output_tokens = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['session', 'created_at'])]
+
+
+class BillChunk(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    bill_id = models.IntegerField(db_index=True)
+    chunk_index = models.IntegerField()
+    content = models.TextField()
+    embedding = VectorField(dimensions=768)
+
+    class Meta:
+        unique_together = [('bill_id', 'chunk_index')]
 
 
 class EmailVerification(models.Model):
