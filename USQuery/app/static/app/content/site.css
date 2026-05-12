@@ -1233,8 +1233,32 @@ tr.grn {
 }
 
 .oauth-btn--apple {
-    background: rgba(2, 2, 2, 0.97);
-    border-color: rgba(235, 235, 235, 0.28);
+    background: #000;
+    border-color: #000;
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    letter-spacing: -.022em;
+    border-radius: 20px;
+    height: 40px;
+    padding: 0 24px;
+    text-decoration: none;
+    position: relative;
+}
+
+.oauth-btn--apple .oauth-icon {
+    position: absolute;
+    left: 16px;
+    top: 47%;
+    transform: translateY(-50%);
+}
+
+.oauth-btn--apple:hover,
+.oauth-btn--apple:focus {
+    background: #1a1a1a;
+    border-color: #1a1a1a;
+    color: #fff;
 }
 
 .oauth-btn--hidden {
