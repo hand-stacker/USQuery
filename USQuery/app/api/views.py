@@ -295,6 +295,8 @@ def api_apple_oauth(request):
     apple_client_id = getattr(settings, 'APPLE_CLIENT_ID', None)
     if not apple_client_id:
         return Response({"detail": "Apple OAuth is not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    apple_bundle_id = getattr(settings, 'APPLE_BUNDLE_ID', None)
+    valid_audiences = [apple_client_id, apple_bundle_id] if apple_bundle_id else apple_client_id
 
     # Decode header to get kid without verifying signature yet
     try:
@@ -312,7 +314,7 @@ def api_apple_oauth(request):
             token,
             public_key,
             algorithms=['RS256'],
-            audience=apple_client_id,
+            audience=valid_audiences,
             issuer='https://appleid.apple.com',
         )
     except jwt.ExpiredSignatureError:
