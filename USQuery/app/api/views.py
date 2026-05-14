@@ -290,7 +290,7 @@ def api_apple_oauth(request):
     s = AppleOAuthSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     token = s.validated_data['identity_token']
-    client_email = s.validated_data.get('email', '').lower()
+    client_email = (s.validated_data.get('email') or '').lower()
 
     apple_client_id = getattr(settings, 'APPLE_CLIENT_ID', None)
     if not apple_client_id:
