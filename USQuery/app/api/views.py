@@ -320,12 +320,7 @@ def api_apple_oauth(request):
     except jwt.ExpiredSignatureError:
         return Response({"detail": "Apple token has expired."}, status=status.HTTP_400_BAD_REQUEST)
     except jwt.InvalidTokenError as exc:
-        unverified_payload = jwt.decode(token, options={"verify_signature": False})
-        return Response({
-            "detail": f"Invalid Apple token: {exc}",
-            "debug_token_aud": unverified_payload.get("aud"),
-            "debug_valid_audiences": valid_audiences,
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"detail": f"Invalid Apple token: {exc}"}, status=status.HTTP_400_BAD_REQUEST)
 
     provider_id = payload['sub']
     # Apple only sends email on first sign-in; fall back to client-supplied value
