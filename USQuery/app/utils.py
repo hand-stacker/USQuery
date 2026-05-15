@@ -488,9 +488,14 @@ async def _sync_bill_relations(session, bill, congress_num, _type, num):
         subjects_data = subj_data.get('subjects', {})
         names = [s['name'] for s in subjects_data.get('legislativeSubjects', []) if 'name' in s]
         if names:
-            subjects = Subject.objects.filter(name__in=names)
-            await bill.subjects.aset(subjects)
-            await add_subjects(bill.subjects.all())
+            existing_names = {s async for s in bill.subjects.values_list('name', flat=True)}
+            new_names = [n for n in names if n not in existing_names]
+            await bill.subjects.aset(Subject.objects.filter(name__in=names))
+            cache_key = f"Bill:{bill.id}"
+            if not await cache.aget(cache_key):
+                if new_names:
+                    await add_subjects(Subject.objects.filter(name__in=new_names).all())
+                await cache.aset(cache_key, True, timeout_day)
         bill.policy_area = subjects_data.get('policyArea', {}).get('name', 'Not Specified Yet.')
         await bill.asave()
 
