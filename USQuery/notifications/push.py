@@ -27,7 +27,7 @@ async def send_bill_notification(bill_id, title, body):
                 "sound": "default",
                 "title": title,
                 "body": body,
-                "data": {"screen" : "Bill", "bill_id": bill_id},
+                "data": {"screen" : "Bill_info", "bill_id": bill_id},
             }
             for token in batch_tokens
         ]
