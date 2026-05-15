@@ -56,6 +56,7 @@ async def send_subject_notification(subjects, title, body):
                 "sound": "default",
                 "title": title,
                 "body": body,
+                "data" : {"screen" : "Bill_FYP", "sort": "datedesc"}
             }
             for token in batch_tokens
         ]

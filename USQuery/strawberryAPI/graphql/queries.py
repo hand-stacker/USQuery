@@ -173,13 +173,14 @@ class Query:
         first: int = 5,
         after: Optional[str] = None,
         truncate: Optional[bool] = False,
+        sort: Optional[str] = None, 
         info: "strawberry.types.Info" = None,
     ) -> BillConnection:
         first = min(first, 30)
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
         end_date = date(_congress.end_year + 1, 1, 3)
-
+        sort = (sort or '').lower()
         ## selects only from the provided congress num
         qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
 
@@ -193,8 +194,11 @@ class Query:
                         distinct=True
                     )
                 ).filter(match_count__gt=0)
-
-            qs = qs.order_by("-match_count", "-latest_action", "-id")
+            match sort:
+                case "datedesc":
+                    qs = qs.order_by("-latest_action", "-match_count", "-id")
+                case _:
+                    qs = qs.order_by("-match_count", "-latest_action", "-id")
 
             ## handle pagination with composite cursor (match_count, latest_action, id)
             if after:
@@ -210,17 +214,23 @@ class Query:
                 if last_match is not None and last_action_str and last_id is not None:
                     try:
                         last_action = date.fromisoformat(last_action_str)
-                        ## ordering is descending: choose rows that come after the cursor:
-                        ## 1) match_count < last_match
-                        ## 2) OR match_count == last_match AND latest_action < last_action
-                        ## 3) OR match_count == last_match AND latest_action == last_action AND id < last_id
-                        qs = qs.filter(
-                            Q(match_count__lt=last_match) |
-                            (Q(match_count=last_match) & (
-                                Q(latest_action__lt=last_action) |
-                                (Q(latest_action=last_action) & Q(id__lt=last_id))
-                            ))
-                        )
+                        match sort :
+                            case "datedesc":
+                                qs = qs.filter(
+                                    Q(latest_action__lt=last_action) |
+                                    (Q(latest_action=last_action) & (
+                                        Q(match_count__lt=last_match) |
+                                        (Q(match_count=last_match) & Q(id__lt=last_id))
+                                    ))
+                                )
+                            case _:
+                                qs = qs.filter(
+                                    Q(match_count__lt=last_match) |
+                                    (Q(match_count=last_match) & (
+                                        Q(latest_action__lt=last_action) |
+                                        (Q(latest_action=last_action) & Q(id__lt=last_id))
+                                    ))
+                                )
                     except Exception:
                         ## fallback to id-only filter (descending)
                         if last_id is not None:
@@ -514,12 +524,15 @@ class Query:
         congress_num: int = 119,
         bill_type:str = "!",
         subjectList: Optional[List[int]] = None,
-        after: Optional[str] = None) -> VoteConnection:
+        after: Optional[str] = None,
+        sort: Optional[str] = None
+    ) -> VoteConnection:
         first = min(first, 50)
         ## selects only from the provided congress num
         _congress = await Congress.objects.aget(congress_num__exact=congress_num)
         start_date = date(_congress.start_year, 1, 3)
         end_date = date(_congress.end_year + 1, 1, 3)
+        sort = (sort or '').lower()
         qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date).select_related("bill", "congress")
 
         ## When subjectList provided we annotate match_count based on the vote's bill subjects,
@@ -533,7 +546,11 @@ class Query:
                     )
                 ).filter(match_count__gt=0)
 
-            qs = qs.order_by("-match_count", "-dateTime", "-id")
+            match sort:
+                case "datedesc":
+                    qs = qs.order_by("-dateTime", "-match_count", "-id")
+                case _:
+                    qs = qs.order_by("-match_count", "-dateTime", "-id")
 
             ## handle pagination with composite cursor (match_count, dateTime, id)
             if after:
@@ -549,17 +566,23 @@ class Query:
                 if last_match is not None and last_dateTime_str and last_id is not None:
                     try:
                         last_dateTime = datetime.fromisoformat(last_dateTime_str)
-                        ## ordering is descending: choose rows that come after the cursor:
-                        ## 1) match_count < last_match
-                        ## 2) OR match_count == last_match AND dateTime < last_dateTime
-                        ## 3) OR match_count == last_match AND dateTime == last_dateTime AND id < last_id
-                        qs = qs.filter(
-                            Q(match_count__lt=last_match) |
-                            (Q(match_count=last_match) & (
-                                Q(dateTime__lt=last_dateTime) |
-                                (Q(dateTime=last_dateTime) & Q(id__lt=last_id))
-                            ))
-                        )
+                        match sort:
+                            case "datedesc":
+                                qs = qs.filter(
+                                    Q(dateTime__lt=last_dateTime) |
+                                    (Q(dateTime=last_dateTime) & (
+                                        Q(match_count__lt=last_match) |
+                                        (Q(match_count=last_match) & Q(id__lt=last_id))
+                                    ))
+                                )
+                            case _:
+                                qs = qs.filter(
+                                    Q(match_count__lt=last_match) |
+                                    (Q(match_count=last_match) & (
+                                        Q(dateTime__lt=last_dateTime) |
+                                        (Q(dateTime=last_dateTime) & Q(id__lt=last_id))
+                                    ))
+                                )
                     except Exception:
                         ## fallback to id-only filter (descending)
                         if last_id is not None:
