@@ -2,6 +2,10 @@
 
 USQuery is a web application designed to provide users with easy access to congressional data, including bills and votes. This project leverages modern technologies to ensure a robust and efficient experience.
 
+## About this repository
+
+This is a public snapshot of the USQuery backend as of May 2026. Active development continues in a private repository, where new features are being developed alongside proprietary logic I'm not open-sourcing.
+
 ## Tech Stack
 - **Python 3.11+**: The programming language used for backend development.
 - **Javascript**: Used in dynamic web updates and generating data visualizations.
