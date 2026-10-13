@@ -36,6 +36,8 @@ A pytest + pytest-django suite under `USQuery/tests/`, split into:
 - **`tests/unit/`**: pure logic with no database (ID encoding, parsers, billing rules, tier limits, HTTP retry and single-flight caching).
 - **`tests/integration/`**: Django, DRF and GraphQL clients against a real PostgreSQL + pgvector database: auth and OAuth, Stripe webhooks and the subscription API, Apple In-App Purchase, tier gating, notifications, search, and static-file builds. Tests marked `slow` cover the heavier data pipelines.
 
+The full suite is 1,000+ tests, this snapshot carries the portion that does not depend on the stubbed components.
+
 The suite is hermetic. A dedicated settings module never reads production configuration, a session-level guard aborts the run unless the database is the disposable test container, and every outbound network call is blocked unless a test explicitly mocks it.
 
 ```bash
