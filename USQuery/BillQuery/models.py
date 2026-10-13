@@ -1,7 +1,13 @@
 from django.db import models
 from SenateQuery import models as SQmodels
 from datetime import date
-from django.db.models import Q
+from zoneinfo import ZoneInfo
+
+# Congress records and announces votes in Washington time. Vote.dateTime is
+# stored as real UTC; display it in this zone.
+US_EASTERN = ZoneInfo('America/New_York')
+from django.db.models import Q, F, Case, When
+from django.db.models.functions import Mod
 from django.contrib.postgres.search import SearchVectorField
 from django.contrib.postgres.indexes import GinIndex
 
@@ -18,42 +24,31 @@ types = {
             '!H' : (4,7)}
 ## due to bad planning the bill ids can be of integer form CCC_T_XXXX or CCC_T_XXXXX
 # (CCC is congress num, T is bill type, XXXX is bill num) if the bill number is higher than 9999
+# The type digit T is read straight out of the id for either width, so the
+# filters below hold for every congress (they used to be hard-coded to 110-120,
+# with wide ids only for 118).
+BILL_TYPE_CODE = Case(
+    When(id__gte=100_000_000, then=Mod(F('id') / 100_000, 10)),
+    default=Mod(F('id') / 10_000, 10),
+    output_field=models.IntegerField(),
+)
+
 class TypeManager(models.Manager):
     def get_from_type(self, _type, start_date, end_date):
+        qs = super(TypeManager, self).get_queryset().filter(latest_action__gte=start_date, latest_action__lte=end_date)
         if _type == '!' or _type == '':
-            return super(TypeManager, self).get_queryset().filter(latest_action__gte=start_date, latest_action__lte=end_date) 
-        if _type == '!S' or _type == '!H':
-            _addr_bgn = 10000 * types[_type][0]
-            _addr_end = 10000 * types[_type][1]
-        else:
-            _addr_bgn = 10000 * types[_type]
-            _addr_end = 10000 * types[_type]
-        query = Q(id__gte = 118_0_00001 + (_addr_bgn * 10),id__lte = 118_0_99999 + (_addr_end * 10))
-        _start = 110_0_0001
-        _end = 110_0_9999
-        query.add(Q(id__gte = _start + _addr_bgn,id__lte = _end + _addr_end), Q.OR)
-        for i in range(1,11):
-            _start += 1_0_0000
-            _end += 1_0_0000
-            query.add(Q(id__gte = _start + _addr_bgn,id__lte = _end + _addr_end), Q.OR)
-        query.add(Q(latest_action__gte=start_date, latest_action__lte=end_date), Q.AND)
-        return super(TypeManager, self).get_queryset().filter(query)
+            return qs
+        low, high = types[_type] if _type in ('!S', '!H') else (types[_type], types[_type])
+        return qs.alias(bill_type_code=BILL_TYPE_CODE).filter(bill_type_code__range=(low, high))
 
 # CCC_H_S_XXXXX
 class TypeManagerVote(models.Manager):
     def get_from_type(self, _type, start_date, end_date):
+        qs = super(TypeManagerVote, self).get_queryset().filter(dateTime__gte=start_date, dateTime__lte=end_date)
         if _type == '!':
-            return super(TypeManagerVote, self).get_queryset().filter(dateTime__gte=start_date, dateTime__lte=end_date) 
-        _addr = 1_0_00000 if _type == 'h' else 0
-        _start = 110_0_1_00001
-        _end = 110_0_2_99999
-        query = Q(id__gte = _start + _addr,id__lte = _end + _addr)
-        for i in range(1,11):
-            _start += 1_0_0_00000
-            _end += 1_0_0_00000
-            query.add(Q(id__gte = _start + _addr,id__lte = _end + _addr), Q.OR)
-        query.add(Q(dateTime__gte=start_date, dateTime__lte=end_date), Q.AND)
-        return super(TypeManagerVote, self).get_queryset().filter(query)
+            return qs
+        # H digit: 1 = House, 0 = Senate (any filter other than 'h' means Senate).
+        return qs.alias(chamber_digit=Mod(F('id') / 1_000_000, 10)).filter(chamber_digit=1 if _type == 'h' else 0)
 
 class Subject(models.Model):
     id = models.AutoField(primary_key=True)
@@ -84,7 +79,13 @@ class Bill(models.Model):
     title = models.CharField(max_length=2000)
     origin_date = models.DateField(db_index=True)
     latest_action = models.DateField(db_index=True)
-    latest_db_update = models.DateField(null=True, blank = True)
+    # Internal bookkeeping only for the official Congress API pipeline (addBillASYNC) --
+    # never read/written by the House/Senate fast-path pipelines. Decoupled from
+    # latest_action so a fast-path update can't cause addBillASYNC's early-exit logic
+    # to skip actions it hasn't actually processed yet.
+    latest_api_update = models.DateField(null=True, blank=True, db_index=True)
+    latest_db_update = models.DateField(null=True, blank=True)
+    last_embedded = models.DateTimeField(null=True, blank=True)
     search_vector = SearchVectorField(null=True)
     objects = models.Manager()
     type_objects =TypeManager()
@@ -153,6 +154,7 @@ class Bill(models.Model):
         ordering = ["-latest_action", "origin_date", "-id"]
         indexes = [
             GinIndex(fields=["search_vector"]),
+            GinIndex(fields=["title"], name="billquery_title_trgm_gin", opclasses=["gin_trgm_ops"]),
         ]
                 
 # id : CCC_H_S_XXXXX , CCC is congress, H is 0 if senate, else house, S is session 1 or 2, XXXXX is vote num
@@ -174,8 +176,11 @@ class Vote(models.Model):
     objects = models.Manager()
     type_objects =TypeManagerVote()
 
+    def localDateTime(self):
+        """dateTime in US Eastern time (where and when the vote happened)."""
+        return self.dateTime.astimezone(US_EASTERN)
     def getDate(self):
-        return self.dateTime.strftime("%Y-%m-%d")
+        return self.localDateTime().strftime("%Y-%m-%d")
     def inHouse(self):
         return (self.id // 1000000) % 10 == 1
     def __str__(self):
@@ -205,10 +210,11 @@ class Choice(models.Model) :
         return self.choice + "->" + self.choice_vote.__str__()
 
 ## same key as Bill object, should hold AI generated summary
-class BillSummary(models.Model): 
+class BillSummary(models.Model):
     id = models.IntegerField(primary_key=True)
     source_date = models.DateField(default=date(1,1,1))
     summary = models.TextField(default="We cannot provide a summary at this time.")
+    generated_at = models.DateField(null=True, blank=True)
     def __str__(self):
         return str(self.id)
 

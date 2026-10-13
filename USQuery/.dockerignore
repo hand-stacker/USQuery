@@ -5,3 +5,10 @@ obj
 .env*
 USQuery/secretss.py
 USQuery/dev_settings.py
+tests
+conftest.py
+pytest.ini
+requirements-dev.txt
+reports
+static
+staticfiles

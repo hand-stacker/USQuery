@@ -1,5 +1,5 @@
 {% load static %}
-<form name="BillForm" id="id_BillForm" action="bill-query/" method="get">
+<form name="BillForm" id="id_BillForm" action="{% url 'billQueryAR' %}" method="get">
     <div class="form-section">
         <div class="form-group">
             <label for="{{ bill_form.bill_type.id_for_label }}" class="form-label-styled">

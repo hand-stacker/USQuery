@@ -1,4 +1,4 @@
-import datetime
+from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.db import models
 from app.models import UserProfile
@@ -48,7 +48,7 @@ class Device(models.Model):
         super().save()
 
     def refresh_last_used(self):
-        self.last_used=datetime.datetime.now()
+        self.last_used = timezone.now()
         super().save()
 
     class Meta:

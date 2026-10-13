@@ -40,6 +40,11 @@
                             Bill Search
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'voteQueryHome' %}">
+                            Vote Search
+                        </a>
+                    </li>
                     {% if user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'starred' %}">
@@ -67,6 +72,11 @@
                             Privacy
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'MCTerms' %}">
+                            Terms
+                        </a>
+                    </li>
                 </ul>
                 {% include 'app/loginpartial.html' %}
             </div>
@@ -78,14 +88,13 @@
         <hr class="mt-5 mb-4" style="border-color: rgba(250, 250, 250, 0.2);" />
         <footer class="text-center pb-4">
             <p class="text-muted small">
-                Copyright © 2026 USQuery | Powered by Congress API
+                Copyright © 2026 USQuery LLC | Powered by Congress API
             </p>
         </footer>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
     <script src="https://code.jquery.com/jquery-3.7.1.slim.js" integrity="sha256-UgvvN8vBkgO0luPSUl2s8TIlOSYRoGFAX4jlCIm9Adc=" crossorigin="anonymous"></script>
-    <script src="{% static 'app/scripts/respond.js' %}"></script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -1,7 +1,8 @@
 import strawberry_django
 import strawberry
 from typing import Optional, List
-from BillQuery.models import Bill, Subject, Vote
+from datetime import date, datetime
+from BillQuery.models import Bill, Subject, Vote, US_EASTERN
 from SenateQuery.models import Membership, Member, Congress
 from strawberry import auto
 
@@ -22,8 +23,14 @@ class VoteType:
     id : auto
     title : auto
     question : auto
-    dateTime : auto
     bill : "BillType"
+
+    @strawberry.field
+    def dateTime(self, root) -> datetime:
+        # Same instant, with the Eastern offset, so clients that read the date
+        # part get the day the vote happened in Washington.
+        return root.dateTime.astimezone(US_EASTERN)
+
     result : str
     yeas : list["MembershipType"]
     nays : list["MembershipType"]
@@ -64,6 +71,7 @@ class BillType:
     match_count : int | None = None
     summary : str | None = None
     is_AI_generated : bool | None = False
+    ai_summary_generated_at: Optional[date] = None
     actions: List["ActionType"]
     sponsor: Optional["BillMemberType"] = None
     cosponsors: List["BillMemberType"] = strawberry.field(default_factory=list)
@@ -122,3 +130,21 @@ class ChatMessageResponseType:
     assistant_message: Optional[str]
     error: Optional[str]
     messages_remaining: int
+    sources: Optional[List[str]]
+    # 0.0–1.0 fraction of monthly cost budget used; None means unlimited
+    monthly_cost_pct: Optional[float]
+    # populated when a refresh_token was used to authenticate
+    new_access_token: Optional[str]
+
+
+@strawberry.type
+class ChatMessageItem:
+    role: str
+    content: str
+
+
+@strawberry.type
+class ChatHistoryType:
+    session_id: Optional[str]
+    messages: List[ChatMessageItem]
+    error: Optional[str]

@@ -1,5 +1,5 @@
 from django.contrib.admin.views.decorators import staff_member_required
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.http import HttpRequest, HttpResponseRedirect, HttpResponseBadRequest
 from django.core.paginator import Paginator
 from datetime import datetime
@@ -35,7 +35,7 @@ def search(request, congress_num, bioguide_id, in_house):
     if int(congress_num) < 112:
         return render(request, 'SenateQuery/search_failed.html', {
             'title': 'Search failed',
-            'return_url': '/member-query/'
+            'return_url': '/member/'
         })
     try:
         congress = Congress.objects.get(congress_num = congress_num)
@@ -44,7 +44,7 @@ def search(request, congress_num, bioguide_id, in_house):
     except:
         return render(request, 'SenateQuery/search_failed.html', {
             'title': 'Search failed',
-            'return_url': '/member-query/'
+            'return_url': '/member/'
         })
 
     API_response = utils.updateMember(congress_num, bioguide_id)
@@ -67,7 +67,7 @@ def search(request, congress_num, bioguide_id, in_house):
     paginator = Paginator(votes_in_congress, 15)
     page_number = request.GET.get("page")
     vote_list = paginator.get_page(page_number)
-    vote_table = utils.voteTable(vote_list, bioguide_id, congress_num)
+    vote_table = utils.voteTable(vote_list, membership)
     context = {
             'title': member.full_name,
             'rep_name'  : member.full_name,
@@ -96,17 +96,20 @@ def search(request, congress_num, bioguide_id, in_house):
     context['loggedIn'] = False
     if request.user.is_authenticated:
         context['loggedIn'] = True
-        user_profile = UserProfile.objects.get(user=request.user)
+        user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
         sb_qs = user_profile.get_starred_memberships()
         raw_ids = list(sb_qs.values_list("membership_id", flat=True))
         if membership.id in raw_ids:
             context['isStarred'] = True
-    if ('partyHistory' in API_response['member']):
+    # API_response is None when the Congress API request failed (e.g. down/timed
+    # out) -- degrade to the DB-stored member info already in context above
+    # rather than crashing the page.
+    if API_response and ('partyHistory' in API_response['member']):
         context['party_list'] = utils.partyList(API_response['member']['partyHistory'])
-    if ('leadership' in API_response['member']):
+    if API_response and ('leadership' in API_response['member']):
         context['leadership_list'] = utils.leadershipList(API_response['member']['leadership'])
     else : context['leadership_list'] = 'None'
-    if ('terms' in API_response['member']):
+    if API_response and ('terms' in API_response['member']):
         context['term_list'] = utils.termList(API_response['member']['terms'], bioguide_id, congress_num)
             
     return render(
@@ -122,7 +125,7 @@ def search_failed(request):
     assert isinstance(request, HttpRequest)
     return render(request, 'SenateQuery/search_failed.html', {
         'title': 'Search failed',
-        'return_url': '/member-query/'
+        'return_url': '/member/'
     })
 
 def query(request):
@@ -170,7 +173,7 @@ def get_filtered_memberships(request, congress_num, chamber, state):
 
 def update_members(request, congress_num, chamber, state):
     is_house = chamber != 'Senate'
-    _congress = Congress.objects.get(congress_num__exact=congress_num)
+    _congress = get_object_or_404(Congress, congress_num=congress_num)
     if (state == 'All'):
         mems =Member.objects.filter(membership__congress = _congress, membership__house = is_house)
     else :
@@ -231,7 +234,7 @@ def get_membership_by_id(request, membership_id):
             vt = 'No Vote'
         data['vote_list'][i]['mem_vote'] = vt
 
-    if 'member' in api_response:
+    if api_response and 'member' in api_response:
         member_data = api_response['member']
         data['external_party_history'] = member_data.get('partyHistory', [])
         data['external_leadership'] = member_data.get('leadership', [])
@@ -301,7 +304,7 @@ def get_membership(request, congress_num, bioguide_id, in_house):
             vt = 'No Vote'
         data['vote_list'][i]['mem_vote'] = vt
 
-    if 'member' in api_response:
+    if api_response and 'member' in api_response:
         member_data = api_response['member']
         data['external_party_history'] = member_data.get('partyHistory', [])
         data['external_leadership'] = member_data.get('leadership', [])
@@ -324,7 +327,7 @@ def get_membership(request, congress_num, bioguide_id, in_house):
 @permission_classes([AllowAny])
 def get_memberships_set(request, congress_num, chamber, state):
     is_house = chamber != 'Senate'
-    congress = Congress.objects.get(congress_num__exact=congress_num)
+    congress = get_object_or_404(Congress, congress_num=congress_num)
     if (state == 'All'):
         mems =Membership.objects.filter(congress = congress, house = is_house)
     else :
@@ -344,23 +347,23 @@ def get_starred_memberships(request):
 def populate_congress(request, congress_num):
     assert isinstance(request, HttpRequest) 
     utils.addMembersCongressAPILazy(congress_num)
-    return HttpResponseRedirect('/member-query/')   
+    return HttpResponseRedirect('/member/')   
 
 @staff_member_required
 def swap_membership(request, congress_num, leaving_id, leaving_date, in_house, arriving_id = "!",arriving_date = "!", party = "!"):
     assert isinstance(request, HttpRequest)
     utils.swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id, arriving_date, party)
-    return HttpResponseRedirect('/member-query/')   
+    return HttpResponseRedirect('/member/')   
 
 @staff_member_required
 def update_arrival(request, congress_num, arriving_id, arriving_date, in_house):
     assert isinstance(request, HttpRequest)
     utils.updateArrival(congress_num, arriving_id, arriving_date, in_house)
-    return HttpResponseRedirect('/member-query/')
+    return HttpResponseRedirect('/member/')
 
 @staff_member_required
 def create_membership(request, congress_num, bioguide_id, state, in_house, party, arrival_date = None, departure_date = None, district_num = None):
     assert isinstance(request, HttpRequest)
     if (departure_date == "!") : departure_date = None
     utils.createMembership(congress_num, bioguide_id, state, in_house, party, arrival_date, departure_date, district_num )
-    return HttpResponseRedirect('/member-query/')
+    return HttpResponseRedirect('/member/')

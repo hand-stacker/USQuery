@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.db.models import Q
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 
@@ -7,7 +8,8 @@ class RegisterSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate_email(self, value):
-        if User.objects.filter(email=value).exists():
+        value = value.lower()
+        if User.objects.filter(Q(email__iexact=value) | Q(username__iexact=value)).exists():
             raise serializers.ValidationError("Email already registered")
         return value
 

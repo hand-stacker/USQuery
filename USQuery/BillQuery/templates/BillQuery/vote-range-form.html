@@ -1,5 +1,5 @@
 {% load static %}
-<form name="VoteForm" id="id_VoteForm" action="vote-query/" method="get">
+<form name="VoteForm" id="id_VoteForm" action="{% url 'voteSearch' %}" method="get">
     <div class="form-section">
         <div class="form-group">
             <label for="{{ vote_form.bill_type.id_for_label }}" class="form-label-styled">

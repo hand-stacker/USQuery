@@ -14,14 +14,14 @@ class Command(BaseCommand):
             bill_limit = profile.get_starred_bills_limit()
             member_limit = profile.get_starred_memberships_limit()
 
-            active_bills = profile.get_starred_bills().order_by('created_at')
+            active_bills = profile.get_starred_bills().order_by('created_at', 'id')
             excess_bills = active_bills.count() - bill_limit
             if excess_bills > 0:
                 oldest_ids = list(active_bills.values_list('id', flat=True)[:excess_bills])
                 StarredBill.objects.filter(id__in=oldest_ids).update(is_active=False)
                 trimmed_bills += excess_bills
 
-            active_members = profile.get_starred_memberships().order_by('created_at')
+            active_members = profile.get_starred_memberships().order_by('created_at', 'id')
             excess_members = active_members.count() - member_limit
             if excess_members > 0:
                 oldest_ids = list(active_members.values_list('id', flat=True)[:excess_members])

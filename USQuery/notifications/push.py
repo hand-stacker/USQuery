@@ -8,7 +8,7 @@ EXPO_BATCH_SIZE = 100  # Expo recommends up to 100 messages per request
 
 async def send_bill_notification(bill_id, title, body):
     users = await sync_to_async(list)(
-        StarredBill.objects.filter(bill_id=bill_id).values_list("user_profile__id", flat=True)
+        StarredBill.objects.filter(bill_id=bill_id, is_active=True).values_list("user_profile__id", flat=True)
     )
     if not users:
         return
@@ -35,9 +35,50 @@ async def send_bill_notification(bill_id, title, body):
         # Run the blocking HTTP call in a thread (sync_to_async) so we don't block the event loop
         await sync_to_async(requests.post)(EXPO_PUSH_URL, json=messages)
 
+async def send_floor_notification(chamber: str, bill_ids: list, profile_ids: list):
+    """
+    Send a floor notification for the given chamber to specific user profiles.
+
+    Args:
+        chamber:     'house' or 'senate'
+        bill_ids:    bill IDs that had floor actions
+        profile_ids: UserProfile IDs to notify
+    """
+    if not bill_ids or not profile_ids:
+        return
+    tokens = await sync_to_async(list)(
+        Device.objects.filter(
+            user_profile__id__in=profile_ids,
+            is_active=True,
+        ).values_list("device_token", flat=True)
+    )
+    if not tokens:
+        return
+    if chamber == 'house':
+        title = "House Floor Activity"
+        body = "New actions were taken on the House floor."
+        filter_type = "House"
+    else:
+        title = "Senate Floor Activity"
+        body = "New actions were taken on the Senate floor."
+        filter_type = "Senate"
+    data = {
+        "screen": "Bill_Search",
+        "sort": "datedesc",
+        "filters": {"type": filter_type},
+        "highlight": bill_ids,
+    }
+    for i in range(0, len(tokens), EXPO_BATCH_SIZE):
+        batch = tokens[i : i + EXPO_BATCH_SIZE]
+        messages = [
+            {"to": token, "sound": "default", "title": title, "body": body, "data": data}
+            for token in batch
+        ]
+        await sync_to_async(requests.post)(EXPO_PUSH_URL, json=messages)
+
 async def send_subject_notification(subjects, title, body):
     users = await sync_to_async(set)(
-        FavoriteSubject.objects.filter(subject_id__in=subjects).values_list("user_profile__id", flat=True)
+        FavoriteSubject.objects.filter(subject_id__in=subjects, is_active=True).values_list("user_profile__id", flat=True)
     )
     if not users:
         return

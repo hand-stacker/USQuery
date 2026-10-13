@@ -36,7 +36,7 @@ function initializePagination() {
 
 // Build vote URL
 function getVoteURL(voteId) {
-    return `/bill-query/vote/${voteId}`;
+    return `/vote/${voteId}`;
 }
 
 // Build bill URL from vote data
@@ -46,7 +46,7 @@ function getBillURL(vote) {
     }
     // Extract congress from vote ID (first part before chamber bit)
     const congress = Math.floor(vote.vote_id / 10000000);
-    return `/bill-query/bill/${congress}/${vote.bill_type_url}/${vote.bill_number}`;
+    return `/bill/${congress}/${vote.bill_type_url}/${vote.bill_number}`;
 }
 
 // Update pagination button states based on current page
@@ -130,7 +130,7 @@ function renderVotesPage() {
         const voteURL = getVoteURL(vote.vote_id);
         const billURL = getBillURL(vote);
         const voteDate = vote.date 
-            ? new Date(vote.date).toLocaleDateString() 
+            ? new Date(vote.date).toLocaleDateString(undefined, { timeZone: 'America/New_York' }) 
             : 'N/A';
         const billDisplay = vote.bill_type_url && vote.bill_number
             ? `${vote.bill_type_url.toUpperCase()}-${vote.bill_number}`

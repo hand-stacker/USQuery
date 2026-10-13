@@ -1,0 +1,88 @@
+{% extends "app/layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+    <div class="col-lg-6 col-md-8">
+
+        <div class="card-dark p-4 mb-4">
+            <h2 class="mb-4">Confirm Plan Change</h2>
+
+            <!-- From / to -->
+            <div class="mb-4 pb-4 d-flex align-items-center justify-content-between flex-wrap gap-2" style="border-bottom: 1px solid rgba(150,150,150,0.15);">
+                <div>
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgba(250,250,250,0.5); margin-bottom:4px;">Current Plan</div>
+                    <div style="font-size:20px; font-weight:700; color:rgb(250,250,250);">{{ preview.current_tier_name }}</div>
+                </div>
+                <i class="fa-solid fa-arrow-right" style="color:rgba(250,250,250,0.4);"></i>
+                <div class="text-end">
+                    <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgba(250,250,250,0.5); margin-bottom:4px;">New Plan</div>
+                    <div style="font-size:20px; font-weight:700; color:#2ea87e;">{{ preview.new_tier_name }}</div>
+                </div>
+            </div>
+
+            <!-- Cost breakdown -->
+            <div class="mb-4 pb-4" style="border-bottom: 1px solid rgba(150,150,150,0.15);">
+                {% if preview.is_upgrade %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="font-size:14px; color:rgba(250,250,250,0.75);">Charged today</span>
+                    <span style="font-size:16px; font-weight:700; color:rgb(250,250,250);">${{ preview.immediate_charge|floatformat:2 }}</span>
+                </div>
+                {% if preview.credit_applied %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="font-size:13px; color:rgba(250,250,250,0.55);">Includes prorated credit for unused time</span>
+                    <span style="font-size:13px; color:#2ea87e;">−${{ preview.credit_applied|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                {% if preview.recurring_price %}
+                <div class="d-flex justify-content-between mb-2 pt-2" style="border-top: 1px solid rgba(150,150,150,0.12);">
+                    <span style="font-size:14px; color:rgba(250,250,250,0.75);">Then renews at</span>
+                    <span style="font-size:15px; font-weight:600; color:rgb(250,250,250);">{{ preview.recurring_price }}</span>
+                </div>
+                {% endif %}
+                <p style="font-size:13px; color:rgba(250,250,250,0.55); margin-top:10px; margin-bottom:0;">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    Your upgrade takes effect immediately. You're charged the prorated difference
+                    for the rest of this period; your billing date stays the same.
+                </p>
+                {% else %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span style="font-size:14px; color:rgba(250,250,250,0.75);">Charged today</span>
+                    <span style="font-size:16px; font-weight:700; color:rgb(250,250,250);">$0.00</span>
+                </div>
+                {% if preview.recurring_price %}
+                <div class="d-flex justify-content-between mb-2 pt-2" style="border-top: 1px solid rgba(150,150,150,0.12);">
+                    <span style="font-size:14px; color:rgba(250,250,250,0.75);">Then renews at</span>
+                    <span style="font-size:15px; font-weight:600; color:rgb(250,250,250);">{{ preview.recurring_price }}</span>
+                </div>
+                {% endif %}
+                <p style="font-size:13px; color:rgba(250,250,250,0.55); margin-top:10px; margin-bottom:0;">
+                    <i class="fa-solid fa-circle-info me-1"></i>
+                    {{ preview.message }}
+                </p>
+                {% endif %}
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex flex-wrap gap-3">
+                <form method="post" action="{% url 'create_checkout_session' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="tier" value="{{ tier }}">
+                    <input type="hidden" name="confirmed" value="1">
+                    <button type="submit" class="btn-glass">
+                        {% if preview.is_upgrade %}
+                        <i class="fa-solid fa-credit-card"></i> Confirm &amp; Pay ${{ preview.immediate_charge|floatformat:2 }}
+                        {% else %}
+                        <i class="fa-solid fa-check"></i> Confirm Change
+                        {% endif %}
+                    </button>
+                </form>
+                <a href="{% url 'plans' %}" class="btn-glass">
+                    <i class="fa-solid fa-xmark"></i> Cancel
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

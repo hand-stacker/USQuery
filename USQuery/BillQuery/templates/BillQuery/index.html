@@ -3,33 +3,27 @@
 
 {% block content %}
 <div class="row justify-content-center mb-5">
-    <div class="col-lg-10">
-        <div class="row g-3">
-            <div class="col-md-6">
-                <div class="card-dark p-4 h-100">
-                    <h3 class="mb-3 d-flex align-items-center">
-                        Search Bills
-                    </h3>
-                    <p class="form-help-text mb-3">
-                        Find bills by specifying a date range, bill type, and optional subjects. Use this to discover legislation based on your interests or policy areas.
-                    </p>
-                    <div class="query-container">
-                        {% include "BillQuery/bill-range-form.html" %}
-                    </div>
-                </div>
+    <div class="col-lg-8">
+        <div class="card-dark p-4 mb-3">
+            <h3 class="mb-3 d-flex align-items-center">
+                Search Bills by Keyword
+            </h3>
+            <p class="form-help-text mb-3">
+                Describe what you are looking for and we will rank the closest matching legislation. Narrow the results by bill type and date range if you already know roughly when the bill was acted on.
+            </p>
+            <div class="query-container">
+                {% include "BillQuery/bill-keyword-form.html" %}
             </div>
-            <div class="col-md-6">
-                <div class="card-dark p-4 h-100">
-                    <h3 class="mb-3 d-flex align-items-center">
-                        Search Votes
-                    </h3>
-                    <p class="form-help-text mb-3">
-                        Explore congressional votes within a specific timeframe and chamber. Filter by legislative subjects to find votes related to your areas of interest.
-                    </p>
-                    <div class="query-container">
-                        {% include "BillQuery/vote-range-form.html" %}
-                    </div>
-                </div>
+        </div>
+        <div class="card-dark p-4">
+            <h3 class="mb-3 d-flex align-items-center">
+                Or Browse by Subjects
+            </h3>
+            <p class="form-help-text mb-3">
+                Find bills by specifying a date range, bill type, and optional subjects. Use this to discover legislation based on your interests or policy areas.
+            </p>
+            <div class="query-container">
+                {% include "BillQuery/bill-range-form.html" %}
             </div>
         </div>
     </div>
@@ -38,6 +32,7 @@
 
 {% block scripts %}
     <script src="{% static 'scripts/loadTomSelectForms.js' %}"></script>
+    <script src="{% static 'scripts/dateRangeGuard.js' %}"></script>
     <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
 {% endblock %}

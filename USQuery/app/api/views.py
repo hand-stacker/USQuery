@@ -11,9 +11,11 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from django.contrib.auth.forms import PasswordResetForm
 from app.models import EmailVerification, UserProfile
+from app.auth_backends import find_user_by_credentials
 from django.contrib.auth.views import PasswordResetView
 from .serializers import RegisterSerializer, VerifySerializer, ResendSerializer, LoginSerializer, GoogleOAuthSerializer, AppleOAuthSerializer
 from django.http import JsonResponse
+from django.core.cache import cache
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 import jwt
@@ -66,6 +68,7 @@ def api_register(request):
     user = User.objects.create(username=email, email=email, is_active=False)
     user.set_password(password)
     user.save()
+    UserProfile.objects.create(user=user)
 
     verification = EmailVerification.objects.create(user=user)
 
@@ -131,19 +134,10 @@ def api_resend_verification(request):
 def api_login(request):
     s = LoginSerializer(data=request.data)
     s.is_valid(raise_exception=True)
-    username = s.validated_data['email'].lower()
-    password = s.validated_data['password']
-
-    # allow login by email or username (your web uses email as username)
-    try:
-        user = User.objects.get(username=username)
-    except User.DoesNotExist:
-        try:
-            user = User.objects.get(email=username)
-        except User.DoesNotExist:
-            user = None
-
-    if user is None or not user.check_password(password):
+    # Login by email or username, case-insensitively (web sign-ups used to keep
+    # the email's original case).
+    user = find_user_by_credentials(s.validated_data['email'].strip(), s.validated_data['password'])
+    if user is None:
         return Response({"detail": "Invalid credentials."}, status=status.HTTP_401_UNAUTHORIZED)
 
     refresh = RefreshToken.for_user(user)
@@ -221,7 +215,9 @@ def _find_or_create_oauth_user(provider, provider_id, email):
     # 2. Email matches an existing account → link
     try:
         user = User.objects.get(email=email)
-        profile = user.userprofile
+        # get_or_create: accounts registered before profiles were created at
+        # sign-up have none.
+        profile, _ = UserProfile.objects.get_or_create(user=user)
         profile.oauth_provider = provider
         profile.oauth_provider_id = provider_id
         profile.save(update_fields=['oauth_provider', 'oauth_provider_id'])
@@ -262,6 +258,9 @@ def api_google_oauth(request):
 
     if not email:
         return Response({"detail": "Google token does not contain an email address."}, status=status.HTTP_400_BAD_REQUEST)
+    # Accounts are linked by email, so only trust addresses Google has verified.
+    if str(payload.get('email_verified')).lower() != 'true':
+        return Response({"detail": "Google account email is not verified."}, status=status.HTTP_400_BAD_REQUEST)
 
     user, is_new = _find_or_create_oauth_user(UserProfile.OAuthProvider.GOOGLE, provider_id, email)
     data = _issue_tokens(user)
@@ -333,3 +332,14 @@ def api_apple_oauth(request):
     data = _issue_tokens(user)
     data['is_new_user'] = is_new
     return Response(data, status=status.HTTP_200_OK)
+
+
+APP_VERSION_CACHE_KEY = "app_version"
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def app_version(request):
+    version = cache.get(APP_VERSION_CACHE_KEY)
+    if version is None:
+        return Response({"version": None, "detail": "App version not set."}, status=status.HTTP_404_NOT_FOUND)
+    return Response({"version": version}, status=status.HTTP_200_OK)

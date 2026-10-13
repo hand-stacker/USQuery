@@ -9,4 +9,5 @@ urlpatterns = [
     path("password-reset-api/", views.api_reset_password, name="api-password-reset"),
     path('oauth/google/', views.api_google_oauth, name='api-oauth-google'),
     path('oauth/apple/', views.api_apple_oauth, name='api-oauth-apple'),
+    path('app-version/', views.app_version, name='api-app-version'),
 ]

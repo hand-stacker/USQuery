@@ -11,26 +11,31 @@ Disallow: /logout
 Disallow: /logout*
 Disallow: /logout/
 Disallow: /logout/*
-Disallow: /member-query/update-mems
-Disallow: /member-query/update-mems/
-Disallow: /member-query/update-mems*
-Disallow: /member-query/update-mems/*
-Disallow: /bill-query/prediction-request
-Disallow: /bill-query/prediction-request/
-Disallow: /bill-query/prediction-request*
-Disallow: /bill-query/prediction-request/*
-Disallow: /bill-query/bill
-Disallow: /bill-query/bill/
-Disallow: /bill-query/bill*
-Disallow: /bill-query/bill/*
-Disallow: /bill-query/vote
-Disallow: /bill-query/vote/
-Disallow: /bill-query/vote*
-Disallow: /bill-query/vote/*
-Allow: /bill-query/bill/119
-Allow: /bill-query/bill/119/
-Allow: /bill-query/bill/119*
-Allow: /bill-query/bill/119/*
-Allow: /bill-query/vote/119*
+Disallow: /member/update-mems
+Disallow: /member/update-mems/
+Disallow: /member/update-mems*
+Disallow: /member/update-mems/*
+Disallow: /bill/prediction-request
+Disallow: /bill/prediction-request/
+Disallow: /bill/prediction-request*
+Disallow: /bill/prediction-request/*
+# Bill and vote DETAIL pages are crawlable only for the current congress (119).
+# The landing/search pages must stay crawlable, so they are re-allowed explicitly:
+# under the old /bill-query/ scheme the home page and the detail pages had
+# different prefixes, but /bill/ is now a prefix of /bill/<congress>/<type>/<num>.
+# Longest-match wins, and Allow beats Disallow at equal length.
+Disallow: /bill/
+Disallow: /bill/*
+Disallow: /vote/
+Disallow: /vote/*
+Allow: /bill/$
+Allow: /bill/search/
+Allow: /vote/$
+Allow: /vote/search/
+Allow: /bill/119
+Allow: /bill/119/
+Allow: /bill/119*
+Allow: /bill/119/*
+Allow: /vote/119*
 
 Crawl-delay: 10

@@ -3,7 +3,6 @@ from urllib import request
 from django.core.cache import cache
 from django.contrib import messages
 from django.contrib.auth.models import User
-from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpRequest, HttpResponseRedirect, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.views.decorators.http import require_GET
@@ -13,7 +12,8 @@ from SenateQuery.models import Congress, Membership
 from BillQuery.models import Vote, Bill
 from notifications.models import UserProfile
 from strawberryAPI.graphql.utils import batch_load_summaries
-from app import siteutils, utils
+from app import utils
+from app.auth_backends import find_user_by_credentials
 from app.forms import RegisterForm, VerificationForm
 from app.models import EmailVerification
 from django.core.mail import send_mail
@@ -42,7 +42,7 @@ def home(request):
     try:
         congress = Congress.objects.get(congress_num = 119)
     except:
-        return HttpResponseRedirect('/member-query')
+        return HttpResponseRedirect('/member/')
     vote_list = Vote.objects.filter(congress = congress)[0:16].all()
     vote_table = utils.voteTablePage(vote_list)
     return render(
@@ -76,6 +76,17 @@ def about(request):
         }
     )
 
+def terms_of_service(request):
+    """Renders the about page.""" 
+    assert isinstance(request, HttpRequest)
+    return render(
+        request,
+        'app/terms_of_service.html',
+        {
+            'title':'Terms of Service',
+        }
+    )
+
 def my_congress_privacy_policy(request):
     """Renders the privacy policy page."""
     assert isinstance(request, HttpRequest)
@@ -106,15 +117,8 @@ class CustomLoginView(LoginView):
         username = form.data.get('username')
         password = form.data.get('password')
         if username and password:
-            user = None
-            try:
-                user = User.objects.get(username=username)
-            except User.DoesNotExist:
-                try:
-                    user = User.objects.get(email=username)
-                except User.DoesNotExist:
-                    user = None
-            if user is not None and user.check_password(password) and not user.is_active:
+            user = find_user_by_credentials(username, password)
+            if user is not None and not user.is_active:
                 messages.info(self.request, "Account not verified. Enter your verification code.")
                 return redirect('verify-email', email=user.email)
 
@@ -128,6 +132,7 @@ def register(request):
             user.username = user.email
             user.is_active = False
             user.save()
+            AppUserProfile.objects.create(user=user)
 
             verification = EmailVerification.objects.create(user=user)
             send_mail(
@@ -220,6 +225,9 @@ def oauth_google_web(request):
     email = (payload.get("email") or "").lower()
     if not provider_id or not email:
         return JsonResponse({"detail": "Google token did not contain required fields."}, status=400)
+    # Accounts are linked by email, so only trust addresses Google has verified.
+    if str(payload.get("email_verified")).lower() != "true":
+        return JsonResponse({"detail": "Google account email is not verified."}, status=400)
 
     # reuse the same linking logic as the mobile/web API
     from app.api.views import _find_or_create_oauth_user
@@ -371,18 +379,6 @@ def resend_verification(request, email):
     )
     return redirect("verify-email", email=user.email)
 
-@staff_member_required
-def updateJSON(request, congress_id) : 
-    assert isinstance(request, HttpRequest)
-    siteutils.modifyCountyGeoJSON(congress_id)
-    return HttpResponseRedirect("/")
-
-@staff_member_required
-def updateSTATES(request) : 
-    assert isinstance(request, HttpRequest)
-    siteutils.modifyStateGeoJSON()
-    return HttpResponseRedirect("/")
-
 @require_GET
 def robots_txt(request):
     content = """ 
@@ -399,14 +395,14 @@ Disallow: /logout
 Disallow: /logout*
 Disallow: /logout/
 Disallow: /logout/*
-Disallow: /member-query/update-mems
-Disallow: /member-query/update-mems/
-Disallow: /member-query/update-mems*
-Disallow: /member-query/update-mems/*
-Disallow: /bill-query/prediction-request
-Disallow: /bill-query/prediction-request/
-Disallow: /bill-query/prediction-request*
-Disallow: /bill-query/prediction-request/*
+Disallow: /member/update-mems
+Disallow: /member/update-mems/
+Disallow: /member/update-mems*
+Disallow: /member/update-mems/*
+Disallow: /bill/prediction-request
+Disallow: /bill/prediction-request/
+Disallow: /bill/prediction-request*
+Disallow: /bill/prediction-request/*
 
 Crawl-delay: 10
     """
@@ -463,8 +459,8 @@ def starred(request):
     if not request.user.is_authenticated:
         return HttpResponseForbidden("Authentication required.")
 
-    user_profile = UserProfile.objects.get(user=request.user)
-    
+    user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
     # Get starred bills
     sb_qs = user_profile.get_starred_bills()
     raw_ids = list(sb_qs.values_list("bill_id", flat=True))

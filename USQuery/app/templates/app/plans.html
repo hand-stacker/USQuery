@@ -36,6 +36,24 @@
         </div>
         {% endif %}
 
+        {% if pending_change_name %}
+        <div class="mb-4 p-3 text-center" style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.3); border-radius: 12px;">
+            <i class="fa-solid fa-triangle-exclamation me-2" style="color: #F59E0B;"></i>
+            <span style="color: rgba(250,250,250,0.85);">
+                Your plan switches to <strong>{{ pending_change_name }}</strong>
+                {% if period_end %}on <strong>{{ period_end|date:"N j, Y" }}</strong>{% endif %}.
+                You keep your current plan until then.
+            </span>
+            <form method="post" action="{% url 'create_checkout_session' %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="tier" value="{{ user_tier }}">
+                <button type="submit" style="background:none; border:none; color:#F59E0B; cursor:pointer; text-decoration:underline; padding:0; font:inherit; font-size:inherit;">
+                    Keep my current plan
+                </button>
+            </form>
+        </div>
+        {% endif %}
+
         <div class="pricing-grid">
 
             <!-- Free -->
@@ -105,11 +123,11 @@
                         </li>
                         <li class="pricing-feature-item">
                             <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
-                            <span>Vote predictions <span style="font-size:12px; color:rgba(250,250,250,0.5);">(3/day)</span></span>
+                            <span>Vote predictions <span style="font-size:12px; color:rgba(250,250,250,0.5);">(10/day)</span></span>
                         </li>
                         <li class="pricing-feature-item">
                             <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
-                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(3 msgs/day)</span></span>
+                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(10 msgs/day)</span></span>
                         </li>
                     </ul>
                 </div>
@@ -138,12 +156,97 @@
                     {% else %}
                     <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
                     {% endif %}
-                    {% elif user_tier == 2 %}
-                    {% if subscriptions_enabled %}
-                    <form method="post" action="{% url 'billing_portal' %}">
+                    {% elif user_tier == 2 or user_tier == 4 %}
+                    {% if pending_change == 1 %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">
+                        <i class="fa-solid fa-clock me-2"></i> Scheduled
+                    </span>
+                    {% elif subscriptions_enabled and stripe_configured %}
+                    <form method="post" action="{% url 'create_checkout_session' %}">
                         {% csrf_token %}
+                        <input type="hidden" name="tier" value="1">
                         <button type="submit" class="pricing-btn pricing-btn--secondary">
-                            Switch via Portal
+                            Switch to Plus
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% else %}
+                    {% if subscriptions_enabled %}
+                    <a href="{% url 'login' %}?next={% url 'plans' %}" class="pricing-btn pricing-btn--primary">
+                        Sign In to Upgrade
+                    </a>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Plus Pro -->
+            <div class="pricing-card">
+                <div class="pricing-card-header">
+                    <div class="pricing-tier-name">Plus Pro</div>
+                    <div class="pricing-price">{{ plus_pro_price }}</div>
+                    <p class="pricing-price-sub">billed monthly</p>
+                </div>
+                <div class="pricing-card-body">
+                    <ul class="pricing-feature-list">
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>25 starred members</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>100 starred bills</span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>Vote predictions <span style="font-size:12px; color:rgba(250,250,250,0.5);">(30/day)</span></span>
+                        </li>
+                        <li class="pricing-feature-item">
+                            <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
+                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(30 msgs/day)</span></span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="pricing-card-footer">
+                    {% if user_tier == 4 %}
+                    <span class="pricing-btn pricing-btn--current">
+                        <i class="fa-solid fa-circle-check me-2"></i> Current Plan
+                    </span>
+                    {% if not cancel_at_period_end %}
+                    <form method="post" action="{% url 'billing_portal' %}" class="mt-2">
+                        {% csrf_token %}
+                        <button type="submit" class="pricing-btn pricing-btn--secondary" style="font-size:12px; padding: 8px 14px;">
+                            Manage Billing
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% elif user_tier == 0 or user_tier == 1 %}
+                    {% if subscriptions_enabled and stripe_configured %}
+                    <form method="post" action="{% url 'create_checkout_session' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="tier" value="4">
+                        <button type="submit" class="pricing-btn pricing-btn--primary">
+                            Upgrade to Plus Pro
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">Coming Soon</span>
+                    {% endif %}
+                    {% elif user_tier == 2 %}
+                    {% if pending_change == 4 %}
+                    <span class="pricing-btn pricing-btn--secondary" style="cursor:default;">
+                        <i class="fa-solid fa-clock me-2"></i> Scheduled
+                    </span>
+                    {% elif subscriptions_enabled and stripe_configured %}
+                    <form method="post" action="{% url 'create_checkout_session' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="tier" value="4">
+                        <button type="submit" class="pricing-btn pricing-btn--secondary">
+                            Switch to Plus Pro
                         </button>
                     </form>
                     {% else %}
@@ -184,7 +287,7 @@
                         </li>
                         <li class="pricing-feature-item">
                             <i class="fa-solid fa-check pricing-feature-icon pricing-feature-icon--check"></i>
-                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(unlimited)</span></span>
+                            <span>AI chatbot <span style="font-size:12px; color:rgba(250,250,250,0.5);">(5M tokens/month)</span></span>
                         </li>
                     </ul>
                 </div>
@@ -201,7 +304,7 @@
                         </button>
                     </form>
                     {% endif %}
-                    {% elif user_tier == 0 or user_tier == 1 %}
+                    {% elif user_tier == 0 or user_tier == 1 or user_tier == 4 %}
                     {% if subscriptions_enabled and stripe_configured %}
                     <form method="post" action="{% url 'create_checkout_session' %}">
                         {% csrf_token %}

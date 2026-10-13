@@ -15,5 +15,20 @@ services:
             - .:/app 
         depends_on:
             - django-docker
+    # Disposable database for the pytest suite only (never the Render DB).
+    # 5433 avoids the local PostgreSQL on 5432; the pgvector image also ships
+    # pg_trgm, both of which the migrations require.
+    test-db:
+        image: pgvector/pgvector:pg17
+        container_name: usquery-test-db
+        # Only started when named: `docker compose up -d test-db`.
+        profiles: ["test"]
+        environment:
+            POSTGRES_PASSWORD: test
+            POSTGRES_DB: usquery_test
+        ports:
+            - "5433:5432"
+        tmpfs:
+            - /var/lib/postgresql/data
 volumes:
     postgres_data:

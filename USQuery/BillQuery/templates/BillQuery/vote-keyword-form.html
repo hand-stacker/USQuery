@@ -1,0 +1,56 @@
+{% load static %}
+<form name="VoteKeywordForm" id="id_VoteKeywordForm" action="{% url 'voteQueryKeyword' %}" method="get">
+    <div class="form-section">
+        <div class="form-sort-row">
+            <label for="{{ vote_keyword_form.sorttype.id_for_label }}" class="form-label-styled">
+                Sort
+            </label>
+            {{ vote_keyword_form.sorttype }}
+        </div>
+
+        <div class="form-group">
+            <label for="{{ vote_keyword_form.vote_keyword.id_for_label }}" class="form-label-styled">
+                Keyword
+            </label>
+            <p class="form-field-help">Search the bill a vote was held on, plus the roll call description itself, so procedural and nomination votes are covered too. Spelling does not have to be exact. A bill reference such as "HR 1234" pins the votes on that bill to the top.</p>
+            {{ vote_keyword_form.vote_keyword }}
+        </div>
+
+        <details class="form-more-options">
+            <summary class="form-more-options-toggle">More options</summary>
+            <div class="form-more-options-body">
+                <div class="form-group">
+                    <label for="{{ vote_keyword_form.bill_type.id_for_label }}" class="form-label-styled">
+                        Select Chamber
+                    </label>
+                    <p class="form-field-help">Choose which chamber to search: House, Senate, or both.</p>
+                    {{ vote_keyword_form.bill_type }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ vote_keyword_form.start_date.id_for_label }}" class="form-label-styled">
+                        Start Date
+                    </label>
+                    <p class="form-field-help">Optional. Leave both dates blank to search the current Congress.</p>
+                    {{ vote_keyword_form.start_date }}
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ vote_keyword_form.end_date.id_for_label }}" class="form-label-styled">
+                        End Date
+                    </label>
+                    <p class="form-field-help">Optional. End of the date range to search.</p>
+                    {{ vote_keyword_form.end_date }}
+                </div>
+            </div>
+        </details>
+
+        {{ vote_keyword_form.non_field_errors }}
+
+        <div class="form-group-submit">
+            <button type="submit" class="btn-glass override-text-center w-100">
+                Search Votes
+            </button>
+        </div>
+    </div>
+</form>

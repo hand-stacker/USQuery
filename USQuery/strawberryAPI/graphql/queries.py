@@ -1,12 +1,13 @@
 import strawberry, aiohttp
 import strawberry.types
 from datetime import date, datetime
-from .types import BillConnection, BillEdge, BillType, BillMemberType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType
+from .types import BillConnection, BillEdge, BillType, BillMemberType, VoteType, VoteConnection, VoteEdge, ActionType, CongressType, SubjectType, ChatHistoryType, ChatMessageItem
 from typing import List, Optional
-from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramSimilarity
-from django.db.models import F, Q, Count, Prefetch, Value, FloatField, Max
+from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank, TrigramWordSimilarity
+from django.db.models import F, Q, Count, Prefetch, Value, FloatField, Subquery, OuterRef
 from BillQuery.models import Bill, Subject, Vote
-from django.db.models.functions import Coalesce
+from BillQuery.bill_reference import bill_reference_candidate_ids
+from django.db.models.functions import Coalesce, Greatest
 from django.core.cache import cache
 from SenateQuery.models import Congress, Member, Membership
 from .utils import batch_load_summaries, fetch_actions, fetch_summary
@@ -18,7 +19,7 @@ import json
 from rest_framework_simplejwt.tokens import AccessToken
 from graphql import GraphQLError
 from notifications.models import StarredBill
-from app.models import UserProfile
+from app.models import UserProfile, ChatSession, ChatMessage
 
 
 def encode_cursor(payload: dict) -> str:
@@ -44,28 +45,16 @@ def vote_id_helper(a):
     return None
 
 
-## Recursively search AST selection nodes for a field named `target_field`.
-## Works with Strawberry `info.field_nodes` (GraphQL AST nodes).
-
-def _ast_selection_contains(nodes, target_field: str) -> bool:
-    
-    for node in nodes:
-        sel_set = getattr(node, "selection_set", None)
-        if not sel_set:
-            continue
-        for sel in sel_set.selections:
-            name = getattr(getattr(sel, "name", None), "value", None)
-            if name == target_field:
-                return True
-            # recurse into nested selection sets (e.g. edges -> node -> summary)
-            if getattr(sel, "selection_set", None):
-                if _ast_selection_contains([sel], target_field):
-                    return True
-    return False
-
 def selection_contains_field(info: "strawberry.types.Info", field_name: str) -> bool:
-    # info.field_nodes is a list of AST Field nodes for the current resolver
-    return _ast_selection_contains(info.field_nodes, field_name)
+    def _check(fields):
+        for field in fields:
+            if field.name == field_name:
+                return True
+            if _check(field.selections):
+                return True
+        return False
+    return _check(info.selected_fields)
+
 
 def _get_bill_with_related(bill_id: int):
     bill = (
@@ -103,7 +92,7 @@ class Query:
         except Bill.DoesNotExist:
             return None
         session = aiohttp.ClientSession()
-        sum_context = await fetch_summary(session, bill)
+        sum_context = await fetch_summary(session, bill, try_AI_fetch=False)
         act_context = await fetch_actions(session, bill)
         actions = [ActionType(
             actionCode=a.get("actionCode"),
@@ -111,7 +100,7 @@ class Query:
             voteId=vote_id_helper(a),
             text=a.get("text"),
             type=a.get("type"),
-            ) for a in act_context['actions']
+            ) for a in act_context.get('actions', []) if isinstance(a, dict)
         ]
         await session.close()
         return BillType(
@@ -125,6 +114,7 @@ class Query:
             match_count = 0,
             summary = md(sum_context['summary']),
             is_AI_generated = sum_context['AI_generated_content?'],
+            ai_summary_generated_at = sum_context.get('generated_at'),
             actions = actions,
             status_code = bill.status_code,
             veto_in_history = bill.veto_in_history,
@@ -176,124 +166,7 @@ class Query:
         sort: Optional[str] = None, 
         info: "strawberry.types.Info" = None,
     ) -> BillConnection:
-        first = min(first, 30)
-        _congress = await Congress.objects.aget(congress_num__exact=congress_num)
-        start_date = date(_congress.start_year, 1, 3)
-        end_date = date(_congress.end_year + 1, 1, 3)
-        sort = (sort or '').lower()
-        ## selects only from the provided congress num
-        qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
-
-        ## When subjectList provided we annotate match_count, require match_count > 0,
-        ## and order by relevance (match_count) then recency (latest_action) then id for stability.
-        if subjectList:
-            qs = qs.annotate(
-                    match_count=Count(
-                        "subjects",
-                        filter=Q(subjects__in=subjectList),
-                        distinct=True
-                    )
-                ).filter(match_count__gt=0)
-            match sort:
-                case "datedesc":
-                    qs = qs.order_by("-latest_action", "-match_count", "-id")
-                case _:
-                    qs = qs.order_by("-match_count", "-latest_action", "-id")
-
-            ## handle pagination with composite cursor (match_count, latest_action, id)
-            if after:
-                cursor = decode_cursor(after)
-                last_match = cursor.get("match_count")
-                last_action_str = cursor.get("latest_action")
-                last_id = cursor.get("id")
-                if last_match is not None:
-                    try:
-                        last_match = int(last_match)
-                    except Exception:
-                        last_match = None
-                if last_match is not None and last_action_str and last_id is not None:
-                    try:
-                        last_action = date.fromisoformat(last_action_str)
-                        match sort :
-                            case "datedesc":
-                                qs = qs.filter(
-                                    Q(latest_action__lt=last_action) |
-                                    (Q(latest_action=last_action) & (
-                                        Q(match_count__lt=last_match) |
-                                        (Q(match_count=last_match) & Q(id__lt=last_id))
-                                    ))
-                                )
-                            case _:
-                                qs = qs.filter(
-                                    Q(match_count__lt=last_match) |
-                                    (Q(match_count=last_match) & (
-                                        Q(latest_action__lt=last_action) |
-                                        (Q(latest_action=last_action) & Q(id__lt=last_id))
-                                    ))
-                                )
-                    except Exception:
-                        ## fallback to id-only filter (descending)
-                        if last_id is not None:
-                            qs = qs.filter(id__lt=last_id)
-                elif last_id is not None:
-                    qs = qs.filter(id__lt=last_id)
-
-            qs = qs[: first + 1]
-        else:
-            ## No subject ordering required use stable ordering by latest_action desc
-            qs = qs.order_by("-latest_action", "-id")
-            if after:
-                cursor = decode_cursor(after)
-                last_action_str = cursor.get("latest_action")
-                last_id = cursor.get("id")
-                if last_action_str and last_id is not None:
-                    try:
-                        last_action = date.fromisoformat(last_action_str)
-                        qs = qs.filter(Q(latest_action__lt=last_action) | (Q(latest_action=last_action) & Q(id__lt=last_id)))
-                    except Exception:
-                        if last_id is not None:
-                            qs = qs.filter(id__lt=last_id)
-                elif last_id is not None:
-                    qs = qs.filter(id__lt=last_id)
-            qs = qs[: first + 1]
-
-        items = await sync_to_async(list)(qs)
-        has_next = len(items) > first
-        items = items[:first]
-        
-        ## Run summary batch request only if the GraphQL selection requests the `summary` field
-        # Traverses the AST for the current field to find any selection named "summary"
-        if info is not None and selection_contains_field(info, "summary"):
-            summaries = await batch_load_summaries(items, truncate)
-            ## Attach summaries dynamically
-            for i in items:
-                s = summaries.get(i.id)
-                if s:
-                    i.summary = md(s["summary"])
-                    i.is_AI_generated = s["AI_generated_content?"]
-        else:
-            for i in items:
-                i.summary = None
-                i.is_AI_generated = False
-            
-        edges = [
-            BillEdge(
-                cursor=encode_cursor({"id": a.id, "latest_action": a.latest_action.isoformat(), "match_count": getattr(a, "match_count", 0)}),
-                node=a
-            )
-            for a in items
-        ]
-
-        return BillConnection(
-            edges=edges,
-            page_info=strawberry.relay.PageInfo(
-                has_next_page=has_next,
-                has_previous_page=after is not None,
-                start_cursor=edges[0].cursor if edges else None,
-                end_cursor=edges[-1].cursor if edges else None,
-            ),
-            error="None"
-        )
+        return BillConnection(edges=[], page_info=strawberry.relay.PageInfo(has_next_page=False, has_previous_page=False, start_cursor=None, end_cursor=None), error='Not included in the public snapshot.')
 
     @strawberry.field
     async def getBillsByKeyword(
@@ -303,100 +176,12 @@ class Query:
         bill_type: str = "!",
         first: int = 5,
         after: Optional[str] = None,
+        truncate: Optional[bool] = False,
+        sort: Optional[str] = None,
+        info: "strawberry.types.Info" = None,
     ) -> BillConnection:
 
-        first = min(first, 30)
-
-        _congress = await Congress.objects.aget(congress_num__exact=congress_num)
-        start_date = date(_congress.start_year, 1, 3)
-        end_date = date(_congress.end_year + 1, 1, 3)
-        search_params = {
-            "keyword": keyword,
-            "congress": congress_num,
-            "bill_type": bill_type,
-        }
-
-        raw_key = json.dumps(search_params, sort_keys=True)
-        search_hash = hashlib.md5(raw_key.encode()).hexdigest()
-        cache_key = f"bill_search_ids:{search_hash}"
-        cached_ids = await cache.aget(cache_key)
-
-        if not cached_ids:
-            qs = Bill.type_objects.get_from_type(bill_type, start_date, end_date)
-
-            query = SearchQuery(keyword)
-
-            qs = qs.annotate(
-                # Full text ranking
-                rank=SearchRank(F("search_vector"), query),
-
-                # Trigram fallback
-                title_similarity=TrigramSimilarity("title", keyword),
-                subject_similarity=Max(
-                    TrigramSimilarity("subjects__name", keyword)
-                ),
-            ).annotate(
-                similarity=(
-                    F("title_similarity") * 0.7 +
-                    F("subject_similarity") * 0.3
-                ),
-
-            ).annotate(
-                # Combine both into one final score
-                final_score=(
-                    Coalesce(F("rank"), Value(0.0), output_field=FloatField()) * 0.8 +
-                    Coalesce(F("similarity"), Value(0.0), output_field=FloatField()) * 0.2
-                )
-            ).filter(
-                Q(rank__gt=0.0) | Q(similarity__gt=0.2)
-            ).order_by(
-                "-final_score",
-                "-latest_action",
-                "-id"
-            ).distinct()
-
-            cached_ids = await sync_to_async(list)(
-                qs.values_list("id", flat=True)
-            )
-
-            await cache.aset(cache_key, cached_ids, timeout=600)
-
-        start_indx = 0
-        # Cursor pagination (rank + latest_action + id)
-        if after:
-            cursor = decode_cursor(after)
-            last_id = cursor.get("id")
-
-            if last_id in cached_ids:
-                start_indx = cached_ids.index(last_id) + 1
-
-        page_ids = cached_ids[start_indx : start_indx + first + 1]
-        has_next = len(page_ids) > first
-        page_ids = page_ids[:first]
-        items = await sync_to_async(list)(
-            Bill.objects.filter(id__in=page_ids)
-        )
-        id_position = {id_: pos for pos, id_ in enumerate(page_ids)}
-        items.sort(key=lambda x: id_position[x.id])
-
-        edges = [
-            BillEdge(
-                cursor=encode_cursor({"id": a.id}),
-                node=a
-            )
-            for a in items
-        ]
-
-        return BillConnection(
-            edges=edges,
-            page_info=strawberry.relay.PageInfo(
-                has_next_page=has_next,
-                has_previous_page=after is not None,
-                start_cursor=edges[0].cursor if edges else None,
-                end_cursor=edges[-1].cursor if edges else None,
-            ),
-            error="None"
-        )
+        return BillConnection(edges=[], page_info=strawberry.relay.PageInfo(has_next_page=False, has_previous_page=False, start_cursor=None, end_cursor=None), error='Not included in the public snapshot.')
 
     @strawberry.field
     async def getStarredBills(
@@ -493,10 +278,12 @@ class Query:
                 if s:
                     i.summary = md(s["summary"])
                     i.is_AI_generated = s["AI_generated_content?"]
+                    i.ai_summary_generated_at = s.get("generated_at")
         else:
             for i in items:
                 i.summary = None
                 i.is_AI_generated = False
+                i.ai_summary_generated_at = None
             
         edges = [
             BillEdge(
@@ -630,3 +417,61 @@ class Query:
                 end_cursor=edges[-1].cursor if edges else None,
             ),
         )
+
+    @strawberry.field
+    async def getVotesByKeyword(
+        self,
+        keyword: str,
+        first: int = 15,
+        congress_num: int = 119,
+        bill_type: str = "!",
+        after: Optional[str] = None,
+        sort: Optional[str] = None,
+    ) -> VoteConnection:
+
+        return VoteConnection(edges=[], page_info=strawberry.relay.PageInfo(has_next_page=False, has_previous_page=False, start_cursor=None, end_cursor=None))
+
+    @strawberry.field
+    async def getChatHistory(
+        self,
+        bill_id: int,
+        access_token: Optional[str] = None,
+        refresh_token: Optional[str] = None,
+    ) -> ChatHistoryType:
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        user_id = None
+        if access_token:
+            try:
+                token = AccessToken(access_token)
+                user_id = token.get("user_id")
+            except Exception:
+                pass
+
+        if user_id is None and refresh_token:
+            try:
+                rtoken = RefreshToken(refresh_token)
+                user_id = rtoken.get("user_id")
+            except Exception:
+                pass
+
+        if user_id is None:
+            return ChatHistoryType(session_id=None, messages=[], error="Authentication required.")
+
+        try:
+            user_profile = await UserProfile.objects.select_related("user").aget(user__id=user_id)
+        except UserProfile.DoesNotExist:
+            return ChatHistoryType(session_id=None, messages=[], error="User not found.")
+
+        session = await ChatSession.objects.filter(
+            user=user_profile.user, bill_id=bill_id
+        ).order_by('-updated_at').afirst()
+
+        if not session:
+            return ChatHistoryType(session_id=None, messages=[], error=None)
+
+        raw = await sync_to_async(list)(
+            session.messages.order_by('created_at', 'id').values('role', 'content')[:40]
+        )
+        messages = [ChatMessageItem(role=m['role'], content=m['content']) for m in raw]
+        return ChatHistoryType(session_id=str(session.id), messages=messages, error=None)

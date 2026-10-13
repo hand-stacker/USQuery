@@ -38,7 +38,7 @@ function updateMembersList() {
         return;
     }
     
-    const url = `get-filtered/${congressId}/${chamber}/${state}/`;
+    const url = `/member/get-filtered/${congressId}/${chamber}/${state}/`;
     
     fetch(url)
         .then(response => response.json())

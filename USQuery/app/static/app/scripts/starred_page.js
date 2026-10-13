@@ -74,13 +74,13 @@ function getBillURL(billId) {
     const congress = getCongress(billId);
     const typeURL = getBillTypeURL(billId);
     const num = getBillNum(billId);
-    return `/bill-query/bill/${congress}/${typeURL}/${num}`;
+    return `/bill/${congress}/${typeURL}/${num}`;
 }
 
 // Build member URL
 function getMemberURL(membership) {
     const chamber = membership.house ? 'House+of+Representatives' : 'Senate';
-    return `/member-query/results/?congress=119&member=${membership.member_id}&chamber=${chamber}`;
+    return `/member/results/?congress=119&member=${membership.member_id}&chamber=${chamber}`;
 }
 
 // Extract member_id from membership data (membership_id structure varies)
@@ -114,7 +114,7 @@ function renderBillsPage() {
 
     list.innerHTML = pageItems.map(bill => {
         const billURL = getBillURL(bill.bill_id);
-        const latestActionDate = new Date(bill.latest_action).toLocaleDateString();
+        const latestActionDate = new Date(bill.latest_action).toLocaleDateString(undefined, { timeZone: 'UTC' });
         return `
             <div class="col-md-6 mb-4">
                 <a href="${billURL}" class="starred-item">

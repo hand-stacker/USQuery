@@ -8,7 +8,7 @@ dj-database-url
 asyncio
 aiohttp
 gunicorn
-google-genai
+voyageai
 beautifulsoup4
 pandas
 tensorflow
@@ -22,6 +22,11 @@ djangorestframework-simplejwt
 djangorestframework-simplejwt[token_blacklist]
 strawberry-django-auth
 stripe
+app-store-server-library
 anthropic
 pgvector
 PyJWT
+google-auth
+voyageai
+pypdf
+openpyxl

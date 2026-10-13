@@ -1,0 +1,38 @@
+{% extends "app/layout.html" %}
+{% load static %}
+
+{% block content %}
+<div class="row justify-content-center mb-5">
+    <div class="col-lg-8">
+        <div class="card-dark p-4 mb-3">
+            <h3 class="mb-3 d-flex align-items-center">
+                Search Votes by Keyword
+            </h3>
+            <p class="form-help-text mb-3">
+                Describe what you are looking for and we will rank the closest matching roll call votes. Narrow the results by chamber and date range if you already know roughly when the vote was held.
+            </p>
+            <div class="query-container">
+                {% include "BillQuery/vote-keyword-form.html" %}
+            </div>
+        </div>
+        <div class="card-dark p-4">
+            <h3 class="mb-3 d-flex align-items-center">
+                Or Browse by Subjects
+            </h3>
+            <p class="form-help-text mb-3">
+                Explore congressional votes within a specific timeframe and chamber. Filter by legislative subjects to find votes related to your areas of interest.
+            </p>
+            <div class="query-container">
+                {% include "BillQuery/vote-range-form.html" %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'scripts/loadTomSelectForms.js' %}"></script>
+    <script src="{% static 'scripts/dateRangeGuard.js' %}"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select/dist/css/tom-select.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/tom-select/dist/js/tom-select.complete.min.js"></script>
+{% endblock %}

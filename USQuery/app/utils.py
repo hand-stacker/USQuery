@@ -1,18 +1,23 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date, timedelta, timezone as dt_timezone
 from asgiref.sync import sync_to_async
 from django.core.cache import cache
-import requests, asyncio, json, aiohttp, hashlib, re
+import requests, asyncio, json, aiohttp, hashlib, re, time
 from requests.exceptions import HTTPError
 from USQuery import settings
 from SenateQuery.models import Member, Congress, Membership
-from BillQuery.models import Bill, Vote, BillSummary, Subject
+from BillQuery.models import Bill, Vote, BillSummary, Subject, US_EASTERN
 from notifications.push import send_bill_notification
 from collections import defaultdict
 from xml.etree import cElementTree as ET
-from google import genai
-from django.db.models import Q, Count, Prefetch
+import anthropic
+from django.db.models import Q, Count, Prefetch, Max
 from bs4 import BeautifulSoup
-from google.genai import types as genaiTypes
+
+## Raised when the Congress API does not return the core data a bill page needs
+## (upstream slow/down). Callers should degrade to a friendly "try again" page
+## rather than letting a None subscript become a 500 / worker timeout.
+class BillUpstreamUnavailable(Exception):
+    pass
 
 ## helpful objects that map state related data
 timeout_day = 60 * 60 * 24
@@ -92,6 +97,14 @@ types = {
             'hjres' : 6,
             'hconres' : 7}
 
+SENATE_TYPES = frozenset({'s', 'sres', 'sjres', 'sconres'})
+HOUSE_TYPES  = frozenset({'hr', 'hres', 'hjres', 'hconres'})
+
+# Accumulates bill IDs that received new actions during the current load_bills run.
+# Cleared and read by load_bills.py before/after calling updateRecentBills.
+_senate_bill_ids_this_run: set = set()
+_house_bill_ids_this_run: set = set()
+
 month_to_num = {'Jan' : '01',
                 'Feb' : '02',
                 'Mar' : '03',
@@ -139,59 +152,133 @@ async def make_cache_keyASYNC(url, header_str):
     return hashlib.shake_256(final.encode()).hexdigest(4)
     
 
-## connects to an API with given headers
-def connect(fullpath, headers):
-    try:
-        response = requests.get(fullpath, headers, timeout=20)
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP ERROR : {http_err}')
-    except Exception as err:
-        print(f'MISC ERROR : {err}')
-    except TimeoutError:
-        print('TIMEOUT ERROR')
-    else:
-        return response    
+## connects to an API with given headers, retrying transient failures (timeouts,
+## connection errors, 5xx) with exponential backoff. 4xx errors (404, bad request,
+## etc.) are treated as permanent and are not retried. Returns None if every
+## attempt fails.
+def connect(fullpath, headers, max_retries=3):
+    delay = 0.5
+    for attempt in range(max_retries + 1):
+        try:
+            response = requests.get(fullpath, headers, timeout=20)
+            response.raise_for_status()
+        except HTTPError as http_err:
+            retryable = getattr(http_err.response, 'status_code', 0) >= 500
+            print(f'HTTP ERROR : {http_err}')
+        except requests.exceptions.RequestException as err:
+            retryable = True
+            print(f'CONNECTION/TIMEOUT ERROR : {err}')
+        except Exception as err:
+            retryable = False
+            print(f'MISC ERROR : {err}')
+        else:
+            return response
+        if not retryable or attempt == max_retries:
+            return None
+        time.sleep(delay)
+        delay *= 2
 
 ## connects to an API with given headers(in string format) asynchronously
 ## must specify if response is to be jsonified or not
-async def connectASYNC(session, fullpath, header_str, jsonify = True):
-    try:
-        async with session.get(fullpath + header_str, timeout=40) as response:
-            response.raise_for_status()
-            if jsonify:
-                return await response.json()
-            else:
-                return await response.text()
-    except aiohttp.ClientError as http_err:
-        print(f'HTTP ERROR : {http_err}')
-    except json.JSONDecodeError as e:
-        print("Invalid JSON syntax:", e)
-    except Exception as err:
-        print(f'MISC ERROR : {err} when connecting to {fullpath}')
-    except asyncio.TimeoutError:
-        print('TIMEOUT ERROR')
+## retries transient failures (timeouts, connection errors, 5xx) with exponential
+## backoff; 4xx errors and JSON decode errors are treated as permanent
+async def connectASYNC(session, fullpath, header_str, jsonify = True, timeout = 12, max_retries = 3):
+    delay = 0.5
+    for attempt in range(max_retries + 1):
+        try:
+            async with session.get(fullpath + header_str, timeout=timeout) as response:
+                response.raise_for_status()
+                if jsonify:
+                    return await response.json()
+                else:
+                    return await response.text()
+        except aiohttp.ClientResponseError as http_err:
+            retryable = http_err.status >= 500
+            print(f'HTTP ERROR {http_err.status} : {http_err} when connecting to {fullpath}')
+        except (aiohttp.ClientError, asyncio.TimeoutError) as err:
+            retryable = True
+            print(f'HTTP/TIMEOUT ERROR : {err} when connecting to {fullpath}')
+        except json.JSONDecodeError as e:
+            retryable = False
+            print("Invalid JSON syntax:", e)
+        except Exception as err:
+            retryable = False
+            print(f'MISC ERROR : {err} when connecting to {fullpath}')
+        if not retryable or attempt == max_retries:
+            break
+        await asyncio.sleep(delay)
+        delay *= 2
+    # Callers (e.g. billHtml) treat '' as "no data" and degrade gracefully, so
+    # return the sentinel instead of None on any failure.
+    return ''
 
-## Caches external API requests, returns a json object
+## raises a clear error instead of the opaque AttributeError that '.json()' on a
+## failed (None) connect() response would otherwise produce
+def _json_or_error(response, fullpath):
+    if response is None:
+        raise RuntimeError(f'Congress API request failed after retries: {fullpath}')
+    return response.json()
+
+## Caches external API requests, returns a json object (or None if the request failed)
 def connect_and_cache(fullpath, headers, timeout = timeout_day):
     key = make_cache_key(fullpath, headers)
     cached = cache.get(key)
     if cached:
         return cached
     res = connect(fullpath, headers)
+    if res is None:
+        return None
     data = res.json()
     cache.set(key, data, timeout)
     return data
 
 ## ASYNC : Caches external API requests, returns a json object
-async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = timeout_day):
-    key = make_cache_key(fullpath, header_str)
+## v2: bumped to abandon production entries poisoned with summary text/action lists
+API_CACHE_VER = 'v2:'
+async def connect_and_cacheASYNC(session, fullpath, header_str, timeout = 60*60*12):
+    key = API_CACHE_VER + await make_cache_keyASYNC(fullpath, header_str)
     cached = await cache.aget(key)
     if cached:
         return cached
-    data = await connectASYNC(session, fullpath, header_str)
-    await cache.aset(key, data, timeout)
-    return data
+
+    # Single-flight / thundering-herd guard: when a hot key goes cold, many
+    # concurrent requests would otherwise all stampede the upstream API at once
+    # (each one blocking a worker thread). Instead, the first caller acquires a
+    # short-lived lock and does the fetch; everyone else briefly polls the cache
+    # for that result and only fetches themselves if the leader is slow/dies.
+    # The lock is best-effort: any failure acquiring/releasing it falls back to the
+    # prior behavior (fetch directly), so herd protection can never make a request
+    # fail where it previously would have succeeded.
+    lock_key = 'lock:' + key
+    try:
+        got_lock = await cache.aadd(lock_key, 1, timeout=20)
+    except Exception:
+        got_lock = True   # treat as "no waiting"; just fetch (no lock to release)
+    if not got_lock:
+        for _ in range(28):            # ~14s, just past the per-request fetch cap
+            await asyncio.sleep(0.5)
+            cached = await cache.aget(key)
+            if cached:
+                return cached
+        # Leader never populated the cache (slow/failed) -> fetch it ourselves.
+
+    try:
+        data = await connectASYNC(session, fullpath, header_str)
+        # Only cache real responses. Failures return '' (falsy); caching them is
+        # pointless since the `if cached` guard above always re-fetches falsy
+        # values -- this keeps the served-from-cache behavior exactly as before
+        # while avoiding writing junk into Redis.
+        if data:
+            await cache.aset(key, data, timeout)
+        return data
+    finally:
+        # Only the leader releases the lock; a waiter that fell through must not
+        # delete someone else's lock.
+        if got_lock:
+            try:
+                await cache.adelete(lock_key)
+            except Exception:
+                pass
 
 ## returns a list of responses from a list of requests asynchronously
 async def run_concurrent_connect(session, requests, header_str) : 
@@ -225,10 +312,12 @@ def addMembersCongressAPILazy(congress_num):
         'currentMember' : 'false',
         'offset' : '0', 'limit' : '250'
         }
-    API_cong = connect(settings.CONGRESS_DIR + '/congress/' + str(congress_num), headers).json()
+    cong_url = settings.CONGRESS_DIR + '/congress/' + str(congress_num)
+    API_cong = _json_or_error(connect(cong_url, headers), cong_url)
     start_date = API_cong['congress']['sessions'][0]['startDate']
     end_date = None if len(API_cong['congress']['sessions']) <= 2 else API_cong['congress']['sessions'][2]['endDate']
-    API_response = connect(settings.CONGRESS_DIR + "/member/congress/" + str(congress_num), headers).json()
+    members_url = settings.CONGRESS_DIR + "/member/congress/" + str(congress_num)
+    API_response = _json_or_error(connect(members_url, headers), members_url)
     congress = Congress.objects.get_or_create(
         congress_num = congress_num,
         start_year = int(API_cong['congress']['startYear']),
@@ -269,7 +358,8 @@ def addMembersCongressAPILazy(congress_num):
                         )
             print("added member " + bioguide_id)
         if 'next' in API_response['pagination']:
-            API_response = connect(API_response['pagination']['next'], {'api_key' : settings.CONGRESS_KEY}).json()
+            next_url = API_response['pagination']['next']
+            API_response = _json_or_error(connect(next_url, {'api_key' : settings.CONGRESS_KEY}), next_url)
         else : API_response = None
 
 ## swap membership given bioguide_ids and dates of arrival and departure
@@ -290,7 +380,8 @@ def swapMembership(congress_num, leaving_id, in_house, leaving_date, arriving_id
         if (_set_member.exists()):
             arriving_member = _set_member[0]
         else :
-            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + arriving_id, headers).json()
+            member_url = settings.CONGRESS_DIR + 'member/' + arriving_id
+            API_response_member = _json_or_error(connect(member_url, headers), member_url)
             arriving_member = Member.objects.get_or_create(
                 id = arriving_id, 
                 full_name = API_response_member['member']['directOrderName'],
@@ -338,16 +429,18 @@ def createMembership(congress_id, member_id, state, in_house, party, arrival_dat
                 'currentMember' : 'false',
                 'offset' : '0', 'limit' : '250'
                 }
-            API_response_member = connect(settings.CONGRESS_DIR + 'member/' + member_id, headers).json()
+            member_url = settings.CONGRESS_DIR + 'member/' + member_id
+            API_response_member = _json_or_error(connect(member_url, headers), member_url)
             member = Member.objects.get_or_create(
-                id = member_id, 
+                id = member_id,
                 full_name = API_response_member['member']['directOrderName'],
                 first_name = API_response_member['member']['firstName'],
                 last_name = API_response_member['member']['lastName'],
                 image_link = "empty"
                 )[0]
-        except:
-            print("BioguideID not present in API")
+        except Exception as e:
+            print(f"BioguideID not present in API or Congress API request failed: {e}")
+            return
     membership = Membership.objects.get_or_create(
             congress = congress,
             member = member,
@@ -389,7 +482,10 @@ async def updateRecentBills(congress_num, date_str, bill_type):
     congress = congress.result()
     API_response = API_response.result()
     end_operation = False
-    while API_response is not None:
+    # connectASYNC returns '' (falsy, not None) on failure, so this must check
+    # truthiness rather than "is not None" -- otherwise a failed fetch would loop
+    # forever trying to index into the empty-string sentinel.
+    while API_response:
         for bill in API_response['bills']:
             if bill['latestAction'] and 'actionDate' in bill['latestAction']:
                 latest_action_date = datetime.strptime(bill['latestAction']['actionDate'], '%Y-%m-%d')
@@ -397,7 +493,7 @@ async def updateRecentBills(congress_num, date_str, bill_type):
                     await addBillASYNC(session, vote_session, congress_num, bill_type, bill, congress, header_str, False)
                     if latest_action_date > tracked_latest_date:
                         tracked_latest_date = latest_action_date
-        if API_response is not None and 'next' in API_response['pagination']:
+        if 'next' in API_response['pagination']:
             API_response = await connectASYNC(session, API_response['pagination']['next'], header_str)
         else:
             API_response = None
@@ -422,6 +518,12 @@ async def addBills(congress_num = 116, _type='s', limit = 100, offset = 0):
             ))
     congress = congress.result()
     API_response = API_response.result()
+    if not API_response:
+        print(f'addBills: failed to fetch bill list for congress {congress_num}/{_type} (offset {offset}), aborting')
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(session.close())
+            tg.create_task(vote_session.close())
+        return
     indx = 0
     limit = 5
     n = len(API_response['bills'])
@@ -499,200 +601,20 @@ async def _sync_bill_relations(session, bill, congress_num, _type, num):
         bill.policy_area = subjects_data.get('policyArea', {}).get('name', 'Not Specified Yet.')
         await bill.asave()
 
-_TEXT_CODES = frozenset({8000, 17000, 19500, 20500})
+_TEXT_CODES = frozenset()
 
 async def compute_status_code(origin_code, action_codes_desc, initial_status=0):
-    """
-    Derives bill status from Congress API action codes using a chronological
-    state machine. action_codes_desc is newest-first (as the API returns);
-    the function reverses it internally.
-     
-    Not set here (require text parsing or end-of-congress detection):
-      9     Expired as Introduced
-     18/19  Tabled/Expired in Origin Committee
-     22     Origin Concurs with Outer Amendment
-     27-29  Expired/Tabled after Origin passage (28 = expired on origin floor)
-     38/39  Tabled/Expired in Outer Committee
-     42     Outer Concurs with Origin Amendment
-     47-49  Expired/Tabled after Outer passage (48 = expired on outer floor)
-     58/59  Tabled/Expired in Conference
-    """
-    is_house = origin_code == 'H'
-    origin_reported  = 5000  if is_house else 14000
-    origin_pass    = 8000  if is_house else 17000
-    outer_reported   = 14000 if is_house else 5000
-    outer_pass     = 17000 if is_house else 8000
-    origin_fail    = 9000  if is_house else 18000
-    outer_fail     = 18000 if is_house else 9000
-    origin_diff    = 19000 if is_house else 20000
-    outer_diff     = 20000 if is_house else 19000
-    origin_pass_amnd = 19500 if is_house else 20500
-    outer_pass_amnd = 20500 if is_house else 19500
-
-    origin_conf_accept = 21000 if is_house else 23000
-    origin_conf_reject = 22000 if is_house else 24000
-    outer_conf_accept  = 23000 if is_house else 21000
-    outer_conf_reject  = 24000 if is_house else 22000
-
-    origin_veto_pass = 32000 if is_house else 34000
-    origin_veto_fail = 33000 if is_house else 35000
-    outer_veto_pass  = 34000 if is_house else 32000
-    outer_veto_fail  = 35000 if is_house else 33000
-
-    ORIGIN_CMTE = frozenset((2000, 3000, 4000, 4100, 4200, 4900, 5000, 5500, 1010) if is_house else (11000, 12000, 13000, 13100, 13200, 13900, 14000, 14500, 14900, 10010))
-    OUTER_CMTE  = frozenset((11000, 12000, 13000, 13100, 13200, 13900, 14000, 14500, 14900, 10010) if is_house else (2000, 3000, 4000, 4100, 4200, 4900, 5000, 5500, 1010))
-
-    INTROS = frozenset((1000, 1010, 1025, 10000, 10010, 10025))
-    # tabled codes (18, 27, 28, 47, 48, ...) are NOT terminal — rare future action still possible
-    # expired codes (9, 19, 28, 29, 39, 48, 49, 59, ...) ARE terminal
-    TERMINAL_CODES = frozenset((9, 19, 27, 28, 29, 39, 47, 48, 49, 59, 61, 62, 69, 75))
-
-    codes = []
-    for item in action_codes_desc:
-        if isinstance(item, tuple):
-            c, text = item
-        else:
-            c, text = item, None
-        try:
-            codes.append((int(c), text))
-        except (ValueError, TypeError):
-            continue
-
-    status = max(initial_status, 0)  # -1 (uninitialized) treated as 0
-    conf_origin_accepted = (initial_status == 54)
-    conf_outer_accepted  = (initial_status == 55)
-
-    for code, action_text in reversed(codes):
-        # realistically would there ever be a case where
-        # we get new actions after a terminal status??
-        if status in TERMINAL_CODES:
-            break
-        match code:
-            # if intro
-            case _ if code in INTROS:
-                status = 0
-
-            ## Handles origin committee
-            ##
-            # if first time bill enters origin committee
-            case _ if code in ORIGIN_CMTE and status < 20: 
-                status = 10
-
-            ## Handles origin floor actions
-            ##
-            # if reported to origin for first time
-            case _ if code == origin_reported and status < 20:
-                status = 20
-            # if passes origin
-            case _ if code == origin_pass:
-                if action_text and 'with an amendment' in action_text: # checks if (txt matches "with an amendment") and thus sents status to 21
-                    status = 21
-                else : # if status is originally an outer amend set status to 22 otherwise 25
-                    status = 22 if (status == 41) else 25
-            # if fails origin before other chamber ever recieved bill
-            case _ if code == origin_fail and status < 40:
-                status = 26
-            # if passed an amended bill
-            case _ if code == origin_pass_amnd:
-                if action_text and re.search(r'On motion that the House agree[\w ]* to the Senate amendment|Senate concurred in the House amendment', action_text):# if txt matches ("On motion that the House agree[\w ]* to the Senate amendment" or "Senate concurred in the House amendment"):
-                    status = 22 if ('with an amendment' not in action_text) else 21 # if matches "with an amendment" set to 21
-
-            ## Handles Outer Committee
-            ##
-            # if origin passed for first time and recieved in outer chamber committee
-            case _ if code in OUTER_CMTE and status == 25:
-                status = 30
-
-            ## Handles Outer chamber floor actions
-            ##
-            # if reported to outer chamber
-            case _ if code == outer_reported and status in {25, 30}:
-                status = 40
-            # if passes outer chamber
-            case _ if code == outer_pass and status in {25, 30, 21}:
-                if action_text and 'with an amendment' in action_text: # checks if (txt matches "with an amendment") and thus sents status to 41
-                    status = 41
-                else : # if status is originally an origin amend set status to 42 otherwise 45
-                    status = 42 if (status == 21) else 45
-            # if fail outer chamber
-            case _ if code == outer_fail and status >= 20:
-                status = 46
-            # if passed an amended bill
-            case _ if code == outer_pass_amnd:
-                if action_text and re.search(r'On motion that the House agree[\w ]* to the Senate amendment|Senate concurred in the House amendment', action_text):# if txt matches ("On motion that the House agree[\w ]* to the Senate amendment" or "Senate concurred in the House amendment"):
-                    status = 42 if ('with an amendment' not in action_text) else 41 # if matches "with an amendment" set to 21
-
-            ## Handles Conference Committees
-            ##
-            # conference committee started
-            case 20800 | 19000 | 20000 if status < 50:
-                status = 50
-            # conference committee made a report for voting
-            case 20900 if status == 50:
-                status = 53
-            # if report agreed to in origin
-            case _ if code == origin_conf_accept:
-                status = 60 if status == 55 else 54
-            # if report agreed to in outer
-            case _ if code == outer_conf_accept:
-                status = 60 if status == 54 else 55
-
-            ## handles law acceptance or if pocket vetoed
-            ##
-            # if presented to president
-            case 28000:
-                status = 60
-            # if signed by pres
-            case 29000 | 37000 | 42000 | 36000 | 41000:
-                status = 61
-            # if passed without signature by presiident
-            case 29100 | 38000 | 40000 | 43000 | 45000:
-                status = 62
-            # if became law despite veto
-            case 39000 | 44000:
-                status = 63
-            # if pocket vetoed
-            case 30000:
-                status = 69
-
-            ## Handles vetoes
-            ##
-            # if vetoed
-            case 31000:
-                status = 70
-            # if both pass over veto
-            case _ if code == outer_veto_pass and status == 71:
-                status = 75
-            case _ if code == origin_veto_pass and status == 72:
-                status = 75
-            # if one pass over veto
-            case _ if code == origin_veto_pass:
-                status = 71
-            case _ if code == outer_veto_pass:
-                status = 72
-            # if one fails
-            case _ if code == origin_veto_fail:
-                status = 76
-            case _ if code == outer_veto_fail:
-                status = 77
-    return status
+    return max(initial_status, 0)
 
 def compute_history_flags(action_codes_desc):
-    """Returns (veto_in_history, conf_in_history) by scanning raw action codes."""
-    VETO_CODES = {30000, 31000, 32000, 33000, 34000, 35000, 39000, 44000}
-    CONF_CODES = {19000, 20000, 20800, 20900, 21000, 22000, 23000, 24000}
-    veto = conf = False
-    for item in action_codes_desc:
-        c = item[0] if isinstance(item, tuple) else item
-        try:
-            code = int(c)
-        except (ValueError, TypeError):
-            continue
-        veto = veto or code in VETO_CODES
-        conf = conf or code in CONF_CODES
-        if veto and conf:
-            break
-    return veto, conf
+    return False, False
+
+_PASSAGE_QUESTION_PATTERN = re.compile(r'(?!)')
+_PASS_RESULTS = set()
+_FAIL_RESULTS = set()
+
+async def _update_status_from_vote(bill, vote):
+    return False
 
 
 
@@ -700,9 +622,11 @@ def compute_history_flags(action_codes_desc):
 # all actions and updates status code rather than cutting
 # action codes to latest_action (date) stored in bill data
 async def getAllActionCodes(session, header_str, actions):
+    if not actions:
+        return []
     ret = [None] * int(actions['pagination']['count'])
     indx = 0
-    while actions is not None:
+    while actions:
         for a in actions['actions']:
             ac = a.get('actionCode')
             if ac:
@@ -735,8 +659,18 @@ async def updateBill(congress_num, _type, num) :
     congress = congress.result()
     bill = bill.result()
     API_response_actions = API_response_actions.result()
+    if not API_response_actions:
+        # Congress API didn't return the actions list -- bail out instead of
+        # silently recomputing status_code from an empty action list, which would
+        # reset an in-progress bill back to "Introduced".
+        print(f'updateBill: failed to fetch actions for {_type}{num} (congress {congress_num}); skipping')
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(session.close())
+            tg.create_task(vote_session.close())
+        return
     action_codes_seen = []
-    while API_response_actions is not None:
+    actions_complete = True
+    while API_response_actions:
         for a in API_response_actions['actions']:
             ac = a.get('actionCode')
             if ac:
@@ -752,18 +686,15 @@ async def updateBill(congress_num, _type, num) :
                 set_vote = Vote.objects.filter(id = vote_id)
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
+                    if not vote_xml:
+                        print(f"Empty vote XML response for vote {vote_id}, skipping")
+                        return
                     vote_xml = ET.XML(vote_xml)
-                except aiohttp.ClientConnectionError as e:
+                except (aiohttp.ClientConnectionError, ET.ParseError) as e:
                     print(f"Connection error: {e}")
                     return
-                vote_dict = etree_to_dict(vote_xml)  
-                if (in_house) :
-                    date_blob = vote_dict['rollcall-vote']['vote-metadata']['action-date'].split('-')
-                    dt = date_blob[2] + '-' + month_to_num[date_blob[1]] + '-' + date_blob[0] + 'T' + vote_dict['rollcall-vote']['vote-metadata']['action-time']['@time-etz'] + ':00Z'
-                else:
-                    dt = vote_dict['roll_call_vote']['vote_date'].strip()
-                    dt = dt.split(',')
-                    dt = dt[1][1:] + '-' + month_to_num[dt[0].split(' ')[0][0:3]] + '-' + dt[0].split(' ')[1] + getTime(dt[2].strip())
+                vote_dict = etree_to_dict(vote_xml)
+                dt = _vote_datetime(vote_dict, in_house)
                 vote_data = {
                     'id': vote_id,
                     'congress': congress,
@@ -811,9 +742,20 @@ async def updateBill(congress_num, _type, num) :
                     tg.create_task(vote.pres.aset(pres))
                     tg.create_task(vote.novt.aset(novt))
         if 'next' in API_response_actions['pagination']:
-            API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
+            next_page = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
+            if not next_page:
+                # Pagination broke partway through -- action_codes_seen is now
+                # incomplete, so don't let it overwrite the bill's real status.
+                actions_complete = False
+            API_response_actions = next_page
         else:
             API_response_actions = None
+    if not actions_complete:
+        print(f'updateBill: pagination failed partway for {_type}{num} (congress {congress_num}); not updating status_code')
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(session.close())
+            tg.create_task(vote_session.close())
+        return
     bill.status_code = await compute_status_code(bill.getOriginCode(), action_codes_seen)
     bill.veto_in_history, bill.conf_in_history = compute_history_flags(action_codes_seen)
     await bill.asave()
@@ -821,6 +763,65 @@ async def updateBill(congress_num, _type, num) :
     async with asyncio.TaskGroup() as tg:
         tg.create_task(session.close())
         tg.create_task(vote_session.close())
+
+## Given already-fetched+parsed vote XML (vote_dict, from etree_to_dict), builds/updates
+## the Vote row and its yeas/nays/pres/novt Membership sets. Returns (vote, created).
+## Shared by addBillASYNC and the House/Senate fast-path pipelines (checkHouseVotes/checkSenateVotes).
+async def _create_or_update_vote(vote_id, congress, in_house, bill, vote_dict, ignore_exists, vote_exists, set_vote):
+    dt = _vote_datetime(vote_dict, in_house)
+    vote_data = {
+        'id': vote_id,
+        'congress': congress,
+        'house': in_house == 1,
+        'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
+        'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
+        'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
+    }
+    if not vote_exists:
+        vote_data['dateTime'] = dt
+        vote, created = await Vote.objects.aget_or_create(**vote_data)
+    else:
+        vote = await set_vote.afirst()
+        created = False
+    vote.dateTime = dt
+    if created or not ignore_exists:
+        vote.bill = bill
+    await vote.asave()
+    if created or not ignore_exists:
+        members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
+        if in_house == 1:
+            yea_ids, nay_ids, pres_ids, novt_ids = [], [], [], []
+            for m in members:
+                v = m['vote']
+                if v in ('Yea', 'Aye', 'Guilty'):      yea_ids.append(m['legislator']['@name-id'])
+                elif v in ('Nay', 'No', 'Not Guilty'): nay_ids.append(m['legislator']['@name-id'])
+                elif v == 'Present':                   pres_ids.append(m['legislator']['@name-id'])
+                else:                                  novt_ids.append(m['legislator']['@name-id'])
+            base = {'congress': congress, 'house': True}
+            yeas = Membership.objects.filter(**base, member__id__in=yea_ids)
+            nays = Membership.objects.filter(**base, member__id__in=nay_ids)
+            pres = Membership.objects.filter(**base, member__id__in=pres_ids)
+            novt = Membership.objects.filter(**base, member__id__in=novt_ids)
+        else:
+            yea_q = nay_q = pres_q = novt_q = Q()
+            for m in members:
+                q = Q(member__last_name__iexact=m['last_name'], state=m['state'])
+                v = m['vote_cast']
+                if v in ('Yea', 'Aye', 'Guilty'):      yea_q |= q
+                elif v in ('Nay', 'No', 'Not Guilty'): nay_q |= q
+                elif v == 'Present':                   pres_q |= q
+                else:                                  novt_q |= q
+            base = {'congress': congress, 'house': False}
+            yeas = Membership.objects.filter(**base).filter(yea_q)  if yea_q  else Membership.objects.none()
+            nays = Membership.objects.filter(**base).filter(nay_q)  if nay_q  else Membership.objects.none()
+            pres = Membership.objects.filter(**base).filter(pres_q) if pres_q else Membership.objects.none()
+            novt = Membership.objects.filter(**base).filter(novt_q) if novt_q else Membership.objects.none()
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(vote.yeas.aset(yeas))
+            tg.create_task(vote.nays.aset(nays))
+            tg.create_task(vote.pres.aset(pres))
+            tg.create_task(vote.novt.aset(novt))
+    return vote, created
 
 # meant to be used asynchronously to add batches of bills at one time
 async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, header_str, ignore_exists = True):
@@ -854,15 +855,26 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
     status = enacted
     status_code = 61 if enacted else 0
 
-    # Track previous latest_action when bill already exists so we can stop processing older actions
+    # Track previous latest_api_update when bill already exists so we can stop processing older actions.
+    # latest_api_update is an internal-only watermark for this pipeline -- it is never touched by
+    # the House/Senate fast-path pipelines, so it always reflects the literal official API value.
     prev_latest_action = None
+    official_date_str = API_response_bill['bill']['latestAction']['actionDate']
     if (bill_exists) :
         bill = await Bill.objects.aget(id = _id)
-        # preserve previous latest_action (DateField) for early exit while processing actions
-        prev_latest_action = bill.latest_action
+        # preserve previous latest_api_update (DateField) for early exit while processing actions
+        prev_latest_action = bill.latest_api_update
         bill.title = b['title']
         bill.status = status
-        bill.latest_action = API_response_bill['bill']['latestAction']['actionDate']
+        bill.latest_api_update = official_date_str
+        # latest_action may already have been advanced ahead of the official API by a
+        # fast-path (House/Senate) vote detection -- never regress it, only bump forward.
+        # NOTE: use datetime.strptime(...).date() here, not date.fromisoformat() -- the
+        # local variable `date` above (introducedDate split) shadows the datetime.date
+        # class for the rest of this function.
+        official_date = datetime.strptime(official_date_str, '%Y-%m-%d').date()
+        if bill.latest_action is None or official_date > bill.latest_action:
+            bill.latest_action = official_date
         await bill.asave()
     else :
         bill = await Bill.objects.aget_or_create(
@@ -872,7 +884,8 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
             status = status,
             status_code = status_code,
             origin_date = API_response_bill['bill']['introducedDate'],
-            latest_action = API_response_bill['bill']['latestAction']['actionDate']
+            latest_action = official_date_str,
+            latest_api_update = official_date_str,
             )
         bill = bill[0]
 
@@ -882,8 +895,12 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
     new_action = False
     new_vote = False
     action_codes_seen = []
+    actions_complete = True
 
-    while API_response_actions is not None:
+    # connectASYNC returns '' (falsy, not None) on failure, so this must check
+    # truthiness -- "is not None" would let a failed fetch fall through to
+    # indexing into the empty-string sentinel below.
+    while API_response_actions:
         for a in API_response_actions['actions']:
             # If the bill already existed and we reach an action older-or-equal to the stored previous latest_action,
             # stop processing further actions for this bill (and pagination).
@@ -913,83 +930,37 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
                     continue
                 try:
                     vote_xml = await connectASYNC(vote_session, a['recordedVotes'][0]['url'], '', False)
+                    if not vote_xml:
+                        print(f"Empty vote XML response for vote {vote_id}, skipping")
+                        return
                     vote_xml = ET.XML(vote_xml)
-                except aiohttp.ClientConnectionError as e:
+                except (aiohttp.ClientConnectionError, ET.ParseError) as e:
                     print(f"Connection error: {e}")
                     return
                 vote_dict = etree_to_dict(vote_xml)
-                if (in_house) :
-                    date_blob = vote_dict['rollcall-vote']['vote-metadata']['action-date'].split('-')
-                    dt = date_blob[2] + '-' + month_to_num[date_blob[1]] + '-' + date_blob[0] + 'T' + vote_dict['rollcall-vote']['vote-metadata']['action-time']['@time-etz'] + ':00Z'
-                else:
-                    dt = vote_dict['roll_call_vote']['vote_date'].strip()
-                    dt = dt.split(',')
-                    dt = dt[1][1:] + '-' + month_to_num[dt[0].split(' ')[0][0:3]] + '-' + dt[0].split(' ')[1] + getTime(dt[2].strip())
-                vote_data = {
-                    'id': vote_id,
-                    'congress': congress,
-                    'house': in_house == 1,
-                    'question': vote_dict['rollcall-vote']['vote-metadata']['vote-question'] if in_house == 1 else vote_dict['roll_call_vote']['question'],
-                    'title': vote_dict['rollcall-vote']['vote-metadata']['vote-desc'] if in_house == 1 else vote_dict['roll_call_vote']['vote_title'],
-                    'result': vote_dict['rollcall-vote']['vote-metadata']['vote-result'] if in_house == 1 else vote_dict['roll_call_vote']['vote_result']
-                }
-                if not vote_exists:
-                    vote_data['dateTime'] = dt
-                    vote, created = await Vote.objects.aget_or_create(**vote_data)
-                else:
-                    vote = await set_vote.afirst()
-                    created = False
-                vote.dateTime = dt
-                if created or not ignore_exists:
-                    vote.bill = bill
-                await vote.asave()
-                if created or not ignore_exists:
-                    members = vote_dict['rollcall-vote']['vote-data']['recorded-vote'] if in_house == 1 else vote_dict['roll_call_vote']['members']['member']
-                    if in_house == 1:
-                        yea_ids, nay_ids, pres_ids, novt_ids = [], [], [], []
-                        for m in members:
-                            v = m['vote']
-                            if v in ('Yea', 'Aye', 'Guilty'):      yea_ids.append(m['legislator']['@name-id'])
-                            elif v in ('Nay', 'No', 'Not Guilty'): nay_ids.append(m['legislator']['@name-id'])
-                            elif v == 'Present':                   pres_ids.append(m['legislator']['@name-id'])
-                            else:                                  novt_ids.append(m['legislator']['@name-id'])
-                        base = {'congress': congress, 'house': True}
-                        yeas = Membership.objects.filter(**base, member__id__in=yea_ids)
-                        nays = Membership.objects.filter(**base, member__id__in=nay_ids)
-                        pres = Membership.objects.filter(**base, member__id__in=pres_ids)
-                        novt = Membership.objects.filter(**base, member__id__in=novt_ids)
-                    else:
-                        yea_q = nay_q = pres_q = novt_q = Q()
-                        for m in members:
-                            q = Q(member__last_name__iexact=m['last_name'], state=m['state'])
-                            v = m['vote_cast']
-                            if v in ('Yea', 'Aye', 'Guilty'):      yea_q |= q
-                            elif v in ('Nay', 'No', 'Not Guilty'): nay_q |= q
-                            elif v == 'Present':                   pres_q |= q
-                            else:                                  novt_q |= q
-                        base = {'congress': congress, 'house': False}
-                        yeas = Membership.objects.filter(**base).filter(yea_q)  if yea_q  else Membership.objects.none()
-                        nays = Membership.objects.filter(**base).filter(nay_q)  if nay_q  else Membership.objects.none()
-                        pres = Membership.objects.filter(**base).filter(pres_q) if pres_q else Membership.objects.none()
-                        novt = Membership.objects.filter(**base).filter(novt_q) if novt_q else Membership.objects.none()
-                    async with asyncio.TaskGroup() as tg:
-                        tg.create_task(vote.yeas.aset(yeas))
-                        tg.create_task(vote.nays.aset(nays))
-                        tg.create_task(vote.pres.aset(pres))
-                        tg.create_task(vote.novt.aset(novt))
-                    if created:
-                        new_vote = True
-                        await send_bill_notification(
-                            bill_id=bill.id,
-                            title="New Vote",
-                            body="A new vote was taken on Bill " + bill.__str__() + "."
-                        )
+                vote, created = await _create_or_update_vote(vote_id, congress, in_house, bill, vote_dict, ignore_exists, vote_exists, set_vote)
+                if created:
+                    new_vote = True
+                    await send_bill_notification(
+                        bill_id=bill.id,
+                        title="New Vote",
+                        body="A new vote was taken on Bill " + bill.__str__() + "."
+                    )
 
         if API_response_actions is not None and 'next' in API_response_actions['pagination']:
-            API_response_actions = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
+            next_page = await connectASYNC(session, API_response_actions['pagination']['next'], header_str)
+            if not next_page:
+                # Pagination broke partway through -- action_codes_seen is now
+                # incomplete, so don't let it understate the bill's real status.
+                actions_complete = False
+            API_response_actions = next_page
         else:
             API_response_actions = None
     origin_code = bill.getOriginCode()
+    if not actions_complete:
+        print(f'addBillASYNC: pagination failed partway for bill {_id}; skipping status update')
+        await _sync_bill_relations(session, bill, congress_num, _type, b['number'])
+        return 1
     if bill.status_code == -1:
         action_codes_seen = await getAllActionCodes(session, header_str, API_response_actions_store)
     new_sc = await compute_status_code(
@@ -1007,16 +978,80 @@ async def addBillASYNC(session, vote_session, congress_num, _type, b, congress, 
         bill.conf_in_history = new_conf
         await bill.asave()
     await _sync_bill_relations(session, bill, congress_num, _type, b['number'])
-    if new_action and not new_vote:
-        await send_bill_notification(
-            bill_id=bill.id,
-            title="New Action",
-            body="New action(s) were taken on Bill " + bill.__str__() + "."
-        )
+    if new_action:
+        if _type in SENATE_TYPES:
+            _senate_bill_ids_this_run.add(_id)
+        else:
+            _house_bill_ids_this_run.add(_id)
+        if not new_vote:
+            await send_bill_notification(
+                bill_id=bill.id,
+                title="New Action",
+                body="New action(s) were taken on Bill " + bill.__str__() + "."
+            )
     return 1
 
+## Fast-path House/Senate vote pipelines -------------------------------------------------
+## The official Congress API is often a day or more behind on posting floor-vote actions.
+## The House Clerk and Senate.gov publish roll-call results within minutes. These two
+## pipelines check those pages directly and bump Bill.latest_action forward when they find
+## a bill-related vote not yet reflected in the DB, without ever touching latest_api_update
+## (the official pipeline's own internal bookkeeping field, see addBillASYNC above).
+
+# Maps the congress.gov bill-page URL slug (seen in House index-page hrefs) to the
+# existing `types` dict keys.
+_BILL_URL_SLUG_TO_TYPE = {
+    'house-bill': 'hr', 'house-resolution': 'hres',
+    'house-joint-resolution': 'hjres', 'house-concurrent-resolution': 'hconres',
+    'senate-bill': 's', 'senate-resolution': 'sres',
+    'senate-joint-resolution': 'sjres', 'senate-concurrent-resolution': 'sconres',
+}
+# Maps a normalized Senate <issue> tag prefix (dots/spaces stripped, uppercased) to
+# the same `types` dict keys. Anything not in here (e.g. "PN" nominations) is skipped.
+_SENATE_ISSUE_PREFIXES = {
+    'S': 's', 'SRES': 'sres', 'SJRES': 'sjres', 'SCONRES': 'sconres',
+    'HR': 'hr', 'HRES': 'hres', 'HJRES': 'hjres', 'HCONRES': 'hconres',
+}
+_MAX_HOUSE_ROLL_BLOCKS_PER_RUN = 3
+
+def _make_bill_id(congress_num, _type, number):
+    # mirrors the encoding already used in addBillASYNC
+    if number < 10000:
+        return congress_num * 100000 + types[_type] * 10000 + number
+    return congress_num * 1000000 + types[_type] * 100000 + number
+
+def _session_for_year(year):
+    # matches the existing precedent in fixHouseVote (session 1 = odd calendar year)
+    return 1 if (year % 2 == 1) else 2
+
+def _parse_day_mon_date(date_text, year):
+    # "23-Jul" + 2026 -> "2026-07-23"
+    day, mon = date_text.strip().split('-')
+    return f"{year}-{month_to_num[mon]}-{day.zfill(2)}"
+
+async def _vote_watermark(congress_num, house, session):
+    return None, 0
+
+def _parse_house_vote_rows(html, year):
+    return []
+
+async def _fetch_house_roll_range_pages(session_http, year, lo, hi, max_blocks):
+    return []
+
+async def checkHouseVotes(congress_num=None, year=None):
+    return None
+
+def _parse_senate_issue(issue_text):
+    return None, None
+
+async def checkSenateVotes(congress_num=None, session=None):
+    return None
+
+async def merge_fastpath_votes(bill, actions):
+    return actions
+
 # runs through existing votes up to limit, and adds memberships that were missing
-async def fixHouseVotes(congress_num, year, nums, member_ids) : 
+async def fixHouseVotes(congress_num, year, nums, member_ids) :
     session = aiohttp.ClientSession()
     congress = await Congress.objects.aget(congress_num__exact = congress_num)
     indx = 1
@@ -1040,8 +1075,11 @@ async def fixHouseVote(session, congress, congress_num, year, num, member_ids) :
         vote = await Vote.objects.aget(id = vote_id)
         try:
             vote_xml = await connectASYNC(session, url, '', False)
+            if not vote_xml:
+                print(f"Empty vote XML response for vote {vote_id}, skipping")
+                return
             vote_xml = ET.XML(vote_xml)
-        except aiohttp.ClientConnectionError as e:
+        except (aiohttp.ClientConnectionError, ET.ParseError) as e:
             print(f"Connection error: {e}")
             return
         vote_dict = etree_to_dict(vote_xml)
@@ -1087,15 +1125,26 @@ def getNumSuffix(num):
     elif (num % 10 == 3 and num // 10 != 1) : return 'rd'
     return 'th'
 
-def getTime(time_str):
-                    blob = time_str.split(' ')
-                    blob2 = blob[0].split(':')
-                    if blob2[0] == '12' : 
-                        if blob[1] == 'AM':
-                            blob2[0] = '00'
-                    elif blob[1] == 'PM':
-                        blob2[0] = str(int(blob2[0]) + 12)
-                    return 'T' + blob2[0] + ':' + blob2[1] + ':00Z'
+def _vote_datetime(vote_dict, in_house):
+    """Aware UTC datetime for a roll-call vote payload.
+
+    Both chambers publish Washington (Eastern) wall-clock times: the House clerk
+    XML as action-date '23-Jul-2026' + action-time/@time-etz '14:15', the Senate
+    LIS XML as vote_date 'July 23, 2026,  02:15 PM'. They used to be stored with
+    a 'Z' suffix, i.e. 4-5 hours off; zoneinfo applies the right DST offset.
+    """
+    if in_house:
+        meta = vote_dict['rollcall-vote']['vote-metadata']
+        day, mon, year = meta['action-date'].split('-')
+        hour, minute = meta['action-time']['@time-etz'].split(':')
+        local = datetime(int(year), int(month_to_num[mon[:3]]), int(day), int(hour), int(minute))
+    else:
+        month_day, year, clock = [p.strip() for p in vote_dict['roll_call_vote']['vote_date'].split(',')]
+        month_name, day = month_day.split()
+        local = datetime.strptime(
+            f"{year}-{month_to_num[month_name[:3]]}-{int(day):02d} {' '.join(clock.split())}",
+            '%Y-%m-%d %I:%M %p')
+    return local.replace(tzinfo=US_EASTERN).astimezone(dt_timezone.utc)
 
 def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
     for i in range(len(roles)):
@@ -1103,10 +1152,13 @@ def findIndexOfRoleByChamberAndCongress(roles, congress_num, chamber):
             return i
     return -1    
                     
-def updateMember(congress_num, member_id): 
-    congress = Congress.objects.get(congress_num__exact = congress_num)    
+## returns the member's API payload (dict), or None if the Congress API request failed
+def updateMember(congress_num, member_id):
+    congress = Congress.objects.get(congress_num__exact = congress_num)
     member = Member.objects.get(id__exact = member_id)
     API_response_member = connect_and_cache(member.getAPIURL(), {'api_key' : settings.CONGRESS_KEY, 'format' : 'json'}, timeout_day * 7)
+    if API_response_member is None:
+        return None
     image_link = member.image_link
     if image_link != "empty" and member.official_link != None and member.office != None and member.phone != None: return API_response_member
     
@@ -1180,8 +1232,9 @@ def getBillsInRange(s_d, e_d, bill_type, topics):
 def getVotesInRange(s_d, e_d, bill_type, topics):
     start = s_d.split('-')
     end = e_d.split('-')
-    start_date = datetime(int(start[0]), int(start[1]), int(start[2]),0,0,1)
-    end_date = datetime(int(end[0]), int(end[1]), int(end[2]),23,59,59)
+    # Whole days in Washington time, matching the dates shown on vote pages.
+    start_date = datetime(int(start[0]), int(start[1]), int(start[2]), 0, 0, 0, tzinfo=US_EASTERN)
+    end_date = datetime(int(end[0]), int(end[1]), int(end[2]), 23, 59, 59, tzinfo=US_EASTERN)
     if bill_type != '!':
         qs = Vote.type_objects.get_from_type(bill_type, start_date, end_date)
     else :
@@ -1204,11 +1257,33 @@ def intToFIPS(num):
 
 ##  return a context for http request to fill html page with content
 async def billHtml(bill, congress_id, bill_type, num):
+    """Own the aiohttp session lifecycle so it is ALWAYS closed -- even if the
+    body raises (BillUpstreamUnavailable, a DB error, a parse error, etc.).
+    Previously the session was only closed on the success path, leaking
+    connections on every failure. The bounded ClientTimeout is a backstop in case
+    a call ever reaches session.get without an explicit per-request timeout."""
+    session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15, connect=5))
+    try:
+        return await _billHtml_impl(session, bill, congress_id, bill_type, num)
+    finally:
+        await session.close()
+
+
+async def _billHtml_impl(session, bill, congress_id, bill_type, num):
     apiURL = settings.CONGRESS_DIR + "bill/" + congress_id + "/" + bill_type + "/" + num
     header_str = '?api_key=' + settings.CONGRESS_KEY +  '&format=json&limit=250'
-    session = aiohttp.ClientSession()
     requests = [apiURL, apiURL + '/actions', apiURL + '/summaries']
     API_data = await run_concurrent_connect_and_cache(session, requests, header_str)
+    # If the core bill payload didn't come back (upstream slow/down -> connectASYNC
+    # returned '', or gather captured an exception), bail out cleanly instead of
+    # crashing on a non-dict subscript. Raising here lets the view render a friendly
+    # "temporarily unavailable" page rather than a 500 that coincides with the
+    # worker being killed. The session is closed by the billHtml wrapper.
+    if not (isinstance(API_data[0], dict) and 'bill' in API_data[0]
+            and isinstance(API_data[1], dict) and 'actions' in API_data[1]):
+        raise BillUpstreamUnavailable(
+            f'Congress API did not return core data for {congress_id}/{bill_type}/{num}'
+        )
     date_str = API_data[0]['bill']['updateDate']
     update_date = date(
         int(date_str[0:4]),
@@ -1250,11 +1325,8 @@ async def billHtml(bill, congress_id, bill_type, num):
             related_list = API_data_2[1].get('relatedBills', [])
             related_ids = []
             for b in related_list:
-                mult = 100000
-                if (int(b['number']) < 10000):
-                    mult *= 10
-                _id = int(b['congress']) * 100000 + types[b['type'].lower()] * 10000 + int(b['number'])
-                related_ids.append(_id)
+                # Wide (>9999) numbers use the CCC_T_XXXXX layout; see models.Bill.
+                related_ids.append(_make_bill_id(int(b['congress']), b['type'].lower(), int(b['number'])))
             if related_ids:
                 related_bills = Bill.objects.filter(id__in=related_ids)
                 await bill.related_bills.aset(related_bills)
@@ -1275,7 +1347,7 @@ async def billHtml(bill, congress_id, bill_type, num):
     context = {'title':"CONGRESS: " + congress_id + ", " + bill_type.upper() + "-" + num,
             'bill' : bill_type.upper() + "-" + num,
             }
-    if ('actionCode' in API_data[1]['actions'][0]) and (API_data[1]['actions'][0]['actionCode'] in ['E40000', '36000']) :
+    if (API_data[1]['actions']) and ('actionCode' in API_data[1]['actions'][0]) and (API_data[1]['actions'][0]['actionCode'] in ['E40000', '36000']) :
         context['bill_state_type'] = 'Became Public Law'
     else :
         context['bill_state_type'] = 'Still Just a Bill'
@@ -1293,9 +1365,10 @@ async def billHtml(bill, congress_id, bill_type, num):
         'passed': bool(bill.status),
     }
 
+    API_data[1]['actions'] = await merge_fastpath_votes(bill, API_data[1]['actions'])
     context['actions_table'] = await actionTable(API_data[1], bill_type, num)
-    member_link = '/member-query/results/?congress='
-    bill_link = '/bill-query/bill/'
+    member_link = '/member/results/?congress='
+    bill_link = '/bill/'
     q_2 = '&member='
     q_3 = '&chamber='
 
@@ -1375,6 +1448,7 @@ async def billHtml(bill, congress_id, bill_type, num):
             if bill_summary.summary and bill_summary.summary.strip() and bill_summary.summary != "We cannot provide a summary at this time.":
                 context['AI_generated_content'] = "STORED"
                 context['summary'] = bill_summary.summary
+                context['ai_generated_date'] = bill_summary.generated_at
             else:
                 # DB record exists but no usable summary -> allow user to generate
                 context['AI_generated_content'] = "NONE"
@@ -1386,102 +1460,14 @@ async def billHtml(bill, congress_id, bill_type, num):
             context['summary'] = ""
             context['show_generate_button'] = True
 
-    await session.close()
+    # session is closed by the billHtml wrapper's finally block.
     return context
 
-## Gets the latest text file from api and summarizes it using gemini api. Memorize summaries in db
+SUMMARY_TOO_LARGE = "__BILL_TOO_LARGE__"
+SUMMARY_OVERLOADED = "__OVERLOADED__"
+
 async def getSummaryAI(session, url, header_str, _id):
-    new_session = aiohttp.ClientSession()
-    ## get latest text index:
-    latest_datetime = datetime(1, 1, 1, 1, 1, 1)
-    latest_indx = -1
-    API_response_text = await connectASYNC(session, url, header_str)
-
-    for i in range(len(API_response_text['textVersions'])):
-        version = API_response_text['textVersions'][i]
-        date_str = version['date']
-        if date_str is None: continue
-        if not version.get('formats'): continue
-        curr_datetime = datetime(
-            int(date_str[0:4]),
-            int(date_str[5:7]),
-            int(date_str[8:10]),
-            int(date_str[11:13]),
-            int(date_str[14:16]),
-            int(date_str[17:19])
-            )
-        if curr_datetime > latest_datetime:
-            latest_datetime = curr_datetime
-            latest_indx = i
-
-    if latest_indx == -1:
-        await new_session.close()
-        return None
-
-    latest_date = latest_datetime.date()
-
-    bill_summary = (await BillSummary.objects.aget_or_create(id=_id))[0]
-    if latest_date == bill_summary.source_date:
-        await new_session.close()
-        return bill_summary.summary
-
-    text_url = API_response_text['textVersions'][latest_indx]['formats'][0]['url']
-    html = await connectASYNC(new_session, text_url, '', False)
-    soup = BeautifulSoup(html)
-    text = soup.get_text()
-
-    ## generate summary from text using Google Generative API (Gemini).
-    try:
-        client = genai.Client(api_key=settings.GEMINI_KEY)
-    except KeyError:
-        print("Error: GOOGLE_API_KEY environment variable not set.")
-        await new_session.close()
-        return bill_summary.summary
-    except Exception as e:
-        print(f"GENAI CLIENT ERROR: {e}")
-        await new_session.close()
-        return bill_summary.summary
-
-    prompt = """You are the interface for a web app that summarizes US legislation.
-        Your raw response will be inserted into a html document,
-        so the response should be raw html inside a <p> div using lists when appropriate.
-        Write a summary for this US legislation.
-        The tone should be formal, concise, and easy to understand for the average voter.
-        Refer to the legislation by its title or the bill type and number if there is no title."""
-
-    try:
-        # Request HTML response from the model and run the blocking SDK call in a thread to avoid blocking the event loop.
-        generate_content_config = genaiTypes.GenerateContentConfig(response_mime_type='text/plain')
-        response = await asyncio.to_thread(
-            lambda: client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=[text, prompt],
-                config=generate_content_config
-            )
-        )
-    except Exception as e:
-        print(f"GENAI ERROR during generate_content: {e}")
-        await new_session.close()
-        return bill_summary.summary
-
-    # Normalize returned text and strip common fenced blocks
-    summary = getattr(response, "text", None)
-    if summary is None:
-        # fallback: try structured outputs
-        try:
-            # some SDK responses include output[0].content
-            summary = response.output[0].content if getattr(response, "output", None) else ""
-        except Exception:
-            summary = ""
-
-    summary = summary.removeprefix("```html").removesuffix("```").strip()
-
-    bill_summary.source_date = latest_date
-    bill_summary.summary = summary
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(bill_summary.asave())
-        tg.create_task(new_session.close())
-    return bill_summary.summary
+    return ''
 
 def voteHtml(vote):
     congress_id = str(vote.congress.congress_num)
@@ -1512,16 +1498,10 @@ def voteHtml(vote):
 
     if isHouseVote:
         mult = 435
-        temp = int(congress_id)
-        temp -= (temp % 2)
-        geojson_source = 'geojsons/cb_us_cd' + str(temp) + '_5m.js'
-        geojson_load = 'scripts/loadCounty.js'
         values = [0] * mult
         text = [''] * mult
     else:
         mult = 50
-        geojson_source = 'geojsons/cb_us_state_5m.js'
-        geojson_load = 'scripts/loadState.js'
         values = [[0] * mult for _ in range(4)]
         text = state_list
 
@@ -1577,7 +1557,7 @@ def voteHtml(vote):
             img_link = membership.member.image_link or ''
             row = (
                 f'<tr class="{css} border">'
-                f'<td class="border-0"><a href="/member-query/results/?congress='
+                f'<td class="border-0"><a href="/member/results/?congress='
                 f'{congress_id}{q_2}{member_id}{q_3}{chamber}" class="link-light"'
                 f' data-img="{img_link}">'
                 f'{membership.getStr()}</a></td></tr>'
@@ -1594,7 +1574,7 @@ def voteHtml(vote):
         'title': str(vote.id),
         'bill' : vote.bill.__str__(),
         'bill_title' : vote.bill.title,
-        'bill_link' : '/bill-query/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
+        'bill_link' : '/bill/' + congress_id  + '/' + vote.bill.getTypeURL() + '/' + vote.bill.getNumStr(),
         'vote_time' : vote.getDate(),
         'vote_title' : vote.title,
         'vote_question' : vote.question,
@@ -1612,8 +1592,6 @@ def voteHtml(vote):
         'nays_cnt' : counts[0],
         'pres_cnt' : counts[2],
         'novt_cnt' : counts[3],
-        'geojson_source' : geojson_source,
-        'geojson_load' : geojson_load,
         'geoids' : geoids,
         'values' : values,
         'cloro_text' : text,
@@ -1707,7 +1685,7 @@ async def actionTable(act_list, bill_type, bill_num):
                            + in_house * 1000000
                            + int(rv.get('sessionNumber', 0)) * 100000
                            + int(rv.get('rollNumber', 0)))
-                parts.append(f'<td><a class="action-badge action-badge--vote" href="/bill-query/vote/{vote_id}">{badge_label}</a></td>')
+                parts.append(f'<td><a class="action-badge action-badge--vote" href="/vote/{vote_id}">{badge_label}</a></td>')
             except Exception:
                 parts.append(f'<td><span class="action-badge action-badge--{badge_key}">{badge_label}</span></td>')
         else:
@@ -1739,7 +1717,7 @@ def billTable(bill_list):
             '<td>{}/{}/{}</td>'.format(la.month, la.day, la.year)
         )
         parts.append(
-            '<td><a href="/bill-query/bill/{}">{}</a></td>'.format(bill.getURL(), bill.__str__())
+            '<td><a href="/bill/{}">{}</a></td>'.format(bill.getURL(), bill.__str__())
         )
         parts.append('<td>{}</td>'.format(bill.title))
         parts.append('<td>{}</td></tr>'.format(bill.getOrigin()))
@@ -1757,25 +1735,18 @@ def voteTablePage(vote_list):
     ]
     for vote in vote_list:
         parts.append('<tr><td>{}</td>'.format(vote.getDate()))
-        parts.append('<td><a href="/bill-query/vote/{}">{}</a></td>'.format(vote.id, vote.question))
-        parts.append('<td><a href="/bill-query/bill/{}">{}</a></td>'.format(vote.bill.getURL(), vote.bill.__str__()))
+        parts.append('<td><a href="/vote/{}">{}</a></td>'.format(vote.id, vote.question))
+        parts.append('<td><a href="/bill/{}">{}</a></td>'.format(vote.bill.getURL(), vote.bill.__str__()))
         parts.append('<td>{}</td></tr>'.format(vote.result))
     parts.append('</tbody></table>')
     return ''.join(parts)
 
-def voteTable(vote_list, bioguideID, congress_num):
+def voteTable(vote_list, membership):
     """
     Produce a per-member vote table.
     - Cache membership lookup once to reduce repeated DB hits.
     - Use list append + join for efficient string assembly.
     """
-    congress = Congress.objects.get(congress_num__exact=congress_num)
-    member = Member.objects.get(id__exact=bioguideID)
-
-    try:
-        membership = Membership.objects.get(congress=congress, member=member)
-    except Membership.DoesNotExist:
-        membership = None
 
     vote_ids = [v.id for v in vote_list]
     if membership and vote_ids:
@@ -1807,31 +1778,12 @@ def voteTable(vote_list, bioguideID, congress_num):
         badge_cls = badge_map.get(vote_type, 'other')
         parts.append('<tr>')
         parts.append(f'<td><span class="action-date">{vote.getDate()}</span></td>')
-        parts.append(f'<td><a href="/bill-query/bill/{bill.getURL()}" class="rep-vote-link">{bill.__str__()}</a></td>')
-        parts.append(f'<td class="action-text"><a href="/bill-query/vote/{vote.id}">{vote.question}</a></td>')
+        parts.append(f'<td><a href="/bill/{bill.getURL()}" class="rep-vote-link">{bill.__str__()}</a></td>')
+        parts.append(f'<td class="action-text"><a href="/vote/{vote.id}">{vote.question}</a></td>')
         parts.append(f'<td><span class="vote-result-badge vote-result-badge--{badge_cls}">{vote_type}</span></td>')
         parts.append('</tr>')
     parts.append('</tbody></table>')
     return ''.join(parts)
-
-def getVoteType(vote, congress, member):
-    """
-    Legacy helper retained for external callers.
-    - Minimal change: compute membership once here to avoid repeated calls in callers that still use this function.
-    """
-    vote_type = ['Yea', 'Nay', 'Present', 'No Vote']
-    i = 3
-    try:
-        membership = Membership.objects.get(congress=congress, member=member)
-    except Membership.DoesNotExist:
-        return vote_type[i]
-    if vote.yeas.filter(pk=membership.pk).exists():
-        i = 0
-    elif vote.nays.filter(pk=membership.pk).exists():
-        i = 1
-    elif vote.pres.filter(pk=membership.pk).exists():
-        i = 2
-    return vote_type[i]
 
 def partyList(party_history):
     _party_cls = {'Republican': 'r', 'Democrat': 'd', 'Democratic': 'd', 'Independent': 'i'}
@@ -1889,7 +1841,7 @@ def termList(terms, bioguideID, congress_num):
 
         if has_link:
             chamber = 'House+of+Representatives' if term.get('memberType') == 'Representative' else 'Senate'
-            link_url = f'/member-query/results/?congress={num}&member={bioguideID}&chamber={chamber}'
+            link_url = f'/member/results/?congress={num}&member={bioguideID}&chamber={chamber}'
             parts.append(f'<a href="{link_url}" class="rep-term-row{current_class}">{inner}</a>')
         else:
             parts.append(f'<div class="rep-term-row{current_class}">{inner}</div>')

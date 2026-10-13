@@ -26,6 +26,21 @@
             {% if profile.user_type > 0 %}
             <div class="mb-4 pb-4" style="border-bottom: 1px solid rgba(150,150,150,0.15);">
                 <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:rgba(250,250,250,0.5); margin-bottom:10px;">Billing Status</div>
+                {% if pending_change_name %}
+                <div class="mb-2 p-3" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius:10px;">
+                    <i class="fa-solid fa-triangle-exclamation me-2" style="color:#F59E0B;"></i>
+                    <span style="font-size:14px; color:rgba(250,250,250,0.85);">
+                        Your plan changes to <strong>{{ pending_change_name }}</strong>
+                        {% if profile.subscription_period_end %}
+                        on <strong>{{ profile.subscription_period_end|date:"N j, Y" }}</strong>
+                        {% endif %}
+                    </span>
+                    <p class="mb-0 mt-2" style="font-size:13px; color:rgba(250,250,250,0.55);">
+                        You keep <strong>{{ tier_name }}</strong> until then. Re-select {{ tier_name }} on the
+                        <a href="{% url 'plans' %}" style="color:#2ea87e;">plans page</a> to cancel this change.
+                    </p>
+                </div>
+                {% endif %}
                 {% if profile.subscription_cancel_at_period_end %}
                 <div class="mb-2 p-3" style="background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3); border-radius:10px;">
                     <i class="fa-solid fa-triangle-exclamation me-2" style="color:#F59E0B;"></i>
@@ -84,12 +99,17 @@
                         <div class="card-dark-sm p-3 text-center">
                             {% if profile.get_chat_limit == 0 %}
                             <div style="font-size:22px; font-weight:700; color:rgba(150,150,150,0.6);">—</div>
+                            <div style="font-size:12px; color:rgba(250,250,250,0.55);">AI Chatbot</div>
+                            {% elif profile.user_type == 2 %}
+                            <div style="font-size:22px; font-weight:700; color:rgb(250,250,250);">7.5M</div>
+                            <div style="font-size:12px; color:rgba(250,250,250,0.55);">AI Chatbot (tokens/mo)</div>
                             {% elif profile.get_chat_limit >= 1000 %}
                             <div style="font-size:22px; font-weight:700; color:rgb(250,250,250);">Unlimited</div>
+                            <div style="font-size:12px; color:rgba(250,250,250,0.55);">AI Chatbot</div>
                             {% else %}
                             <div style="font-size:22px; font-weight:700; color:rgb(250,250,250);">{{ profile.get_chat_limit }}/day</div>
+                            <div style="font-size:12px; color:rgba(250,250,250,0.55);">AI Chatbot</div>
                             {% endif %}
-                            <div style="font-size:12px; color:rgba(250,250,250,0.55);">AI Chats</div>
                         </div>
                     </div>
                 </div>

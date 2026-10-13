@@ -77,7 +77,7 @@ function getBillURL(billId) {
     const congress = getCongress(billId);
     const typeURL = getBillTypeURL(billId);
     const num = getBillNum(billId);
-    return `/bill-query/bill/${congress}/${typeURL}/${num}`;
+    return `/bill/${congress}/${typeURL}/${num}`;
 }
 
 // Update pagination button states based on current page
@@ -160,7 +160,7 @@ function renderBillsPage() {
     list.innerHTML = pageItems.map(bill => {
         const billURL = getBillURL(bill.bill_id);
         const latestActionDate = bill.latest_action 
-            ? new Date(bill.latest_action).toLocaleDateString() 
+            ? new Date(bill.latest_action).toLocaleDateString(undefined, { timeZone: 'UTC' }) 
             : 'N/A';
         
         // Render matching subjects horizontally

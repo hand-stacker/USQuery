@@ -87,7 +87,7 @@ function createSectionHeader(title, iconClass = '') {
 // Shared member card HTML. lazyLoad=true uses data-src (deferred), false uses src (immediate).
 function createMemberCardHTML(member, lazyLoad = false) {
     const chamber = member.house ? 'House+of+Representatives' : 'Senate';
-    const memberURL = `/member-query/results/?congress=119&member=${member.member_id}&chamber=${chamber}`;
+    const memberURL = `/member/results/?congress=119&member=${member.member_id}&chamber=${chamber}`;
     const districtText = member.house && member.district_num ? `-${member.district_num}` : '';
     const imageSrc = member.image_link && member.image_link !== 'empty' ? member.image_link : '';
     const imgAttr = lazyLoad ? `data-src="${imageSrc}"` : `src="${imageSrc}"`;
